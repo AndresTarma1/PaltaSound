@@ -117,18 +117,17 @@ jobs:
         run: |
           ./gradlew ${{ matrix.gradle_tasks }} --stacktrace
 
-      - name: Verify Windows runtime resources
+      - name: Verify GraalVM runtime resources
         if: matrix.needs_yt_dlp
         shell: pwsh
         run: |
-          # JVM packaging (no GraalVM): los recursos viven en el app-image JVM.
-          $file = "desktopApp/build/compose/binaries/main/app/PaltaSound/libmpv-2.dll"
+          $file = "desktopApp/build/compose/binaries/main/graalvm-app/PaltaSound/libmpv-2.dll"
           if (!(Test-Path -LiteralPath $file)) {
-            throw "JVM app-image does not contain libmpv-2.dll"
+            throw "GraalVM app-image does not contain libmpv-2.dll"
           }
           $size = (Get-Item -LiteralPath $file).Length
           if ($size -lt 100000000) {
-            throw "JVM app-image contains an invalid libmpv-2.dll ($size bytes)"
+            throw "GraalVM app-image contains an invalid libmpv-2.dll ($size bytes)"
           }
           Write-Host ("{0}: {1} bytes" -f $file, $size)
 
@@ -142,12 +141,13 @@ jobs:
           fi
           ls -lh "${{ matrix.rustypipe_bin }}"
           if [[ "${{ matrix.dist_name }}" == "windows" ]]; then
-            file="desktopApp/build/compose/binaries/main/app/PaltaSound/rustypipe-botguard.exe"
+            file="desktopApp/build/compose/binaries/main/graalvm-app/PaltaSound/rustypipe-botguard.exe"
             if [ ! -f "$file" ]; then
-              echo "::error::JVM app-image does not contain rustypipe-botguard.exe"
+              echo "::error::GraalVM app-image does not contain rustypipe-botguard.exe"
               exit 1
             fi
             ls -lh "$file"
+            # Linux binary should also be present in the JVM distribution resources if built, but we only verify Windows GraalVM here
           fi
 
       - name: Stage installers and merge update YAMLs
