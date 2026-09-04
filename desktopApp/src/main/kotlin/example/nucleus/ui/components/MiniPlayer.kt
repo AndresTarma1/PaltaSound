@@ -66,10 +66,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.blur.blurEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeEffect
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
 import example.nucleus.data.repository.SeekBarStyle
@@ -556,13 +556,10 @@ fun MiniPlayer(
                             val style = HazeMaterials.ultraThin(
                                 containerColor = colorScheme.surfaceContainer,
                             )
-                            Modifier.hazeEffect(state = hazeState) {
-                                forceInvalidateOnPreDraw = true
-                                blurEffect {
-                                    blurEnabled = true
-                                    this.style = style
-                                }
-                            }
+                            Modifier.hazeBlur(
+                                input = HazeInput.Sources(hazeState),
+                                style = style,
+                            )
                         } else {
                             Modifier.background(
                                 Brush.verticalGradient(
@@ -624,12 +621,10 @@ fun MiniPlayer(
                                 val style = HazeMaterials.ultraThin(
                                     containerColor = colorScheme.surfaceContainer,
                                 )
-                                Modifier.hazeEffect(state = hazeState) {
-                                    blurEffect {
-                                        blurEnabled = true
-                                        this.style = style
-                                    }
-                                }
+                                Modifier.hazeBlur(
+                                    input = HazeInput.Sources(hazeState),
+                                    style = style,
+                                )
                             } else {
                                 Modifier.background(
                                     Brush.verticalGradient(
@@ -698,12 +693,10 @@ fun MiniPlayer(
                 .then(
                     if (useHazeDocked) {
                         val style = HazeMaterials.ultraThin(containerColor = colorScheme.surfaceContainer)
-                        Modifier.hazeEffect(state = hazeState) {
-                            blurEffect {
-                                blurEnabled = true
-                                this.style = style
-                            }
-                        }
+                        Modifier.hazeBlur(
+                            input = HazeInput.Sources(hazeState!!),
+                            style = style,
+                        )
                     } else Modifier
                 )
                 .then(

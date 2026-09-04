@@ -70,7 +70,7 @@ kotlin {
             // minter con un entorno tipo JSDOM, fuera del alcance de un QuickJS embebido.
             // Se delega al sidecar rustypipe-botguard (RustyPipeBotGuardSidecar, binario en
             // mpv-resources/windows). Ver PoTokenGenerator.jvm para el historial.
-            // implementation("io.github.dokar3:quickjs-kt:1.0.14")
+            implementation(libs.quickjs)
 
             // GraalJS (cipher `n`/`s` de player.js) — motor JS del solucionador EJS de los
             // formatos web. Sin él, WEB_REMIX/TVHTML5 devuelven sigCipher pero no se puede
