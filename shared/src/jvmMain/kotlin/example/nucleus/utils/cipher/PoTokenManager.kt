@@ -13,7 +13,7 @@ import kotlin.time.Duration.Companion.milliseconds
  *  - Cachea el token ligado a la SESIÓN (visitorData): el challenge BotGuard y la
  *    creación del minter son costosos (~1-2s) y solo deben ocurrir una vez por sesión.
  *  - Acuña el token por VIDEO en cada reproducción (~50-200ms) reutilizando el minter.
- *  - Tope de 8s por generación: si QuickJS cuelga, la reproducción continúa sin
+ *  - Tope de 8s por generación: si el sidecar cuelga, la reproducción continúa sin
  *    poToken (los clientes no-web lo cubren) en lugar de bloquear el playback.
  *  - Reintento único recreando el motor desde cero si un mint falla con minter vivo
  *    (p.ej. el challenge expiró).

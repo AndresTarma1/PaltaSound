@@ -26,7 +26,7 @@ class AppLifecycleManager(
         runCatching { downloadService.release() }
         runCatching { mediaSession.release() }
         runCatching { playerService.release() }
-        // Cierre acotado: liberar QuickJS es rápido; si colgara igualmente, halt(0) está abajo.
+        // Cierre acotado: resetear el PoTokenManager es rápido; si colgara igualmente, halt(0) está abajo.
         runCatching {
             kotlinx.coroutines.runBlocking {
                 kotlinx.coroutines.withTimeout(2_000) { PoTokenManager.reset() }

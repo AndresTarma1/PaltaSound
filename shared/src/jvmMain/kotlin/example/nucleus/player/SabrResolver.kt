@@ -12,7 +12,6 @@ import com.metrolist.innertubex.sabr.SabrProtocolException
 import com.metrolist.innertubex.sabr.toSabrBootstrap
 import example.nucleus.data.repository.AudioQuality
 import example.nucleus.utils.cipher.PlayerJsFetcher
-import example.nucleus.utils.cipher.PoTokenManager
 import example.nucleus.utils.cipher.RustyPipeBotGuardSidecar
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
@@ -24,6 +23,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -43,9 +44,11 @@ import kotlinx.serialization.json.Json
  *  2. Bootstrap desde `serverAbrStreamingUrl` (+n-transform y `cpn=`) y
  *     `videoPlaybackUstreamerConfig`, con el pot ligado al video.
  *  3. Verificación: abrir el flujo y leer 2 chunks (con timeout).
- *  4. Si el UMP exige atestación (`ATTESTATION_REQUIRED`): re-mint FRESCA
- *     (`--no-snapshot`: integrity token nuevo) + player fresco + rebuild + 1 retry.
- *  5. Registro en [SabrProxyServer] -> URL local `http://127.0.0.1:port/sabr/<id>`.
+ *  4. Los mints van DIRECTO con reto fresco (`--no-snapshot`, en paralelo): el
+ *     flujo SABR exige integrity token nuevo y el de snapshot siempre pide
+ *     refresh de atestación (ahorra una ronda completa de ~10s).
+ *  5. Si el UMP exige atestación de nuevo: 1 retry con mints renovados.
+ *  6. Registro en [SabrProxyServer] -> URL local `http://127.0.0.1:port/sabr/<id>`.
  */
 object SabrResolver {
     private const val RESOLVE_TIMEOUT_MS = 60_000L
@@ -86,11 +89,10 @@ object SabrResolver {
         val vd = innerTube.fetchFreshVisitorData()
             ?: return null.also { Napier.w("[SABR] sin visitorData para $videoId") }
         innerTube.visitorData = vd
-        val pot = PoTokenManager.getWebClientPoToken(videoId, vd)
-            ?: return null.also { Napier.w("[SABR] sin poToken para $videoId") }
 
-        val built = buildBootstrap(videoId, sts, vd, pot.playerRequestPoToken, pot.streamingDataPoToken, quality)
-            ?: return null
+        // Directo a mints frescos en paralelo: el flujo SABR exige integrity token
+        // nuevo y el de snapshot siempre pide refresh (ahorra una ronda completa).
+        val built = freshBootstrap(videoId, sts, vd, quality) ?: return null
         try {
             if (verifyOpens(built.first)) {
                 return startSession(videoId, vd, sts, quality, built.first, built.second)
@@ -174,20 +176,42 @@ object SabrResolver {
         }
     }
 
-    private suspend fun buildFreshBootstrap(
+    /**
+     * Mints frescos en paralelo (`--no-snapshot`) + player + bootstrap.
+     * Es el camino principal: el flujo SABR exige integrity token nuevo.
+     */
+    private suspend fun freshBootstrap(
         videoId: String,
         sts: Int?,
         visitorData: String,
         quality: AudioQuality,
     ): Pair<SabrBootstrap, Int>? {
-        val freshSession = RustyPipeBotGuardSidecar.mint(visitorData, fresh = true)
-        val freshVideo = RustyPipeBotGuardSidecar.mint(videoId, fresh = true)
-        if (freshSession == null || freshVideo == null) {
-            Napier.w("[SABR] re-mint fresco falló para $videoId")
-            return null
-        }
-        return buildBootstrap(videoId, sts, visitorData, base64UrlToStandard(freshSession), freshVideo, quality)
+        val pots = freshPots(videoId, visitorData) ?: return null
+        return buildBootstrap(videoId, sts, visitorData, pots.first, pots.second, quality)
     }
+
+    /** Alias del retry (misma ruta fresca). */
+    private suspend fun buildFreshBootstrap(
+        videoId: String,
+        sts: Int?,
+        visitorData: String,
+        quality: AudioQuality,
+    ): Pair<SabrBootstrap, Int>? = freshBootstrap(videoId, sts, visitorData, quality)
+
+    /** Dos mints frescos en paralelo; retorna (playerPot standard, videoPot base64url). */
+    private suspend fun freshPots(videoId: String, visitorData: String): Pair<String, String>? =
+        coroutineScope {
+            val sessionDef = async { RustyPipeBotGuardSidecar.mint(visitorData, fresh = true) }
+            val videoDef = async { RustyPipeBotGuardSidecar.mint(videoId, fresh = true) }
+            val session = sessionDef.await()
+            val video = videoDef.await()
+            if (session == null || video == null) {
+                Napier.w("[SABR] mint fresco falló para $videoId")
+                null
+            } else {
+                base64UrlToStandard(session) to video
+            }
+        }
 
     private suspend fun buildBootstrap(
         videoId: String,
