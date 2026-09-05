@@ -15,8 +15,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import example.nucleus.overlay.GlobalHotkeyManager
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.components.EqualizerDialog
 import example.nucleus.ui.screens.AdvancedJvmSettingsScreen
 import example.nucleus.utils.LocalDownloadViewModel

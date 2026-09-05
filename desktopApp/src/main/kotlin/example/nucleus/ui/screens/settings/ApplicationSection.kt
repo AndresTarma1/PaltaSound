@@ -13,8 +13,8 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.data.repository.AppLocale
 import example.nucleus.data.repository.YouTubeRegion
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.viewmodels.ApplicationSettingsViewModel
 import org.jetbrains.compose.resources.stringResource

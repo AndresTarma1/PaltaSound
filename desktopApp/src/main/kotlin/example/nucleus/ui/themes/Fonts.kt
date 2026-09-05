@@ -5,10 +5,10 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.SystemFont
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.roboto_bold
-import example.nucleus.shared.generated.resources.roboto_medium
-import example.nucleus.shared.generated.resources.roboto_regular
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.roboto_bold
+import example.nucleus.generated.resources.roboto_medium
+import example.nucleus.generated.resources.roboto_regular
 import java.awt.GraphicsEnvironment
 import org.jetbrains.compose.resources.Font
 

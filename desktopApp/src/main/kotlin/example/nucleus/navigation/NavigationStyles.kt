@@ -32,8 +32,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.ui.themes.LocalChromeSurface

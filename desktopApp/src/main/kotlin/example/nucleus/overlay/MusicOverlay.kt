@@ -72,8 +72,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject

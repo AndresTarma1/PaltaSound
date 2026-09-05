@@ -34,8 +34,8 @@ import example.nucleus.viewmodels.PlaylistManagerViewModel
 import com.metrolist.innertube.models.SongItem
 import example.nucleus.ui.components.artwork.ArtworkColors
 import example.nucleus.ui.components.artwork.rememberArtworkColors
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 data class PlaylistScreenState(

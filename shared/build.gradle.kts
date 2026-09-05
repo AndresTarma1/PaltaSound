@@ -20,7 +20,7 @@ kotlin {
             // coloca aquí tus dependencias Multiplatform
 
             api(project(":innertube"))
-            implementation("org.jetbrains.compose.components:components-resources:1.11.1")
+            api(libs.compose.components.resources)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
@@ -64,7 +64,7 @@ kotlin {
             implementation("org.jetbrains.runtime:jbr-api:1.10.1")
             implementation("dev.toastbits:mediasession:0.1.1")
             // Media controls del sistema (SMTC/MPRIS/Now Playing) vía Nucleus.
-            implementation("dev.nucleusframework:nucleus.media-control:2.4.7")
+            implementation("dev.nucleusframework:nucleus.media-control:2.5.14")
 
             // PoTokens web: desde julio 2026 los programas de BotGuard solo entregan el
             // minter con un entorno tipo JSDOM, fuera del alcance de un QuickJS embebido.
@@ -85,7 +85,7 @@ kotlin {
 }
 
 compose.resources {
-    packageOfResClass = "example.nucleus.shared.generated.resources"
+    packageOfResClass = "example.nucleus.generated.resources"
     publicResClass = true
 }
 

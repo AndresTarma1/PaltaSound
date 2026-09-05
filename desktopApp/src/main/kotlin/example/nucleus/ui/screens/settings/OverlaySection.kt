@@ -16,7 +16,7 @@ import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.overlay.HotkeyCombo.Companion.DEFAULT
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.viewmodels.OverlaySettingsViewModel
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 

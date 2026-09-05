@@ -11,8 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.screens.shared.updateCheckSubtitle
 import example.nucleus.viewmodels.AppViewModel
 import example.nucleus.viewmodels.UpdateCheckState

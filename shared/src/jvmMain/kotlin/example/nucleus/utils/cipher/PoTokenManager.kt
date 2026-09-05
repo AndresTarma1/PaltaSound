@@ -26,7 +26,7 @@ actual object PoTokenManager {
     private var cachedSessionPot: String? = null
 
     /**
-     * Devuelve el par de tokens (sesión → /player, video → pot= en URL) para [videoId].
+     * Devuelve el par de tokens (video → /player, sesión → pot= en URL) para [videoId].
      *
      * El pipeline usa un retry único completo (motor + challenge frescos) si el primer
      * intento falla: los programas BotGuard son volátiles (se regeneran por request) y
@@ -76,8 +76,8 @@ actual object PoTokenManager {
         }
         return try {
             PoTokenResult(
-                playerRequestPoToken = sessionPot,
-                streamingDataPoToken = PoTokenGenerator.mintVideo(videoId),
+                playerRequestPoToken = PoTokenGenerator.mintVideo(videoId),
+                streamingDataPoToken = sessionPot,
             )
         } catch (t: Throwable) {
             if (freshSession) throw t

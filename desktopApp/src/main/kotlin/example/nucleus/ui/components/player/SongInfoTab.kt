@@ -33,8 +33,8 @@ import example.nucleus.viewmodels.QueueSource
 import example.nucleus.ui.components.dialogs.ArtistsModal
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import com.metrolist.innertube.models.MediaInfo
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.onHover
 

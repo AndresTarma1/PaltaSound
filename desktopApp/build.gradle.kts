@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlin.serialization)
-    id("dev.nucleusframework") version "2.4.7"
+    id("dev.nucleusframework") version "2.5.4"
 
 }
 
@@ -18,7 +18,7 @@ kotlin {
 
 dependencies {
     implementation(project(":shared"))
-    val nucleusVersion = "2.4.7"
+    val nucleusVersion = "2.5.4"
 
 
 
@@ -33,7 +33,7 @@ dependencies {
     implementation("dev.nucleusframework:nucleus.media-control:${nucleusVersion}")
     implementation("dev.nucleusframework:nucleus.autolaunch:${nucleusVersion}")
 
-    implementation("dev.nucleusframework:composenativetray:2.0.3")
+    implementation("dev.nucleusframework:composenativetray:2.1.3")
 
 
     implementation(libs.compose.runtime)
@@ -163,7 +163,7 @@ nucleus.application {
         // El AOT cache del JDK 25 (JEP 483) tiene un límite fijo de tamaño de la región 'ro'
         // (~40 MB); con el volumen de clases actual la app se desborda por pocos KB al
         // escribir app.aot ("Unable to allocate from 'ro' region", sin flag para agrandarlo).
-        // Se desactiva: falla en CI Windows ("An error has occurred while writing the shared archive file").
+        // Desactivado: además falla en CI ("An error has occurred while writing the shared archive file").
         enableAotCache = false
         appName = "PaltaSound"
         packageName = "PaltaSound"
@@ -197,12 +197,15 @@ nucleus.application {
         appResourcesRootDir.set(project.layout.projectDirectory.dir("../mpv-resources"))
     }
 
-    // ── GraalVM Native Image (EXPERIMENTO) ──────────────────────────────────
-    // Compila la app a un binario nativo sin JVM. Nucleus genera los metadatos de
-    // reflexión/recursos/JNI automáticamente (5 niveles) y descarga GraalVM CE.
+    // ── GraalVM Native Image (DESACTIVADO) ────────────────────────────────
+    // Se distribuye únicamente la variante JVM (compatibilidad): el runtime Truffle/GraalJS
+    // exige module-path y el uber-jar de classpath rompe native-image (errores ForceOnModulePath
+    // y JNI$JNIEnv word operation, verificados en GraalVM 25.2.4 y 25.3.4.1). Además el cipher
+    // EJS necesita GraalJS completo y los motores alternativos (Rhino/QuickJS) no lo cubren.
+    // Nucleus genera los metadatos de reflexión/recursos/JNI automáticamente (5 niveles) y descarga GraalVM CE.
     // Tareas: packageGraalvmNative, runGraalvmNative, runWithNativeAgent.
     graalvm {
-        isEnabled = true
+        isEnabled = false
         imageName = "paltasound"
         // GUI desktop: AWT no-headless explícito para native-image.
         buildArgs.add("-Djava.awt.headless=false")
@@ -211,11 +214,6 @@ nucleus.application {
         // Iconos del thumbbar: incluir los .ico como recursos del image heap para que
         // getResourceAsStream("/thumbbar/...") funcione en el binario nativo.
         buildArgs.add("-H:IncludeResources=thumbbar/.*")
-        // Truffle runtime's module-info.class fuerza ForceOnModulePath al module-path, pero el fat jar
-        // está en el classpath, no en el module-path, y falla con "Module descriptor not found".
-        // El solver EJS corre en intérprete (WarnInterpreterOnly=false), así que no se necesita
-        // en el heap del native-image. Desactivamos el module-system para ignorar module-info.class.
-        buildArgs.add("-H:-UseModuleSystem")
         // Heap del binario nativo acotado (objetivo RAM); Serial GC por defecto.
         maxHeapSize = "320m"
     }

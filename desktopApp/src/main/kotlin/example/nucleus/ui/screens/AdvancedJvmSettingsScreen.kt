@@ -29,8 +29,8 @@ import example.nucleus.utils.AppRestarter
 import example.nucleus.viewmodels.JvmSettingsUiState
 import example.nucleus.viewmodels.JvmSettingsViewModel
 import kotlinx.coroutines.launch
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)

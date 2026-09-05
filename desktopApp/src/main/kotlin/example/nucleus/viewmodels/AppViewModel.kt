@@ -127,11 +127,7 @@ class AppViewModel : ViewModel() {
                 is UpdateResult.Available -> {
                     val info = toAppUpdateInfo(result.info)
                     if (manual) _checkState.value = UpdateCheckState.Idle
-                    if (result.info.currentFile == null) {
-                        _status.value = UpdateStatus.ManualOnly(info)
-                    } else {
-                        startDownload(result.info, info)
-                    }
+                    startDownload(result.info, info)
                 }
                 null -> {
                     if (manual) _checkState.value = UpdateCheckState.Failed
@@ -222,9 +218,9 @@ class AppViewModel : ViewModel() {
             currentVersion = CURRENT_VERSION,
             latestVersion = info.version,
             releaseUrl = "https://github.com/AndresTarma1/PaltaSound/releases/latest",
-            installerUrl = file?.url,
-            installerName = file?.fileName,
-            installerSize = file?.size?.takeIf { it > 0 },
+            installerUrl = file.url,
+            installerName = file.fileName,
+            installerSize = file.size.takeIf { it > 0 },
         )
     }
 }

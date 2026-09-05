@@ -22,8 +22,8 @@ import example.nucleus.db.DatabaseDao
 import example.nucleus.db.entities.TopAlbumEntry
 import example.nucleus.db.entities.TopArtistEntry
 import example.nucleus.db.entities.TopSongEntry
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.layout.AppVerticalScrollbar

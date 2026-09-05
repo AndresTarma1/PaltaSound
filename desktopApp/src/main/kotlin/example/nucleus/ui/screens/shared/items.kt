@@ -34,10 +34,10 @@ import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.item_album
-import example.nucleus.shared.generated.resources.item_artist
-import example.nucleus.shared.generated.resources.item_list
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.item_album
+import example.nucleus.generated.resources.item_artist
+import example.nucleus.generated.resources.item_list
 import org.jetbrains.compose.resources.*
 
 fun onYTItemClick(

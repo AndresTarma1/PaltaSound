@@ -11,8 +11,8 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
 import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.data.account.AccountManager
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.screens.shared.syncNowSubtitle
 import example.nucleus.viewmodels.SyncSettingsViewModel
 import org.jetbrains.compose.resources.stringResource

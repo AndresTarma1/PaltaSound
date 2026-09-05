@@ -41,8 +41,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import example.nucleus.models.MediaMetadata
-import example.nucleus.shared.generated.resources.*
-import example.nucleus.shared.generated.resources.Res
+import example.nucleus.generated.resources.*
+import example.nucleus.generated.resources.Res
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.context.SongContextMenuPopup
 import example.nucleus.ui.components.formatPlayerTimeValue

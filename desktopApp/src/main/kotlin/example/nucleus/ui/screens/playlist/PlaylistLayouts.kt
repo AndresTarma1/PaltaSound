@@ -55,8 +55,8 @@ import example.nucleus.ui.themes.ctaLabel
 import example.nucleus.utils.LocalDownloadViewModel
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.pages.PlaylistPage
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

@@ -103,7 +103,7 @@ import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.pages.ChartsPage
 import com.metrolist.innertube.pages.ExplorePage
 import com.metrolist.innertube.pages.MoodAndGenres
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.components.CustomLabeledCard
 import example.nucleus.ui.components.HorizontalGridLikeRow
 import org.jetbrains.compose.resources.stringResource

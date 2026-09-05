@@ -66,8 +66,8 @@ import example.nucleus.navigation.RootComponent
 import example.nucleus.overlay.GlobalHotkeyManager
 import example.nucleus.overlay.HotkeyCombo
 import example.nucleus.player.PlaybackState
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.components.artwork.ArtworkColors
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.artwork.rememberArtworkColors

@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.dp
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.ctaLabel
 import example.nucleus.utils.LocalPlayerViewModel
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import java.util.Locale
 import kotlin.math.abs

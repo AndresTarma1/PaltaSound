@@ -44,6 +44,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -61,13 +62,9 @@ import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.AccountInfo
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.application.NucleusDecoratedWindowScope
-import dev.nucleusframework.composenativetray.menu.api.TrayMenuBuilder
 import dev.nucleusframework.composenativetray.tray.api.Tray
-import dev.nucleusframework.composenativetray.tray.api.TrayApp
-import dev.nucleusframework.composenativetray.tray.api.TrayWindowDismissMode
-import dev.nucleusframework.composenativetray.tray.api.rememberTrayAppState
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.skiko.FPSCounter
 import dev.nucleusframework.window.TitleBarScope
@@ -303,7 +300,7 @@ fun NucleusApplicationScope.TrayCustom(
 
 @Composable
 fun FrameWindowScope.windowBackgroundFlashingWorkaround(
-    themeBg: androidx.compose.ui.graphics.Color
+    themeBg: Color
 ) {
     val awtColor = java.awt.Color(themeBg.toArgb())
     LaunchedEffect(window, themeBg) {

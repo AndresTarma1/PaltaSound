@@ -13,8 +13,8 @@ import example.nucleus.data.repository.AudioQuality
 import example.nucleus.data.repository.LoudnessLevel
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.viewmodels.AudioSettingsViewModel
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 

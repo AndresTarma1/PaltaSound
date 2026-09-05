@@ -11,8 +11,8 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
 import example.nucleus.data.repository.MiniPlayerStyle
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.viewmodels.MiniPlayerSettingsViewModel
 import org.jetbrains.compose.resources.stringResource

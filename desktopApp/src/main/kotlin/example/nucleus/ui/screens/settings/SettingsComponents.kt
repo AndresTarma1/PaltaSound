@@ -29,7 +29,7 @@ import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.systemFontFamily
 import example.nucleus.ui.themes.systemFontNames
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.*
 import example.nucleus.viewmodels.AppViewModel
 import org.jetbrains.compose.resources.stringResource
 

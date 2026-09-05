@@ -37,8 +37,8 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.innertube.models.MediaInfo
 import example.nucleus.models.MediaMetadata
 import example.nucleus.navigation.Route
-import example.nucleus.shared.generated.resources.*
-import example.nucleus.shared.generated.resources.Res
+import example.nucleus.generated.resources.*
+import example.nucleus.generated.resources.Res
 import example.nucleus.ui.components.EqualizerDialog
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset

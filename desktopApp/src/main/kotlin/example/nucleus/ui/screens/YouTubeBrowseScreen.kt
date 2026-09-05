@@ -34,8 +34,8 @@ import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.viewmodels.YouTubeBrowseState
 import example.nucleus.viewmodels.YouTubeBrowseManagerViewModel
 import com.metrolist.innertube.pages.BrowseResult
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

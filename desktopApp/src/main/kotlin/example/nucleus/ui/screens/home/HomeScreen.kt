@@ -44,8 +44,8 @@ import example.nucleus.viewmodels.HomeViewModel
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.pages.HomePage
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import example.nucleus.ui.screens.shared.SectionGridItem
 import example.nucleus.ui.screens.shared.SectionListItem

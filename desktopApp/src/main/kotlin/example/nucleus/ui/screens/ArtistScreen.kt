@@ -57,8 +57,8 @@ import example.nucleus.viewmodels.ArtistManagerViewModel
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.*
 import com.metrolist.innertube.pages.ArtistPage
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.utils.upscaleThumbnailUrl
 import org.jetbrains.compose.resources.stringResource
 

@@ -27,7 +27,7 @@ import example.nucleus.ui.components.layout.appScrollContentPadding
 import example.nucleus.ui.screens.settings.*
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.screenTitle
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 private enum class SettingsCategory(

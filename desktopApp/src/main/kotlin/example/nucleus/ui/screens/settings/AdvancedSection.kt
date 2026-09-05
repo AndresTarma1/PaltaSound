@@ -15,8 +15,8 @@ import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
 import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.data.AppDirs
 import example.nucleus.logging.AppFileLogger
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.screens.shared.openFolder
 import example.nucleus.viewmodels.AdvancedSettingsViewModel
 import org.jetbrains.compose.resources.stringResource

@@ -47,9 +47,9 @@ import androidx.compose.ui.unit.sp
 import example.nucleus.data.repository.LyricsAnimationStyle
 import example.nucleus.lyrics.LyricLine
 import example.nucleus.lyrics.Romanizer
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.lyrics_instrumental
-import example.nucleus.shared.generated.resources.lyrics_sync_jump
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.lyrics_instrumental
+import example.nucleus.generated.resources.lyrics_sync_jump
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.expressiveScrollDuration
 import example.nucleus.ui.themes.expressiveTween

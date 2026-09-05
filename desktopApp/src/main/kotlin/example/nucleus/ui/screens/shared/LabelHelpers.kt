@@ -1,8 +1,8 @@
 package example.nucleus.ui.screens.shared
 
 import androidx.compose.runtime.Composable
-import example.nucleus.shared.generated.resources.*
-import example.nucleus.shared.generated.resources.Res
+import example.nucleus.generated.resources.*
+import example.nucleus.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import example.nucleus.data.repository.AppLocale
 import example.nucleus.data.repository.AudioQuality

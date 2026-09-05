@@ -64,8 +64,8 @@ import example.nucleus.listentogether.ConnectionState
 import example.nucleus.listentogether.ListenTogetherEvent
 import example.nucleus.listentogether.ListenTogetherManager
 import example.nucleus.listentogether.RoomRole
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.ui.helpers.desktopClickableCursor
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset

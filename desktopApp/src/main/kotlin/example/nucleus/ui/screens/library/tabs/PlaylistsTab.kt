@@ -1,8 +1,8 @@
 package example.nucleus.ui.screens.library.tabs
 
 import androidx.compose.foundation.layout.Arrangement
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.Box

@@ -9,7 +9,7 @@ import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.data.repository.*
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.viewmodels.AppearanceSettingsViewModel
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt

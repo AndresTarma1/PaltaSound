@@ -39,8 +39,8 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.play_item
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.play_item
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.ctaLabel
 import example.nucleus.ui.themes.expressiveFadeTween

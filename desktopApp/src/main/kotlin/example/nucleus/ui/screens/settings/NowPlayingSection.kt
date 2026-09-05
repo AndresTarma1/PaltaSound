@@ -15,8 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsSwitch
-import example.nucleus.shared.generated.resources.Res
-import example.nucleus.shared.generated.resources.*
+import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.*
 import example.nucleus.viewmodels.NowPlayingSettingsViewModel
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
