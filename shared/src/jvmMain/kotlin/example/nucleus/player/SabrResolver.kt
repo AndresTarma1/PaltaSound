@@ -12,6 +12,7 @@ import com.metrolist.innertubex.sabr.SabrProtocolException
 import com.metrolist.innertubex.sabr.toSabrBootstrap
 import example.nucleus.data.repository.AudioQuality
 import example.nucleus.utils.cipher.PlayerJsFetcher
+import example.nucleus.utils.cipher.PoTokenManager
 import example.nucleus.utils.cipher.RustyPipeBotGuardSidecar
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
@@ -198,18 +199,26 @@ object SabrResolver {
         quality: AudioQuality,
     ): Pair<SabrBootstrap, Int>? = freshBootstrap(videoId, sts, visitorData, quality)
 
-    /** Dos mints frescos en paralelo; retorna (playerPot standard, videoPot base64url). */
+    /**
+     * Mints para el primer intento: sesión por snapshot (liviano, usualmente cacheado)
+     * + video fresco en paralelo (`--no-snapshot`). Solo el pot que viaja en el request
+     * UMP necesita integrity token nuevo; el del player tolera snapshot. Así hay un solo
+     * proceso Deno pesado a la vez en lugar de dos (~140MB menos de pico en Task Manager).
+     * Retorna (playerPot standard, videoPot base64url).
+     */
     private suspend fun freshPots(videoId: String, visitorData: String): Pair<String, String>? =
         coroutineScope {
-            val sessionDef = async { RustyPipeBotGuardSidecar.mint(visitorData, fresh = true) }
+            val sessionDef = async {
+                PoTokenManager.getWebClientPoToken(videoId, visitorData)?.playerRequestPoToken
+            }
             val videoDef = async { RustyPipeBotGuardSidecar.mint(videoId, fresh = true) }
             val session = sessionDef.await()
             val video = videoDef.await()
             if (session == null || video == null) {
-                Napier.w("[SABR] mint fresco falló para $videoId")
+                Napier.w("[SABR] mint falló para $videoId (sesion=${session != null} video=${video != null})")
                 null
             } else {
-                base64UrlToStandard(session) to video
+                session to video
             }
         }
 

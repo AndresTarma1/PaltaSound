@@ -18,6 +18,7 @@ import java.net.InetSocketAddress
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Estado de descarga SABR compartido entre el fetch en background ([SabrResolver]) y
@@ -30,6 +31,8 @@ class SabrFetchState internal constructor(
     val bitrateBps: Int,
     /** Reconstruye el bootstrap con atestación fresca (re-mint + player nuevo). */
     var refreshBootstrap: (suspend () -> SabrBootstrap?)? = null,
+    /** Último request servido: base de la evicción por ociosidad. */
+    val lastAccessMs: AtomicLong = AtomicLong(System.currentTimeMillis()),
 ) {
     internal val mutex = Mutex()
     private val parts = mutableListOf<ByteArray>()
@@ -96,7 +99,8 @@ class SabrFetchState internal constructor(
  * [SabrResolver]) y los sirve con 200/206 exactos: mpv nunca ve un body corto.
  */
 object SabrProxyServer {
-    private const val MAX_SESSIONS = 8
+    private const val MAX_SESSIONS = 4
+    private const val SESSION_IDLE_MS = 10 * 60_000L
     private const val READ_TIMEOUT_MS = 60_000L
     private const val READ_POLL_MS = 200L
 
@@ -110,8 +114,12 @@ object SabrProxyServer {
 
     /** Registra el estado (ya con fetch en marcha) y devuelve la URL local para mpv. */
     fun register(state: SabrFetchState): String {
+        // Evicción: sesiones ociosas (>10min sin requests) + tope de 4 (cada buffer son
+        // 4-8MB pineados en heap; sin esto, N temas SABR acumulan decenas de MB).
+        val now = System.currentTimeMillis()
+        sessions.entries.removeIf { (now - (it.value.lastAccessMs.get())) > SESSION_IDLE_MS }
         if (sessions.size >= MAX_SESSIONS) {
-            sessions.entries.minByOrNull { it.value.bootstrap.durationMs }?.let {
+            sessions.entries.minByOrNull { it.value.lastAccessMs.get() }?.let {
                 sessions.remove(it.key)?.job?.cancel()
             }
         }
@@ -149,6 +157,7 @@ object SabrProxyServer {
                 exchange.sendResponseHeaders(404, -1)
                 return
             }
+            state.lastAccessMs.set(System.currentTimeMillis())
             val length = state.bootstrap.contentLengthBytes
             if (exchange.requestMethod == "HEAD") {
                 sendHeaders(exchange, state, 0, length, 200, length ?: 0L)

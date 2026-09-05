@@ -153,7 +153,7 @@ nucleus.application {
         "-XX:+UnlockExperimentalVMOptions",
         "-XX:+EnableJVMCI",
         // Skiko: render en GPU (Direct3D) pero con caché de recursos acotada (default ilimitada).
-        "-Dskiko.gpu.resourceCacheLimit=128M",
+        "-Dskiko.gpu.resourceCacheLimit=32M",
 //        "-Dskiko.buffering=DOUBLE",
 //        "-Dskiko.vsync.enabled=true",
     )

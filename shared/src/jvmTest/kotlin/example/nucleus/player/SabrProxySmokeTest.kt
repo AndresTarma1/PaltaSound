@@ -8,6 +8,40 @@ import kotlin.test.assertTrue
 
 /** Verifica que el proxy SABR local sirve rangos (incluido seek) a mpv. */
 class SabrProxySmokeTest {
+    private fun heap(tag: String) {
+        System.gc()
+        Thread.sleep(500)
+        val rt = Runtime.getRuntime()
+        val used = (rt.totalMemory() - rt.freeMemory()) / 1_048_576L
+        val nonHeap = java.lang.management.ManagementFactory.getMemoryMXBean().nonHeapMemoryUsage.used / 1_048_576L
+        println("MEM $tag heapUsed=${used}MB nonHeap=${nonHeap}MB")
+    }
+
+    @Test
+    fun sabrMemoryProbe() = runBlocking {
+        heap("antes-resolve")
+        val url = SabrResolver.resolveLocalUrl("YckmB9-uKxw", AudioQuality.NORMAL)
+            ?: error("sabr resolve null")
+        heap("tras-resolve")
+        println("PROXY url=$url")
+        fun get(range: String?): Int {
+            val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            if (range != null) c.setRequestProperty("Range", range)
+            c.connectTimeout = 30000
+            c.readTimeout = 60000
+            val code = c.responseCode
+            val n = (if (code < 400) c.inputStream else c.errorStream)?.readBytes()?.size ?: 0
+            c.disconnect()
+            println("PROXY range=$range => $code n=$n")
+            return n
+        }
+        get("bytes=0-1048575")
+        heap("tras-1MB")
+        // Drenar el resto para forzar el fetch completo y medir retención final.
+        get(null)
+        heap("tras-completo")
+    }
+
     @Test
     fun sabrProxyServesRanges() = runBlocking {
         val url = SabrResolver.resolveLocalUrl("YckmB9-uKxw", AudioQuality.NORMAL)
