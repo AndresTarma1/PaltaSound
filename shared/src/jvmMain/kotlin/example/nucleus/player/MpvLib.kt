@@ -66,6 +66,7 @@ object MpvLib {
     private var mpvObserveProperty: MethodHandle? = null
     private var mpvWaitEvent: MethodHandle? = null
     private var mpvWakeup: MethodHandle? = null
+    private var mpvRequestLogMessages: MethodHandle? = null
 
     private var loadError: Throwable? = null
     val isAvailable: Boolean get() = loadError == null && mpvCreate != null
@@ -105,6 +106,10 @@ object MpvLib {
         )
         mpvWaitEvent = bind("mpv_wait_event", FunctionDescriptor.of(C_POINTER, C_POINTER, C_DOUBLE))
         mpvWakeup = bind("mpv_wakeup", FunctionDescriptor.ofVoid(C_POINTER))
+        mpvRequestLogMessages = bind(
+            "mpv_request_log_messages",
+            FunctionDescriptor.of(C_INT, C_POINTER, C_POINTER),
+        )
         } catch (e: Throwable) {
             loadError = e
             log.severe("MpvLib: no se pudo inicializar libmpv: ${e.message} — verifica que libmpv-2.dll no esté corrupto/bloqueado y reinstala si hace falta")
@@ -278,5 +283,13 @@ object MpvLib {
     fun mpv_wakeup(handle: MemorySegment) {
         ensureAvailable()
         mpvWakeup!!.invokeWithArguments(handle)
+    }
+
+    /** Habilita el log de mpv: nivel mínimo [level] ("no", "fatal", "error", "warn", "info", "debug", "trace"). */
+    fun mpv_request_log_messages(handle: MemorySegment, level: String): Int {
+        ensureAvailable()
+        return Arena.ofConfined().use { a ->
+            mpvRequestLogMessages!!.invokeWithArguments(handle, a.utf8(level)) as Int
+        }
     }
 }

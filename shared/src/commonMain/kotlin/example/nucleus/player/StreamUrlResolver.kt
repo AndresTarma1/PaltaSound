@@ -115,7 +115,11 @@ object StreamUrlResolver {
         // (403/throttled) before handing them to the player.
         return try {
             val response: HttpResponse = validateClient.get(url) {
-                header(HttpHeaders.Range, "bytes=0-2047")
+                // Range ABIERTO: es el perfil exacto que manda mpv/ffmpeg al abrir el stream.
+                // Las URLs con restricciones de YouTube (rqh=1 / spc=) rechazan este perfil con
+                // 403 (aceptan solo rangos acotados pequeños), así que este probe detecta el
+                // problema ANTES de entregar la URL al reproductor.
+                header(HttpHeaders.Range, "bytes=0-")
                 header(HttpHeaders.UserAgent, "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0")
                 header("Referer", "https://music.youtube.com")
             }

@@ -1,4 +1,4 @@
-package example.nucleus.player
+﻿package example.nucleus.player
 
 import java.lang.foreign.ValueLayout
 import kotlin.test.Test
@@ -12,7 +12,7 @@ class MpvDirectPlayTest {
         println("URL len=${url.length}")
         val player = MpvAudioPlayer()
         player.init()
-        // Simula doble play() rápido como en la app (resolve -> startUrl dos veces seguidas)
+        // Simula doble play() rÃ¡pido como en la app (resolve -> startUrl dos veces seguidas)
         player.openUri(url)
         kotlinx.coroutines.delay(300)
         player.openUri(url)
@@ -30,9 +30,54 @@ class MpvDirectPlayTest {
         val ytdlpN = Regex("[?&]n=([^&]*)").find(ytdlpUrl)?.groupValues?.get(1)
         println("YTDLP url len=${ytdlpUrl.length} ytdlpn=$ytdlpN")
         println("ytdlpUrl => ${playOnce(ytdlpUrl)}")
-        // Nuestra URL pero con el n bueno de yt-dlp (n no está firmado: sparams/lsparams no lo incluyen)
+        // Nuestra URL pero con el n bueno de yt-dlp (n no estÃ¡ firmado: sparams/lsparams no lo incluyen)
         val ourUrlGoodN = ourUrl.replace(Regex("([?&])n=[^&]*"), "$1n=$ytdlpN")
         println("ourUrl+goodN => ${playOnce(ourUrlGoodN)}")
+    }
+
+    @Test
+    fun probe403fFreshMidRange() = runBlocking {
+        val sts = example.nucleus.utils.cipher.PlayerJsFetcher.getSignatureTimestamp()
+        if (com.metrolist.innertube.YouTube.visitorData == null) {
+            com.metrolist.innertube.YouTube.visitorData().onSuccess { com.metrolist.innertube.YouTube.visitorData = it }
+        }
+        val vd = com.metrolist.innertube.YouTube.visitorData!!
+        suspend fun resolveUrl(videoId: String): String {
+            val pot = example.nucleus.utils.cipher.PoTokenManager.getWebClientPoToken(videoId, vd)
+            val p = com.metrolist.innertube.YouTube.player(
+                videoId, null, com.metrolist.innertube.models.YouTubeClient.WEB_REMIX, sts,
+                pot?.playerRequestPoToken,
+            ).getOrThrow()
+            val fmt = FormatSelector.findFormat(p, example.nucleus.data.repository.AudioQuality.NORMAL)!!
+            val raw = StreamUrlResolver.resolveUrl(fmt, videoId, p)!!
+            return StreamUrlResolver.applyNTransform(raw) + "&pot=" + (pot!!.streamingDataPoToken.replace("=", "%3D"))
+        }
+        fun probe(name: String, url: String, range: String) {
+            try {
+                val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                c.setRequestProperty("Range", range)
+                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0")
+                c.setRequestProperty("Referer", "https://music.youtube.com")
+                c.connectTimeout = 8000; c.readTimeout = 8000
+                val code = c.responseCode
+                val hdr = c.getHeaderField("Content-Range") ?: ""
+                (if (code < 400) c.inputStream else c.errorStream)?.close(); c.disconnect()
+                println("PROBE $name range=$range => $code [$hdr]")
+            } catch (e: Exception) { println("PROBE $name => EX ${e.message}") }
+            Thread.sleep(300)
+        }
+        // dQw4: estado HOY
+        val dqw4 = resolveUrl("dQw4w9WgXcQ")
+        probe("dqw4-open", dqw4, "bytes=0-")
+        probe("dqw4-1m", dqw4, "bytes=0-1048575")
+        // YckmB9: URL FRESCA, primer toque con rango intermedio
+        val yckmFresh = resolveUrl("YckmB9-uKxw")
+        probe("yckm-fresh-mid-1m", yckmFresh, "bytes=1048576-2097151")
+        probe("yckm-fresh-mid-512k", yckmFresh, "bytes=1048576-1572863")
+        probe("yckm-fresh-open", yckmFresh, "bytes=0-")
+        // segunda URL fresca de YckmB9: rango intermedio como PRIMER toque
+        val yckmFresh2 = resolveUrl("YckmB9-uKxw")
+        probe("yckm-fresh2-mid-512k", yckmFresh2, "bytes=1048576-1572863")
     }
 
     private fun playOnce(url: String): String {
@@ -46,7 +91,6 @@ class MpvDirectPlayTest {
             MpvLib.mpv_set_property_string(h, "referrer", "https://music.youtube.com")
             MpvLib.mpv_set_property_string(h, "http-header-fields", "Origin: https://music.youtube.com,Accept: */*")
             MpvLib.mpv_initialize(h)
-            MpvLib.mpv_request_log_messages(h, "warn")
             MpvLib.mpv_command(h, arrayOf("loadfile", url, "replace", null))
             MpvLib.mpv_set_property_string(h, "pause", "no")
             val deadline = System.currentTimeMillis() + 15000
@@ -81,7 +125,7 @@ class MpvDirectPlayTest {
     fun mpvOpensWebRemixUrl() = runBlocking {
         val data = YTPlayerutils.playerResponseForPlayback("dQw4w9WgXcQ").getOrThrow()
         val url = data.streamUrl
-        println("URL len=${url.length} itag=${data.format.itag}")
+        println("URL len=${url.length} itag=${data.format.itag} rqh=${url.contains("rqh=1")} spc=${url.contains("spc=")} c=${Regex("[?&]c=([^&]*)").find(url)?.groupValues?.get(1)}")
         val h = MpvLib.mpv_create() ?: error("no handle")
         try {
             MpvLib.mpv_set_property_string(h, "ytdl", "no")
