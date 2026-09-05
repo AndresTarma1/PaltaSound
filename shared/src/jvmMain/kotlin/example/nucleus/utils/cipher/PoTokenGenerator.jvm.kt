@@ -24,17 +24,8 @@ actual object PoTokenGenerator {
     /**
      * Genera PoTokens para la autenticación de streaming de video.
      *
-     * Contrato canónico (rustypipe-botguard / BgUtils, y YouTube):
-     *  - `playerRequestPoToken`: token ligado al **videoId** (content-bound) → va en
-     *    `serviceIntegrityDimensions.poToken` del `/player`.
-     *  - `streamingDataPoToken`: token ligado a la **sesión/visitorData** (session-bound) →
-     *    va en el parámetro `pot=` de las URLs del CDN.
-     *
-     * (Metrolist/Android invierte este par y YouTube lo acepta igual; alineamos con el
-     *  contrato de escritorio para reducir riesgo si YouTube endurece la validación.)
-     *
-     * @param videoId Identificador del video (content-bound) para el token del `/player`.
-     * @param sessionId Identificador de sesión/visitorData (session-bound) para el `pot=` del stream.
+     * @param videoId El ID del video al que se vincula el token de datos de streaming.
+     * @param sessionId El ID de sesión al que se vincula el token de solicitud del reproductor.
      * @return Un [PoTokenResult] con los tokens generados, o `null` si la generación falla.
      */
     actual suspend fun getWebClientPoToken(videoId: String, sessionId: String): PoTokenResult? {
@@ -45,8 +36,8 @@ actual object PoTokenGenerator {
             val videoBoundToken = mintVideo(videoId)
             Napier.i("[PoToken] PoToken generated successfully")
             PoTokenResult(
-                playerRequestPoToken = videoBoundToken,
-                streamingDataPoToken = sessionBoundToken,
+                playerRequestPoToken = sessionBoundToken,
+                streamingDataPoToken = videoBoundToken,
             )
         } catch (e: Exception) {
             Napier.e("[PoToken] Failed to generate PoToken: ${e.message}")
@@ -55,23 +46,26 @@ actual object PoTokenGenerator {
     }
 
     /**
-     * Acuña el token de **sesión** (session-bound) reutilizando el snapshot del sidecar.
-     * Es el que va al parámetro `pot=` del CDN y se cachea por sesión ([PoTokenManager]).
-     * Se mantiene en base64url (formato aceptado por `pot=`).
+     * Acuña el token de sesión (primer mint del snapshot). La inicialización completa del
+     * runtime ocurre aquí (~1-5s); el resultado debe cachearse por sesión ([PoTokenManager]).
      *
-     * @return El token de sesión en base64url.
+     * El `/player` espera `service_integrity_dimensions.po_token` como **base64 estándar**
+     * (TYPE_BYTES), por eso se convierte desde el base64url que emite el sidecar (ese mismo
+     * base64url sí es válido para el parámetro `pot=` de las URLs del CDN).
+     *
+     * @return El token de sesión en base64 estándar.
      */
     suspend fun prepareSession(sessionId: String): String =
-        mintBase64(sessionId)
+        base64UrlToStandard(mintBase64(sessionId))
 
     /**
-     * Acuña el token ligado al **videoId** (content-bound) para el `/player`. Se mantiene en
-     * base64 estándar (el campo `serviceIntegrityDimensions.poToken` es bytes en proto-JSON).
+     * Acuña un token ligado a [videoId] reutilizando el snapshot del sidecar (~50-500ms).
+     * Se mantiene en base64url (el formato aceptado por el parámetro `pot=` del CDN).
      *
-     * @return El token del video en base64 estándar.
+     * @return El token en base64url.
      */
     suspend fun mintVideo(videoId: String): String =
-        base64UrlToStandard(mintBase64(videoId))
+        mintBase64(videoId)
 
     private suspend fun mintBase64(identifier: String): String =
         RustyPipeBotGuardSidecar.mint(identifier)
