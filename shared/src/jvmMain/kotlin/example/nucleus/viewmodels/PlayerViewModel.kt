@@ -1152,21 +1152,19 @@ class PlayerViewModel(
                         if (!streamUrl.isNullOrEmpty()) {
                             startUrl(streamUrl)
                             // El stream resuelto puede pasar la validación HTTP pero dar 403 en mpv
-                            // (por ejemplo, URLs IOS con restricción spc). Si la reproducción no
-                            // inicia realmente, recurrir a yt-dlp, que maneja los videos difíciles
-                            // que nuestro pipeline en-proceso no puede.
+                            // (por ejemplo, URLs con enforcement de Range rqh/spc). Si la
+                            // reproducción no inicia realmente, probar SABR en-proceso antes de
+                            // recurrir a yt-dlp.
                             val started = playerService.awaitPlaybackStarted()
                             if (started || requestId != playRequestId) {
                                 true
                             } else {
-                                YtDlpResolver.markNeedsYtDlp(song.id)
-                                Napier.w("Stream did not start for ${song.id}; trying yt-dlp fallback")
-                                playViaYtDlp(song, requestId, resumeMs)
+                                Napier.w("Stream did not start for ${song.id}; trying SABR fallback")
+                                trySabrThenYtDlp(song, requestId, resumeMs)
                             }
                         } else {
-                            YtDlpResolver.markNeedsYtDlp(song.id)
-                            Napier.w("No in-process stream for ${song.id}; trying yt-dlp fallback")
-                            playViaYtDlp(song, requestId, resumeMs)
+                            Napier.w("No in-process stream for ${song.id}; trying SABR fallback")
+                            trySabrThenYtDlp(song, requestId, resumeMs)
                         }
                     }
                 }
@@ -1342,6 +1340,36 @@ class PlayerViewModel(
         } else {
             false
         } // superseded — not a failure
+    }
+
+    /**
+     * Intenta reproducir [song] vía SABR en-proceso (proxy local -> mpv); si falla,
+     * marca el video y recurre a yt-dlp. Retorna verdadero si la reproducción se
+     * inició por cualquiera de las dos vías.
+     */
+    private suspend fun trySabrThenYtDlp(
+        song: MediaMetadata,
+        requestId: Long,
+        resumeMs: Long,
+    ): Boolean {
+        val sabrUrl = try {
+            withContext(Dispatchers.IO) {
+                SabrResolver.resolveLocalUrl(song.id, streamResolver.currentAudioQuality())
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Napier.w("SABR resolve failed for ${song.id} (${e.message}); falling back to yt-dlp")
+            null
+        }
+        if (!sabrUrl.isNullOrEmpty() && requestId == playRequestId) {
+            if (resumeMs > 500L) playerService.playFrom(sabrUrl, resumeMs) else playerService.play(sabrUrl)
+            // SABR materializa el audio en background: dar más margen que a una URL directa.
+            if (playerService.awaitPlaybackStarted(timeoutMs = 45_000)) return true
+            Napier.w("SABR stream did not start for ${song.id}; falling back to yt-dlp")
+        }
+        if (requestId == playRequestId) YtDlpResolver.markNeedsYtDlp(song.id)
+        return playViaYtDlp(song, requestId, resumeMs)
     }
 
     private suspend fun cacheSongMetadata(song: MediaMetadata) {

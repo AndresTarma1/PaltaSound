@@ -20,6 +20,9 @@ kotlin {
             // coloca aquí tus dependencias Multiplatform
 
             api(project(":innertube"))
+            // InnertubeX: cliente SABR/UMP (streaming segmentado) para URLs con enforcement
+            // de Range (rqh/spc) que mpv no puede reproducir de forma progresiva.
+            implementation("com.github.MetrolistGroup.innertubex:innertubex:v0.2.1")
             api(libs.compose.components.resources)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)

@@ -54,15 +54,22 @@ object RustyPipeBotGuardSidecar {
     /**
      * Acuña un PoToken para [contentBinding] (visitorData, videoId o dataSyncId).
      *
+     * @param fresh Si true, ignora el snapshot del intérprete (`--no-snapshot`): corre BotGuard
+     *   con un reto de homepage fresco. Es lo que exige el recovery de atestación de SABR
+     *   (un integrity token acuñado hace horas puede ser rechazado por el stream).
      * @return El PoToken base64url, o null si el binario no está disponible o falló.
      */
-    suspend fun mint(contentBinding: String): String? {
+    suspend fun mint(contentBinding: String, fresh: Boolean = false): String? {
         val exe = binaryPath ?: return null
         return withContext(Dispatchers.IO) {
             try {
                 val args = buildList {
                     add(exe)
-                    snapshotFile()?.let { add("--snapshot-file"); add(it.absolutePath) }
+                    if (fresh) {
+                        add("--no-snapshot")
+                    } else {
+                        snapshotFile()?.let { add("--snapshot-file"); add(it.absolutePath) }
+                    }
                     add("--"); add(contentBinding)
                 }
                 val proc = ProcessBuilder(args).redirectErrorStream(true).start()
