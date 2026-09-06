@@ -195,6 +195,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val LYRICS_OFFSET_MS = intPreferencesKey("lyrics_offset_ms")
         val LOG_TO_FILE = booleanPreferencesKey("log_to_file")
         val LOG_VERBOSE = booleanPreferencesKey("log_verbose")
+        val SABR_ENABLED = booleanPreferencesKey("sabr_enabled")
     }
 
 
@@ -517,6 +518,13 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         } catch (e: Exception) {
             AudioQuality.NORMAL
         }
+    }
+
+    /** Streaming segmentado SABR/UMP en-proceso (proxy local) antes de recurrir a yt-dlp. Default on. */
+    val sabrEnabled: Flow<Boolean> = dataStore.data.map { it[PreferencesKeys.SABR_ENABLED] ?: true }
+
+    suspend fun setSabrEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.SABR_ENABLED] = enabled }
     }
 
     val themeMode: Flow<ThemeMode> = dataStore.data.map { preferences ->

@@ -24,6 +24,9 @@ class AudioSettingsViewModel(
     val loudnessLevel: StateFlow<LoudnessLevel> = preferencesRepository.loudnessLevel
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LoudnessLevel.OFF)
 
+    val sabrEnabled: StateFlow<Boolean> = preferencesRepository.sabrEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     fun setAudioQuality(quality: AudioQuality) {
         viewModelScope.launch { preferencesRepository.setAudioQuality(quality) }
     }
@@ -34,5 +37,9 @@ class AudioSettingsViewModel(
 
     fun setLoudnessLevel(level: LoudnessLevel) {
         viewModelScope.launch { preferencesRepository.setLoudnessLevel(level) }
+    }
+
+    fun setSabrEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setSabrEnabled(enabled) }
     }
 }

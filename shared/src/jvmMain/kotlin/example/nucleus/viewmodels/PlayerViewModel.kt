@@ -98,6 +98,9 @@ class PlayerViewModel(
     /** Fallos consecutivos de resolución/reproducción; el salto automático se detiene al alcanzar [MAX_CONSECUTIVE_FAILURES]. */
     private var consecutiveFailures = 0
 
+    /** Aviso de login para yt-dlp ya mostrado en esta sesión (para no spamear el snackbar). */
+    private var ytDlpLoginNoticeShown = false
+
     /**
      * Cache LRU (500) de `videostatsPlaybackUrl` por canción. Se llena al resolver el stream
      * en-proceso y permite registrar reproducciones de canciones reproducidas desde caché/offline
@@ -1343,23 +1346,31 @@ class PlayerViewModel(
     }
 
     /**
-     * Intenta reproducir [song] vía SABR en-proceso (proxy local -> mpv); si falla,
-     * marca el video y recurre a yt-dlp. Retorna verdadero si la reproducción se
-     * inició por cualquiera de las dos vías.
+     * Intenta reproducir [song] vía SABR en-proceso (proxy local -> mpv); si falla
+     * (o SABR está desactivado en ajustes), marca el video y recurre a yt-dlp.
+     * Retorna verdadero si la reproducción se inició por cualquiera de las dos vías.
+     * Si se cae a yt-dlp sin sesión iniciada, avisa una vez por sesión: yt-dlp
+     * extrae mejor con cuenta (formatos con login, videos con restricción).
      */
     private suspend fun trySabrThenYtDlp(
         song: MediaMetadata,
         requestId: Long,
         resumeMs: Long,
     ): Boolean {
-        val sabrUrl = try {
-            withContext(Dispatchers.IO) {
-                SabrResolver.resolveLocalUrl(song.id, streamResolver.currentAudioQuality())
+        val sabrEnabled = userPreferences.sabrEnabled.first()
+        val sabrUrl = if (sabrEnabled) {
+            try {
+                withContext(Dispatchers.IO) {
+                    SabrResolver.resolveLocalUrl(song.id, streamResolver.currentAudioQuality())
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Napier.w("SABR resolve failed for ${song.id} (${e.message}); falling back to yt-dlp")
+                null
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Napier.w("SABR resolve failed for ${song.id} (${e.message}); falling back to yt-dlp")
+        } else {
+            Napier.d("SABR desactivado en ajustes para ${song.id}; yt-dlp directo")
             null
         }
         if (!sabrUrl.isNullOrEmpty() && requestId == playRequestId) {
@@ -1369,6 +1380,12 @@ class PlayerViewModel(
             Napier.w("SABR stream did not start for ${song.id}; falling back to yt-dlp")
         }
         if (requestId == playRequestId) YtDlpResolver.markNeedsYtDlp(song.id)
+        if (requestId == playRequestId && !AccountManager.isLoggedIn && !ytDlpLoginNoticeShown) {
+            ytDlpLoginNoticeShown = true
+            _playbackMessages.tryEmit(
+                "yt-dlp extrae mejor con sesión iniciada. Iniciá sesión en Ajustes > Cuenta para videos difíciles.",
+            )
+        }
         return playViaYtDlp(song, requestId, resumeMs)
     }
 

@@ -42,6 +42,8 @@
     <string name="settings_subtitle">Personaliza tu experiencia</string>
     <string name="section_audio">Audio</string>
     <string name="streaming_quality">Calidad de audio</string>
+    <string name="sabr_streaming">Streaming SABR</string>
+    <string name="sabr_streaming_subtitle">Audio segmentado en-proceso cuando el CDN bloquea el stream directo. Apagado: se usa yt-dlp, que extrae mejor con sesión iniciada.</string>
     <string name="equalizer">Ecualizador</string>
     <string name="ten_bands">5 bandas</string>
     <string name="loudness_level">Normalización de volumen</string>
