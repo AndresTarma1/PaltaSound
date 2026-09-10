@@ -106,20 +106,27 @@ fun NowPlayingQueuePanel(
     }
 
     // Desplazamiento al elemento en reproducción SOLO si quedó fuera de pantalla:
-    // avanzar no debe mover la lista si el tema actual ya es visible.
+    // avanzar no debe mover la lista si el tema actual ya es visible. La primera
+    // posición (al abrir el panel) es instantánea para evitar el rebote animado.
     var previousIndex by remember { mutableStateOf(state.currentIndex) }
+    var firstPositioning by remember { mutableStateOf(true) }
     LaunchedEffect(state.currentIndex, state.isShuffled) {
         if (state.queue.isNotEmpty() && state.currentIndex in state.queue.indices) {
             val distance = kotlin.math.abs(state.currentIndex - previousIndex)
             previousIndex = state.currentIndex
-            val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }.toSet()
-            if (state.currentIndex !in visible) {
-                val targetScroll = (state.currentIndex - 1).coerceAtLeast(0)
-                if (distance > 3) {
-                    listState.scrollToItem(targetScroll)
-                } else {
-                    delay(120.milliseconds)
-                    listState.animateScrollToItem(targetScroll)
+            val targetScroll = (state.currentIndex - 1).coerceAtLeast(0)
+            if (firstPositioning) {
+                firstPositioning = false
+                listState.scrollToItem(targetScroll)
+            } else {
+                val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }.toSet()
+                if (state.currentIndex !in visible) {
+                    if (distance > 3) {
+                        listState.scrollToItem(targetScroll)
+                    } else {
+                        delay(120.milliseconds)
+                        listState.animateScrollToItem(targetScroll)
+                    }
                 }
             }
         }
