@@ -85,17 +85,21 @@ fun PlaybackQueuePanel(
         playerViewModel.moveQueueItem(from.index, to.index)
     }
 
-    // Auto-scroll — instantáneo si salto grande
+    // Auto-scroll SOLO si el actual quedó fuera de pantalla: avanzar no debe
+    // mover la lista si el tema actual ya es visible.
     var previousIndex by remember { mutableStateOf(state.currentIndex) }
     LaunchedEffect(state.currentIndex, state.isShuffled) {
         if (state.queue.isNotEmpty() && state.currentIndex in state.queue.indices) {
             val distance = kotlin.math.abs(state.currentIndex - previousIndex)
             previousIndex = state.currentIndex
-            val target = (state.currentIndex - 1).coerceAtLeast(0)
-            if (distance > 3) listState.scrollToItem(target)
-            else {
-                delay(120.milliseconds)
-                listState.animateScrollToItem(target)
+            val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }.toSet()
+            if (state.currentIndex !in visible) {
+                val target = (state.currentIndex - 1).coerceAtLeast(0)
+                if (distance > 3) listState.scrollToItem(target)
+                else {
+                    delay(120.milliseconds)
+                    listState.animateScrollToItem(target)
+                }
             }
         }
     }
@@ -147,10 +151,12 @@ fun PlaybackQueuePanel(
                     ) {
                         itemsIndexed(
                             items = state.queue,
-                            key = { _, song -> song.id }
+                            // Clave única por posición: la cola admite duplicados y las keys
+                            // repetidas provocan saltos fantasma al avanzar.
+                            key = { index, song -> "$index:${song.id}" }
                         ) { index, queueSong ->
                             val isCurrent = index == state.currentIndex
-                            ReorderableItem(reorderableState, key = queueSong.id) { isDragging ->
+                            ReorderableItem(reorderableState, key = "$index:${queueSong.id}") { isDragging ->
                                 val dragModifier = if (!queueLocked) Modifier.draggableHandle() else Modifier
                                 QueueItem(
                                     song = queueSong,
