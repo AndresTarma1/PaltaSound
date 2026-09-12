@@ -44,6 +44,18 @@ class MpvDirectPlayTest {
         println("SABR url=$url")
         println("sabrUrl => ${playOnce(url)}")
     }
+    @Test
+    fun ytdlpNoSessionPlays() = runBlocking {
+        // Sin cookies configuradas: equivale a la app sin sesión iniciada.
+        // (Nota: YckmB9-uKxw hoy exige login en todos los clientes; se usa dQw4 estable.)
+        val url = YtDlpResolver.resolveAudioUrl(
+            "dQw4w9WgXcQ",
+            example.nucleus.data.repository.AudioQuality.NORMAL,
+        ) ?: error("ytdlp resolve null")
+        println("YTDLP url len=${url.length} c=${Regex("[?&]c=([^&]*)").find(url)?.groupValues?.get(1)}")
+        println("ytdlpUrl => ${playOnce(url)}")
+    }
+
     private fun playOnce(url: String): String {
         val h = MpvLib.mpv_create() ?: return "no-handle"
         try {
