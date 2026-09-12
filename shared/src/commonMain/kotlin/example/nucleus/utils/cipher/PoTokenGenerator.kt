@@ -24,6 +24,16 @@ expect object PoTokenGenerator {
  * @return Un [PoTokenResult] con ambos tokens, o `null` si la generación falla.
  */
     suspend fun getWebClientPoToken(videoId: String, sessionId: String): PoTokenResult?
+
+    /**
+     * Acuña un token de streaming fresco para [videoId], sin reutilizar el snapshot
+     * del sidecar (re-solve completo de BotGuard). Para cuando el CDN rechaza con 403
+     * los pots de snapshot (integrity token envejecido): cuesta un solve (~segundos)
+     * pero produce attestation plena. Base64url listo para el parámetro `pot=`.
+     *
+     * @return El token, o `null` si falla.
+     */
+    suspend fun mintVideoFresh(videoId: String): String?
 }
 
 /**

@@ -2,6 +2,7 @@ package example.nucleus.player
 
 import example.nucleus.data.repository.AudioQuality
 import example.nucleus.utils.cipher.PoTokenManager
+import example.nucleus.utils.cipher.PoTokenGenerator
 import example.nucleus.utils.cipher.PoTokenResult
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.response.PlayerResponse
@@ -44,7 +45,7 @@ object YTPlayerutils {
         //    lo que re-habilita sus formatos de solo-audio de alta calidad.
         // Si visitorData aún no está listo o la generación falla/excede el timeout,
         // seguimos sin poToken: los clientes no-web + yt-dlp cubren el playback.
-        val poTokenResult: PoTokenResult? = YouTube.visitorData?.let { vd ->
+        var poTokenResult: PoTokenResult? = YouTube.visitorData?.let { vd ->
             PoTokenManager.getWebClientPoToken(videoId, vd)
         }
 
@@ -64,8 +65,19 @@ object YTPlayerutils {
         var streamUrl: String? = null
         var streamExpiresInSeconds: Int? = null
         var streamPlayerResponse: PlayerResponse? = null
+        // Si un cliente web falla validate (403 del CDN con pot de snapshot envejecido),
+        // se reintenta la cadena UNA vez con pot de streaming fresco (--no-snapshot).
+        var refreshed = false
+        var sawWeb403 = false
 
-        for (clientIndex in (-1 until FallbackClients.streamFallbackClients.size)) {
+        while (true) {
+            format = null
+            streamUrl = null
+            streamExpiresInSeconds = null
+            streamPlayerResponse = null
+            sawWeb403 = false
+
+            for (clientIndex in (-1 until FallbackClients.streamFallbackClients.size)) {
             format = null
             streamUrl = null
             streamExpiresInSeconds = null
@@ -168,12 +180,29 @@ object YTPlayerutils {
                     break
                 } else {
                     Napier.w("Stream URL validation failed for $videoId using client $clientName itag=${format.itag}; trying fallback client")
+                    // Un 403 aquí con pot de snapshot suele ser integrity token envejecido:
+                    // el reintento de abajo lo reemplaza por un mint fresco.
+                    if (effectiveClient.useWebPoTokens && streamingPot != null) sawWeb403 = true
                 }
             } else if (streamPlayerResponse != null) {
                 Napier.w(
                     "Playback client response not OK for $videoId: status=${streamPlayerResponse.playabilityStatus.status}, reason=${streamPlayerResponse.playabilityStatus.reason}",
                 )
             }
+        }
+
+        val complete = streamPlayerResponse != null &&
+            streamPlayerResponse.playabilityStatus.status == "OK" &&
+            streamExpiresInSeconds != null && format != null && streamUrl != null
+        if (complete) {
+            return@runCatching PlaybackData(
+                audioConfig,
+                videoDetails,
+                playbackTracking,
+                format,
+                streamUrl,
+                streamExpiresInSeconds,
+            )
         }
 
         if (streamPlayerResponse == null) {
@@ -186,15 +215,23 @@ object YTPlayerutils {
         if (format == null) throw Exception("Could not find format")
         if (streamUrl == null) throw Exception("Could not find stream url")
 
-        PlaybackData(
-            audioConfig,
-            videoDetails,
-            playbackTracking,
-            format,
-            streamUrl,
-            streamExpiresInSeconds,
-        )
+        // La cadena se agotó sin URL válida. Si algún cliente web fue rechazado por el
+        // CDN (403) con pot de snapshot, reintentar UNA vez con pot de streaming fresco
+        // (--no-snapshot): el integrity token envejecido es la causa típica.
+        if (sawWeb403 && !refreshed && poTokenResult != null) {
+            refreshed = true
+            val fresh = PoTokenGenerator.mintVideoFresh(videoId)
+            if (fresh != null) {
+                poTokenResult = poTokenResult.copy(streamingDataPoToken = fresh)
+                Napier.i("[PoToken] reintento de $videoId con pot de streaming fresco")
+                continue
+            }
+        }
+
+        error("unreachable: complete o retry debieron resolver arriba")
     }
+    throw AssertionError("unreachable: el loop de clientes siempre retorna o lanza")
+}
 
     suspend fun playerResponseForMetadata(
         videoId: String,

@@ -67,6 +67,13 @@ actual object PoTokenGenerator {
     suspend fun mintVideo(videoId: String): String =
         mintBase64(videoId)
 
+    /**
+     * Acuña un token de streaming fresco para [videoId], sin reutilizar el snapshot
+     * (`--no-snapshot`: re-solve completo). Ver [PoTokenGenerator.mintVideoFresh].
+     */
+    actual suspend fun mintVideoFresh(videoId: String): String? =
+        RustyPipeBotGuardSidecar.mint(videoId, fresh = true)
+
     private suspend fun mintBase64(identifier: String): String =
         RustyPipeBotGuardSidecar.mint(identifier)
             ?: throw PoTokenException("rustypipe-botguard mint returned null")
