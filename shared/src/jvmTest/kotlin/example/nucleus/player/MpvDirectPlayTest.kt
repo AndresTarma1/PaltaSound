@@ -44,7 +44,6 @@ class MpvDirectPlayTest {
         println("SABR url=$url")
         println("sabrUrl => ${playOnce(url)}")
     }
-
     private fun playOnce(url: String): String {
         val h = MpvLib.mpv_create() ?: return "no-handle"
         try {
@@ -88,7 +87,7 @@ class MpvDirectPlayTest {
 
     @Test
     fun mpvOpensWebRemixUrl() = runBlocking {
-        val data = YTPlayerutils.playerResponseForPlayback("dQw4w9WgXcQ").getOrThrow()
+        val data = YTPlayerutils.playerResponseForPlayback("YckmB9-uKxw").getOrThrow()
         val url = data.streamUrl
         println("URL len=${url.length} itag=${data.format.itag} rqh=${url.contains("rqh=1")} spc=${url.contains("spc=")} c=${Regex("[?&]c=([^&]*)").find(url)?.groupValues?.get(1)}")
         val h = MpvLib.mpv_create() ?: error("no handle")

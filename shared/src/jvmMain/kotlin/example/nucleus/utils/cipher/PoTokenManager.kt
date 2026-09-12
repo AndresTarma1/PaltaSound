@@ -65,6 +65,12 @@ actual object PoTokenManager {
             if (forceRecreate || sessionId != cachedSessionId || cachedSessionPot == null) {
                 // Estado previo inválido (o primera vez): recrear motor + challenge + minter.
                 resetEngine()
+                if (!RustyPipeBotGuardSidecar.isSnapshotFresh()) {
+                    // Integrity token vencido/desconocido: borrar el snapshot para que el
+                    // próximo mint resuelva fresco (tokens rancios => CDN capa el stream).
+                    Napier.i("[PoToken] snapshot vencido: re-solve fresco")
+                    RustyPipeBotGuardSidecar.invalidateSnapshot()
+                }
                 val pot = PoTokenGenerator.prepareSession(sessionId)
                 cachedSessionId = sessionId
                 cachedSessionPot = pot
