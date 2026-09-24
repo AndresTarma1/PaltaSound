@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -63,17 +64,13 @@ fun QueueItem(
 
     var isHovered by remember { mutableStateOf(false) }
 
-    val itemShape = RoundedCornerShape(12.dp)
+    val itemShape = RoundedCornerShape(10.dp)
     val currentBg = when {
         isDragging -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
-        isCurrent -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
-        isHovered -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+        isCurrent -> MaterialTheme.colorScheme.primary.copy(alpha = 0.09f)
+        isHovered -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
         else -> Color.Transparent
     }
-
-    val itemBorderModifier = if (isCurrent && !isDragging) {
-        Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), itemShape)
-    } else Modifier
 
     var showMenu by remember { mutableStateOf(false) }
 
@@ -83,7 +80,6 @@ fun QueueItem(
         modifier = modifier
             .fillMaxWidth()
             .clip(itemShape)
-            .then(itemBorderModifier)
             .clickable(onClick = onClick)
             .onPointerEvent(PointerEventType.Press) { event ->
                 if (event.buttons.isSecondaryPressed) {
@@ -94,24 +90,27 @@ fun QueueItem(
             .pointerHoverIcon(if (isDragging) PointerIcon.Crosshair else PointerIcon.Hand),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Indicador de arrastre para reordenar (visible cuando la cola no está bloqueada)
+            // Indicador de arrastre: espacio reservado, solo visible en hover
             if (!queueLocked) {
                 Box(
                     modifier = Modifier
+                        .width(16.dp)
+                        .height(40.dp)
                         .then(dragModifier)
-                        .padding(end = 2.dp)
                         .pointerHoverIcon(PointerIcon.Hand),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.DragIndicator,
                         contentDescription = null,
-                        tint = if (isHovered || isDragging) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-                        modifier = Modifier.size(18.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .alpha(if (isHovered || isDragging) 1f else 0f)
                     )
                 }
             }
@@ -119,7 +118,7 @@ fun QueueItem(
             // Portada de la canción con indicador de reproducción / hover
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
             ) {
                 MusicPlayerImage(
@@ -154,7 +153,7 @@ fun QueueItem(
                             imageVector = Icons.Filled.PlayArrow,
                             contentDescription = stringResource(Res.string.play_item),
                             tint = Color.White,
-                            modifier = Modifier.size(22.dp).align(Alignment.Center)
+                            modifier = Modifier.size(24.dp).align(Alignment.Center)
                         )
                     }
                 }
@@ -163,18 +162,17 @@ fun QueueItem(
             // Información: Título y Artistas
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 Text(
                     text = song.title,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Medium
+                        fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal
                     ),
                     color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(2.dp))
                 Text(
                     text = song.artists.joinToString(", ") { it.name }.ifEmpty { "—" },
                     style = MaterialTheme.typography.bodySmall,
@@ -187,30 +185,39 @@ fun QueueItem(
             // Estado de descarga
             DownloadIndicator(state = downloadState)
 
-            // Duración o botón de eliminar al hacer hover
-            Box(
-                modifier = Modifier.widthIn(min = 36.dp),
-                contentAlignment = Alignment.CenterEnd
+            // Duración siempre visible + hueco fijo para quitar (el icono aparece en hover)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (isHovered && !isDragging) {
-                    IconButton(
-                        onClick = onRemove,
-                        modifier = Modifier.size(30.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlaylistRemove,
-                            contentDescription = stringResource(Res.string.remove_from_queue),
-                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                } else {
+                Box(
+                    modifier = Modifier.width(36.dp),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
                     if (song.duration > 0) {
                         Text(
                             text = formatPlayerTimeValue(song.duration * 1000L),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
+                    }
+                }
+                Box(
+                    modifier = Modifier.size(30.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isHovered && !isDragging) {
+                        IconButton(
+                            onClick = onRemove,
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlaylistRemove,
+                                contentDescription = stringResource(Res.string.remove_from_queue),
+                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
