@@ -52,7 +52,6 @@ import example.nucleus.ui.components.player.PlaybackQueuePanel
 import example.nucleus.ui.screens.library.CsvImportProgressOverlay
 import example.nucleus.ui.screens.library.StatsScreen
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
-import example.nucleus.viewmodels.PlayerProgressState
 import example.nucleus.viewmodels.PlayerViewModel
 import org.koin.compose.koinInject
 import example.nucleus.ui.screens.*
@@ -108,10 +107,8 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
     val playerState by playerViewModel.uiState.collectAsState()
     var isQueueVisible by remember { mutableStateOf(false) }
 
-    val fullScreenPlayer by userPreferences.fullScreenPlayer.collectAsState(false)
-    val animationsEnabled = LocalAnimationsEnabled.current
-
     val isOnNowPlaying = activeConfig is ScreenConfig.NowPlaying
+    val animationsEnabled = LocalAnimationsEnabled.current
 
     val currentSong = playerState.currentSong
     val queueWidth = 420.dp
@@ -120,7 +117,10 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
     val barMiniPlayer = miniPlayerStyle == MiniPlayerStyle.BAR && currentSong != null
 
     val dimens = LocalDimens.current
-    val floatingBottomInset = when {
+    // En Now Playing el mini player está oculto (pantalla completa): no hay inset que reservar.
+    val floatingBottomInset = if (isOnNowPlaying) {
+        0.dp
+    } else when {
         floatingMiniPlayer -> dimens.miniPlayerHeight + dimens.miniPlayerFloatingMargin * 2
         dockedMiniPlayer -> dimens.miniPlayerHeight
         else -> 0.dp
@@ -140,7 +140,6 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
             val hazeState = rememberHazeState()
             val miniPlayerSlot: @Composable (Modifier) -> Unit = { m ->
                 MiniPlayerHost(
-                    playerViewModel = playerViewModel,
                     isOnNowPlaying = isOnNowPlaying,
                     onNowPlaying = {
                         if (isOnNowPlaying) {
@@ -172,8 +171,9 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                 Column(modifier = Modifier.fillMaxSize()) {
                     Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
 
+                        // Now Playing siempre es pantalla completa: el rail se oculta solo.
                         AnimatedVisibility(
-                            visible = !isOnNowPlaying || !fullScreenPlayer,
+                            visible = !isOnNowPlaying,
                             enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
                             exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
                         ) {
@@ -243,7 +243,7 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                                             // una capa cada frame tiene coste (GPU), así que en modo
                                             // barra u otros fondos se omite.
                                             .then(
-                                                if ((floatingMiniPlayer || dockedMiniPlayer) && miniPlayerBackgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT) {
+                                                if ((floatingMiniPlayer || dockedMiniPlayer) && !isOnNowPlaying && miniPlayerBackgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT) {
                                                     Modifier.hazeSource(hazeState)
                                                 } else Modifier
                                             )
@@ -283,7 +283,7 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                                             .align(Alignment.BottomCenter)
                                     ) {
                                         AnimatedVisibility(
-                                            visible = dockedMiniPlayer || floatingMiniPlayer,
+                                            visible = (dockedMiniPlayer || floatingMiniPlayer) && !isOnNowPlaying,
                                             enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + slideInVertically(animationSpec = expressiveLayoutTween(), initialOffsetY = { it / 4 }) else EnterTransition.None,
                                             exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + slideOutVertically(animationSpec = expressiveLayoutTween(), targetOffsetY = { it / 4 }) else ExitTransition.None,
                                         ) {
@@ -333,7 +333,7 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                     }
 
                     AnimatedVisibility(
-                        visible = barMiniPlayer,
+                        visible = barMiniPlayer && !isOnNowPlaying,
                         enter = if (animationsEnabled) fadeIn() else EnterTransition.None,
                         exit = if (animationsEnabled) fadeOut() else ExitTransition.None,
                     ) {
@@ -361,7 +361,6 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
 
 @Composable
 private fun MiniPlayerHost(
-    playerViewModel: PlayerViewModel,
     isOnNowPlaying: Boolean,
     onNowPlaying: () -> Unit,
     onToggleQueue: () -> Unit,
@@ -373,9 +372,7 @@ private fun MiniPlayerHost(
     backgroundStyle: MiniPlayerBackgroundStyle = MiniPlayerBackgroundStyle.TRANSLUCENT,
     hazeState: HazeState? = null,
 ) {
-    val progressState: PlayerProgressState by playerViewModel.progressState.collectAsState()
     MiniPlayer(
-        progressState = progressState,
         isOnNowPlaying = isOnNowPlaying,
         onNowPlaying = onNowPlaying,
         onToggleQueue = onToggleQueue,

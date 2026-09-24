@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material3.*
@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -46,6 +45,7 @@ import example.nucleus.ui.themes.expressiveFadeTween
 import example.nucleus.ui.themes.expressiveLayoutTween
 import example.nucleus.ui.themes.expressiveTween
 import example.nucleus.utils.LocalAnimationsEnabled
+import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.utils.LocalUserPreferences
 import example.nucleus.viewmodels.PlayerUiState
 import example.nucleus.viewmodels.QueueSource
@@ -105,6 +105,7 @@ fun NowPlayingLayout(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isCompact = maxWidth < 640.dp || maxHeight < 400.dp
+        val screenWidth = maxWidth
 
         Column(
             modifier = Modifier
@@ -138,9 +139,27 @@ fun NowPlayingLayout(
                     onNavigate = onNavigate,
                     onCollapse = onCollapse,
                     compact = isCompact,
+                    screenWidth = screenWidth,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
                 )
+
+                // Colapsar (volver) — el mini player está oculto en Now Playing
+                IconButton(
+                    onClick = onCollapse,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 8.dp)
+                        .size(40.dp)
+                        .pointerHoverIcon(PointerIcon.Hand),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ExpandMore,
+                        contentDescription = stringResource(Res.string.mp_collapse),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
             }
         }
     }
@@ -315,128 +334,194 @@ private fun SpaciousNowPlayingBody(
     onNavigate: ((Route) -> Unit)?,
     onCollapse: () -> Unit,
     compact: Boolean,
+    screenWidth: Dp,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
 ) {
     val (coverScale, coverAlpha) = rememberCoverEnter()
+    // En modo compacto el volumen va horizontal y solo cabe si hay ancho suficiente
+    // (no se usa BoxWithConstraints anidado: colisiona con el maxWidth raíz del layout).
+    val showVolume = screenWidth >= 420.dp
 
     if (compact) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CoverArt(
-                        url = song.thumbnailUrl,
-                        title = song.title,
-                        modifier = Modifier
-                            .size(104.dp)
-                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                            .coverEnter(coverScale, coverAlpha),
-                    )
-                    NowPlayingSongDetails(
-                        state = state,
-                        song = song,
-                        textAlign = TextAlign.Start,
-                        onNavigate = onNavigate,
-                        onCollapse = onCollapse,
-                        compact = true,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-
-                TransparentPanel(
+                CoverArt(
+                    url = song.thumbnailUrl,
+                    title = song.title,
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
+                        .size(104.dp)
+                        .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
+                        .coverEnter(coverScale, coverAlpha),
+                )
+                NowPlayingSongDetails(
+                    state = state,
+                    song = song,
+                    textAlign = TextAlign.Start,
+                    onNavigate = onNavigate,
+                    onCollapse = onCollapse,
+                    compact = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // Controles (el mini player está oculto en Now Playing)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                PlayerProgressRow()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
                 ) {
-                    Box(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp)) {
-                        NowPlayingTabContent(
-                            tab = selectedTab,
-                            song = song,
-                            state = state,
-                            lyrics = lyrics,
-                            lyricsTextStyle = MaterialTheme.typography.bodyLarge,
-                            onNavigate = onNavigate,
-                            mediaInfo = mediaInfo,
-                        )
+                    PlayerTransportRow()
+                    if (showVolume) {
+                        Spacer(Modifier.width(10.dp))
+                        PlayerVolumeControl()
                     }
                 }
             }
-        } else {
-            // Diseño espacioso de escritorio: carátula e info a la izquierda, panel transparente a la derecha
-            Row(
+
+            TransparentPanel(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 32.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(32.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .weight(1f)
+                    .fillMaxWidth(),
             ) {
-                // Columna izquierda: Carátula generosa + Información del tema + Acciones rápidas
-                Column(
-                    modifier = Modifier
-                        .weight(0.42f)
-                        .fillMaxHeight(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
                 ) {
-                    val coverDimension = 380.dp
-
-                    CoverArt(
-                        url = song.thumbnailUrl,
-                        title = song.title,
-                        modifier = Modifier
-                            .size(coverDimension)
-                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                            .coverEnter(coverScale, coverAlpha),
-                    )
-
-                    Spacer(Modifier.height(20.dp))
-
-                    NowPlayingSongDetails(
-                        state = state,
+                    NowPlayingTabContent(
+                        tab = selectedTab,
                         song = song,
-                        textAlign = TextAlign.Center,
+                        state = state,
+                        lyrics = lyrics,
+                        lyricsTextStyle = MaterialTheme.typography.bodyLarge,
                         onNavigate = onNavigate,
-                        onCollapse = onCollapse,
-                        compact = false,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .widthIn(max = 440.dp)
-                            .padding(horizontal = 8.dp),
+                        mediaInfo = mediaInfo,
                     )
-                }
-
-                // Columna derecha: Panel transparente de pestañas (Cola exclusiva / Letras sincronizadas / Info)
-                TransparentPanel(
-                    modifier = Modifier
-                        .weight(0.58f)
-                        .fillMaxHeight(),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-                    ) {
-                        NowPlayingTabContent(
-                            tab = selectedTab,
-                            song = song,
-                            state = state,
-                            lyrics = lyrics,
-                            lyricsTextStyle = MaterialTheme.typography.headlineSmall,
-                            onNavigate = onNavigate,
-                            mediaInfo = mediaInfo,
-                        )
-                    }
                 }
             }
         }
+    } else {
+        // Diseño de escritorio tipo Apple Music / Spotify:
+        // izquierda = carátula + metadatos + progreso + transporte; derecha = panel de pestañas.
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(32.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+        Row(
+            modifier = Modifier
+                .weight(0.45f)
+                .fillMaxHeight(),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // La carátula cede espacio a los metadatos para no desbordar la columna
+                    val coverDimension = minOf(
+                        maxWidth * 0.8f,
+                        maxHeight - 170.dp,
+                        360.dp,
+                    ).coerceAtLeast(96.dp)
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        CoverArt(
+                            url = song.thumbnailUrl,
+                            title = song.title,
+                            modifier = Modifier
+                                .size(coverDimension)
+                                .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
+                                .coverEnter(coverScale, coverAlpha),
+                        )
+
+                        NowPlayingSongDetails(
+                            state = state,
+                            song = song,
+                            textAlign = TextAlign.Center,
+                            onNavigate = onNavigate,
+                            onCollapse = onCollapse,
+                            compact = false,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = 440.dp)
+                                .padding(horizontal = 8.dp),
+                        )
+                    }
+                }
+
+                // Progreso + transporte (el mini player está oculto en Now Playing)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 460.dp)
+                        .padding(top = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    PlayerProgressRow()
+                    PlayerTransportRow()
+                }
+            }
+
+            // Volumen vertical estilo pista al borde inferior derecho del panel
+            PlayerVolumeVertical(
+                modifier = Modifier.padding(end = 4.dp, bottom = 12.dp),
+            )
+        }
+
+        // Columna derecha: panel transparente con el contenido de la pestaña activa
+        TransparentPanel(
+            modifier = Modifier
+                .weight(0.55f)
+                .fillMaxHeight(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 12.dp),
+            ) {
+                NowPlayingTabContent(
+                    tab = selectedTab,
+                    song = song,
+                    state = state,
+                    lyrics = lyrics,
+                    lyricsTextStyle = MaterialTheme.typography.headlineMedium,
+                    onNavigate = onNavigate,
+                    mediaInfo = mediaInfo,
+                )
+            }
+        }
+        }
+    }
 }
 
 /**
@@ -452,6 +537,7 @@ private fun NowPlayingSongDetails(
     compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val playerViewModel = LocalPlayerViewModel.current
     Column(
         horizontalAlignment = when (textAlign) {
             TextAlign.Start -> Alignment.Start
@@ -486,18 +572,28 @@ private fun NowPlayingSongDetails(
             }
         }
 
-        // Título de la pista
-        Text(
-            text = song.title,
-            style = if (compact) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.headlineMediumEmphasized,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = if (compact) 1 else 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = textAlign,
-            modifier = Modifier
-                .fillMaxWidth()
-                .basicMarquee(),
-        )
+        // Título de la pista + like (estilo referencia: título centrado con corazón al final)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = if (textAlign == TextAlign.Start) Arrangement.Start else Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = song.title,
+                style = if (compact) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.headlineMediumEmphasized,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = if (compact) 1 else 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = textAlign,
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .basicMarquee(),
+            )
+            LikeToggle(
+                liked = song.liked,
+                onToggle = { playerViewModel.toggleLike() },
+            )
+        }
 
         Spacer(Modifier.height(if (compact) 4.dp else 8.dp))
 

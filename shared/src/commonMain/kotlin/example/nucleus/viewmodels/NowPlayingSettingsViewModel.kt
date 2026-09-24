@@ -16,9 +16,6 @@ class NowPlayingSettingsViewModel(
     private val preferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
 
-    val fullScreenPlayer: StateFlow<Boolean> = preferencesRepository.fullScreenPlayer
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
     val highResCoverArt: StateFlow<Boolean> = preferencesRepository.highResCoverArt
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -51,10 +48,6 @@ class NowPlayingSettingsViewModel(
 
     val queuePersistenceEnabled: StateFlow<Boolean> = preferencesRepository.queuePersistenceEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
-
-    fun setFullScreenPlayer(enabled: Boolean) {
-        viewModelScope.launch { preferencesRepository.setFullScreenPlayer(enabled) }
-    }
 
     fun setHighResCoverArt(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setHighResCoverArt(enabled) }

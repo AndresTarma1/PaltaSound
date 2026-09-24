@@ -3,7 +3,6 @@ package example.nucleus.ui.screens.settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.FormatSize
-import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Save
@@ -32,7 +31,6 @@ fun NowPlayingSettingsGroup() {
     val highResCover by viewModel.highResCoverArt.collectAsState()
     val imagesEnabled by viewModel.imagesEnabled.collectAsState()
     val crossfadeEnabled by viewModel.crossfadeEnabled.collectAsState()
-    val fullScreenPlayer by viewModel.fullScreenPlayer.collectAsState()
 
     val lyricsTextSize by viewModel.lyricsTextSize.collectAsState()
     val lyricsLineSpacing by viewModel.lyricsLineSpacing.collectAsState()
@@ -45,7 +43,7 @@ fun NowPlayingSettingsGroup() {
     var showSpacingDropdown by remember { mutableStateOf(false) }
     var showOffsetDropdown by remember { mutableStateOf(false) }
 
-    val itemCount = 8
+    val itemCount = 7
     var idx = 0
 
     SettingsGroup(
@@ -83,15 +81,6 @@ fun NowPlayingSettingsGroup() {
             colors = colors,
             state = crossfadeEnabled,
             onCheckedChange = { viewModel.setCrossfadeEnabled(it) }
-        )
-        SettingsSwitch(
-            icon = { Icon(Icons.Rounded.Fullscreen, null) },
-            title = { Text(stringResource(Res.string.full_screen_player)) },
-            subtitle = { Text(stringResource(Res.string.full_screen_player_subtitle)) },
-            shapes = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
-            colors = colors,
-            state = fullScreenPlayer,
-            onCheckedChange = { viewModel.setFullScreenPlayer(it) }
         )
         DropdownSelector(
             label = stringResource(Res.string.lyrics_animation_style),

@@ -178,7 +178,6 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val MINI_PLAYER_BG_STYLE = stringPreferencesKey("mini_player_bg_style")
         val NOW_PLAYING_BACKGROUND = stringPreferencesKey("now_playing_background")
         val NOW_PLAYING_DESIGN = stringPreferencesKey("now_playing_design")
-        val FULL_SCREEN_PLAYER = booleanPreferencesKey("full_screen_player")
         val SELECTED_FONT = stringPreferencesKey("selected_font")
         val PREFERENCES_MIGRATION_VERSION = intPreferencesKey("preferences_migration_version")
         val ANIMATIONS_ENABLED = booleanPreferencesKey("animations_enabled")
@@ -330,11 +329,6 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setNavigationRailStyle(style: NavigationRailStyle) {
         dataStore.edit { it[PreferencesKeys.NAVIGATION_RAIL_STYLE] = style.name }
-    }
-    val fullScreenPlayer: Flow<Boolean> = dataStore.data.map { it[PreferencesKeys.FULL_SCREEN_PLAYER] ?: false }
-
-    suspend fun setFullScreenPlayer(enabled: Boolean) {
-        dataStore.edit { it[PreferencesKeys.FULL_SCREEN_PLAYER] = enabled }
     }
 
     /** Última posición de la ventana de overlay en dp, o [OVERLAY_POS_UNSET] cuando nunca se ha movido (→ esquina predeterminada). */

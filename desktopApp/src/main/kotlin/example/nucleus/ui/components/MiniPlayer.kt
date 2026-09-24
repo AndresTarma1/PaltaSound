@@ -16,34 +16,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.automirrored.rounded.VolumeDown
-import androidx.compose.material.icons.automirrored.rounded.VolumeOff
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,7 +39,6 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
@@ -72,26 +55,22 @@ import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.blur.materials.HazeMaterials
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
-import example.nucleus.data.repository.SeekBarStyle
 import example.nucleus.player.PlaybackState
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.mp_collapse
 import example.nucleus.generated.resources.mp_error
 import example.nucleus.generated.resources.mp_expand
-import example.nucleus.generated.resources.mp_like
-import example.nucleus.generated.resources.mp_previous
-import example.nucleus.generated.resources.mp_next
 import example.nucleus.generated.resources.mp_queue
-import example.nucleus.generated.resources.mp_repeat
-import example.nucleus.generated.resources.mp_shuffle
-import example.nucleus.generated.resources.mp_volume
 import example.nucleus.generated.resources.play_item
-import example.nucleus.generated.resources.tray_pause
-import example.nucleus.generated.resources.tray_play
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.player.heroCoverElement
+import example.nucleus.ui.components.player.PlayerIconToggle
+import example.nucleus.ui.components.player.PlayerProgressRow
+import example.nucleus.ui.components.player.PlayerTransportRow
+import example.nucleus.ui.components.player.PlayerVolumeControl
+import example.nucleus.ui.components.player.LikeToggle
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalChromeSurface
 import example.nucleus.ui.themes.LocalDimens
@@ -104,8 +83,6 @@ import example.nucleus.ui.themes.songTitle
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.utils.isWideThumbnail
-import example.nucleus.viewmodels.PlayerProgressState
-import example.nucleus.viewmodels.RepeatMode
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.onHover
 
@@ -118,7 +95,6 @@ import org.jetbrains.jewel.foundation.modifier.onHover
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MiniPlayer(
-    progressState: PlayerProgressState,
     isOnNowPlaying: Boolean,
     onNowPlaying: () -> Unit,
     onToggleQueue: () -> Unit,
@@ -133,13 +109,9 @@ fun MiniPlayer(
 ) {
     val playerViewModel = LocalPlayerViewModel.current
     val state by playerViewModel.uiState.collectAsState()
-    val volume by playerViewModel.volume.collectAsState()
     val song = state.currentSong ?: return
 
     val isError = state.playbackState == PlaybackState.ERROR
-    val isPlaying = state.playbackState == PlaybackState.PLAYING
-    val isLoading = state.playbackState == PlaybackState.LOADING ||
-        state.playbackState == PlaybackState.BUFFERING
 
     val ratio = remember(song.thumbnailUrl) {
         if (isWideThumbnail(song.thumbnailUrl)) 16f / 9f else 1f
@@ -279,14 +251,9 @@ fun MiniPlayer(
                         }
 
                         val liked = state.currentSong?.liked == true
-                        MiniPlayerIconToggle(
-                            selected = liked,
-                            onClick = { playerViewModel.toggleLike() },
-                            imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = stringResource(Res.string.mp_like),
-                            selectedContainer = colorScheme.errorContainer.copy(alpha = 0.55f),
-                            selectedContent = colorScheme.error,
-                            unselectedContent = colorScheme.onSurfaceVariant,
+                        LikeToggle(
+                            liked = liked,
+                            onToggle = { playerViewModel.toggleLike() },
                         )
                     }
                 }
@@ -297,141 +264,8 @@ fun MiniPlayer(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-                    ) {
-                        MiniPlayerIconToggle(
-                            selected = state.isShuffled,
-                            onClick = { playerViewModel.toggleShuffle() },
-                            imageVector = Icons.Rounded.Shuffle,
-                            contentDescription = stringResource(Res.string.mp_shuffle),
-                            size = 36.dp,
-                            iconSize = 20.dp,
-                        )
-
-                        IconButton(
-                            onClick = { playerViewModel.previous() },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .pointerHoverIcon(PointerIcon.Hand),
-                        ) {
-                            Icon(
-                                Icons.Rounded.SkipPrevious,
-                                contentDescription = stringResource(Res.string.mp_previous),
-                                tint = colorScheme.onSurface,
-                                modifier = Modifier.size(28.dp),
-                            )
-                        }
-
-                        // Play pill — acento Expressive principal
-                        FilledIconButton(
-                            onClick = { playerViewModel.togglePlayPause() },
-                            modifier = Modifier
-                                .size(width = 56.dp, height = 48.dp)
-                                .pointerHoverIcon(PointerIcon.Hand),
-                            shape = AppShapes.extraLarge,
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = colorScheme.primary,
-                                contentColor = colorScheme.onPrimary,
-                            ),
-                        ) {
-                            if (isLoading) {
-                                LoadingIndicator(
-                                    modifier = Modifier.size(28.dp),
-                                    color = colorScheme.onPrimary,
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = if (isPlaying) {
-                                        Icons.Rounded.Pause
-                                    } else {
-                                        Icons.Rounded.PlayArrow
-                                    },
-                                    contentDescription = if (isPlaying) {
-                                        stringResource(Res.string.tray_pause)
-                                    } else {
-                                        stringResource(Res.string.tray_play)
-                                    },
-                                    modifier = Modifier.size(30.dp),
-                                )
-                            }
-                        }
-
-                        IconButton(
-                            onClick = { playerViewModel.next() },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .pointerHoverIcon(PointerIcon.Hand),
-                        ) {
-                            Icon(
-                                Icons.Rounded.SkipNext,
-                                contentDescription = stringResource(Res.string.mp_next),
-                                tint = colorScheme.onSurface,
-                                modifier = Modifier.size(28.dp),
-                            )
-                        }
-
-                        val repeatOn = state.repeatMode != RepeatMode.OFF
-                        MiniPlayerIconToggle(
-                            selected = repeatOn,
-                            onClick = { playerViewModel.toggleRepeat() },
-                            imageVector = if (state.repeatMode == RepeatMode.ONE) {
-                                Icons.Rounded.RepeatOne
-                            } else {
-                                Icons.Rounded.Repeat
-                            },
-                            contentDescription = stringResource(Res.string.mp_repeat),
-                            size = 36.dp,
-                            iconSize = 20.dp,
-                        )
-                    }
-
-                    var localSliderValue by remember { mutableStateOf(0f) }
-                    var isDragging by remember { mutableStateOf(false) }
-                    val seekBarStyle by playerViewModel.seekBarStyle.collectAsState(SeekBarStyle.WAVY)
-
-                    LaunchedEffect(progressState.positionMs, progressState.durationMs) {
-                        if (!isDragging && progressState.durationMs > 0) {
-                            localSliderValue =
-                                progressState.positionMs.toFloat() / progressState.durationMs
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        TimeText(
-                            if (isDragging) {
-                                (localSliderValue * progressState.durationMs).toLong()
-                            } else {
-                                progressState.positionMs
-                            },
-                        )
-
-                        PlayerSeekBar(
-                            style = seekBarStyle,
-                            value = localSliderValue,
-                            onValueChange = {
-                                isDragging = true
-                                localSliderValue = it
-                            },
-                            onValueChangeFinished = {
-                                val targetPosition =
-                                    (localSliderValue * progressState.durationMs).toLong()
-                                playerViewModel.seekTo(targetPosition)
-                                isDragging = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            isPlaying = isPlaying || isDragging,
-                        )
-
-                        TimeText(progressState.durationMs)
-                    }
+                    PlayerTransportRow()
+                    PlayerProgressRow()
                 }
 
                 // —— DERECHA: volumen + cola + expand ——
@@ -440,61 +274,9 @@ fun MiniPlayer(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Surface(
-                        shape = AppShapes.extraLarge,
-                        color = colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
-                        modifier = Modifier.padding(end = 6.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(start = 10.dp, end = 2.dp, top = 2.dp, bottom = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        ) {
-                            val volumeFloat = (volume.coerceIn(0, 100)) / 100f
-                            val volumePercent = volume.coerceIn(0, 100)
+                    PlayerVolumeControl(modifier = Modifier.padding(end = 6.dp))
 
-                            Text(
-                                text = "$volumePercent",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    fontFeatureSettings = "tnum",
-                                ),
-                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                                modifier = Modifier.width(22.dp),
-                                textAlign = TextAlign.End,
-                            )
-
-                            SlimSlider(
-                                value = volumeFloat,
-                                onValueChange = { playerViewModel.setVolume((it * 100).toInt()) },
-                                modifier = Modifier.width(72.dp),
-                                activeColor = colorScheme.primary,
-                                inactiveColor = colorScheme.onSurface.copy(alpha = 0.16f),
-                                trackHeight = 4.dp,
-                                thumbSize = 10.dp,
-                                draggedThumbSize = 14.dp,
-                            )
-
-                            IconButton(
-                                onClick = { playerViewModel.toggleMute() },
-                                modifier = Modifier.size(36.dp).pointerHoverIcon(PointerIcon.Hand),
-                            ) {
-                                Icon(
-                                    imageVector = when {
-                                        volumeFloat == 0f -> Icons.AutoMirrored.Rounded.VolumeOff
-                                        volumeFloat < 0.4f -> Icons.AutoMirrored.Rounded.VolumeDown
-                                        else -> Icons.AutoMirrored.Rounded.VolumeUp
-                                    },
-                                    contentDescription = stringResource(Res.string.mp_volume),
-                                    tint = colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            }
-                        }
-                    }
-
-                    MiniPlayerIconToggle(
+                    PlayerIconToggle(
                         selected = isQueueVisible,
                         onClick = onToggleQueue,
                         imageVector = Icons.AutoMirrored.Filled.QueueMusic,
@@ -720,50 +502,6 @@ fun MiniPlayer(
         ) {
             playerContent()
         }
-    }
-}
-
-/**
- * Toggle M3E: contenedor tonal suave cuando está activo, transparente al reposo.
- * Hover desktop con state-layer sutil vía IconButtonDefaults.
- */
-@Composable
-private fun MiniPlayerIconToggle(
-    selected: Boolean,
-    onClick: () -> Unit,
-    imageVector: ImageVector,
-    contentDescription: String,
-    modifier: Modifier = Modifier,
-    size: Dp = 36.dp,
-    iconSize: Dp = 20.dp,
-    selectedContainer: Color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
-    selectedContent: Color = MaterialTheme.colorScheme.onSecondaryContainer,
-    unselectedContent: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val hovered by interaction.collectIsHoveredAsState()
-    val container = when {
-        selected -> selectedContainer
-        hovered -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-        else -> Color.Transparent
-    }
-
-    IconButton(
-        onClick = onClick,
-        modifier = modifier
-            .size(size)
-            .pointerHoverIcon(PointerIcon.Hand),
-        interactionSource = interaction,
-        colors = IconButtonDefaults.iconButtonColors(
-            containerColor = container,
-            contentColor = if (selected) selectedContent else unselectedContent,
-        ),
-    ) {
-        Icon(
-            imageVector = imageVector,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(iconSize),
-        )
     }
 }
 

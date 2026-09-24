@@ -26,7 +26,7 @@ fun NowPlayingScreen(
     val currentSongMediaInfo by viewModel.currentMediaInfo.collectAsState()
     val currentSong = playerState.currentSong
 
-    var selectedTab by remember { mutableStateOf(NowPlayingTab.QUEUE) }
+    var selectedTab by remember { mutableStateOf(NowPlayingTab.LYRICS) }
 
     if (currentSong != null) {
 

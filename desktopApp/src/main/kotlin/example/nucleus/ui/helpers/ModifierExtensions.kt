@@ -22,3 +22,12 @@ fun Modifier.contextMenuArea(
             }
         }
 }
+
+@OptIn(ExperimentalComposeUiApi::class)
+fun Modifier.onHover(
+    onHoverChange: ((Boolean) -> Unit)? = null
+): Modifier = composed {
+    this
+        .onPointerEvent(PointerEventType.Enter) { onHoverChange?.invoke(true) }
+        .onPointerEvent(PointerEventType.Exit) { onHoverChange?.invoke(false) }
+}
