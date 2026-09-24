@@ -497,6 +497,8 @@ fun FilterRow(
         stringResource(Res.string.filter_albums) to YouTube.SearchFilter.FILTER_ALBUM,
         stringResource(Res.string.filter_artists) to YouTube.SearchFilter.FILTER_ARTIST,
         stringResource(Res.string.filter_playlists) to YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST,
+        stringResource(Res.string.filter_podcasts) to YouTube.SearchFilter.FILTER_PODCAST,
+        stringResource(Res.string.filter_episodes) to YouTube.SearchFilter.FILTER_EPISODE,
     )
 
     HorizontalScrollableRow(
@@ -552,6 +554,19 @@ fun ResultsList(
     val summaries = when (uiState) {
         is SearchState.SummarySuccess -> uiState.summary.summaries
         else -> emptyList()
+    }
+
+    // Al cambiar de filtro o al llegar resultados de una búsqueda nueva, volver
+    // arriba: si no, se mantiene la posición del filtro anterior (bug reportado).
+    // Se clavea por el primer item para no resetear al paginar (load more añade
+    // al final y mantiene el primer id).
+    val contentKey = when (uiState) {
+        is SearchState.Success -> items.firstOrNull()?.id
+        is SearchState.SummarySuccess -> summaries.firstOrNull()?.items?.firstOrNull()?.id
+        else -> null
+    }
+    LaunchedEffect(filter, contentKey) {
+        scrollable.scrollToItem(0)
     }
 
     val shouldLoadMore = remember(uiState) {

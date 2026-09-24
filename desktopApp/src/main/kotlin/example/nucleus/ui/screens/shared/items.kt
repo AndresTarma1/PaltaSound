@@ -31,13 +31,16 @@ import example.nucleus.utils.LocalDownloadViewModel
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.models.EpisodeItem
 import com.metrolist.innertube.models.PlaylistItem
+import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.item_album
 import example.nucleus.generated.resources.item_artist
 import example.nucleus.generated.resources.item_list
+import example.nucleus.generated.resources.item_podcast
 import org.jetbrains.compose.resources.*
 
 fun onYTItemClick(
@@ -50,7 +53,8 @@ fun onYTItemClick(
         is AlbumItem -> onNavigate(Route.Album(item.browseId))
         is PlaylistItem -> onNavigate(Route.Playlist(item.id))
         is ArtistItem -> onNavigate(Route.Artist(item.id))
-        else -> {}
+        is PodcastItem -> onNavigate(Route.Playlist(item.id))
+        is EpisodeItem -> playerViewModel?.playSingle(item.asSongItem())
     }
 }
 
@@ -62,6 +66,7 @@ private fun playYTItem(
 ) {
     when (item) {
         is SongItem -> playerViewModel.playSingle(item)
+        is EpisodeItem -> playerViewModel.playSingle(item.asSongItem())
         is AlbumItem -> playerViewModel.playAlbumFromBrowseId(
             browseId = item.browseId,
             playlistId = item.playlistId,
@@ -74,8 +79,8 @@ private fun playYTItem(
             title = item.title,
             onEmpty = { onClick(item) }
         )
+        is PodcastItem -> onNavigate(Route.Playlist(item.id))
         is ArtistItem -> onNavigate(Route.Artist(item.id))
-        else -> onClick(item)
     }
 }
 
@@ -99,6 +104,7 @@ private fun shuffleYTItem(
             shuffle = true,
             onEmpty = { onClick(item) }
         )
+        is PodcastItem -> onClick(item)
         else -> onClick(item)
     }
 }
@@ -279,6 +285,56 @@ fun ArtistGridItem(
     )
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun PodcastGridItem(
+    item: PodcastItem,
+    modifier: Modifier = Modifier,
+    onClick: (YTItem) -> Unit,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    YouTubeGridItem(
+        item = item,
+        onClick = onClick,
+        imageShape = MaterialTheme.shapes.small,
+        alignment = Alignment.Start,
+        titleAlign = TextAlign.Start,
+        placeholderType = PlaceholderType.PLAYLIST,
+        centerPlayVisible = false,
+        contextMenuEnabled = true,
+        onContextMenuAction = { showMenu = true },
+        subtitle = item.author?.name ?: item.episodeCountText ?: stringResource(Res.string.item_podcast),
+        modifier = modifier,
+        overlayContent = {
+            CollectionContextMenuPopup(
+                expanded = showMenu,
+                onDismiss = { showMenu = false },
+                title = item.title,
+                isPlaylist = true,
+                onOpen = { onClick(item) },
+                onPlay = { onClick(item) },
+                onShuffle = { onClick(item) }
+            )
+        }
+    )
+}
+
+@Composable
+fun EpisodeGridItem(
+    item: EpisodeItem,
+    modifier: Modifier = Modifier,
+    onClick: (YTItem) -> Unit,
+    onClickSubtitle: (String) -> Unit,
+) {
+    SongGridItem(
+        item = item.asSongItem(),
+        modifier = modifier,
+        onClick = { onClick(item) },
+        onClickSubtitle = onClickSubtitle,
+    )
+}
+
 
 @Composable
 fun SectionListItem(
@@ -320,6 +376,12 @@ fun SectionGridItem(
         is AlbumItem -> AlbumGridItem(item = item, onClick = onClick, modifier = modifier, onPlay = onPlay, onShuffle = onShuffle)
         is PlaylistItem -> PlaylistGridItem(item = item, onClick = onClick, modifier = modifier, onPlay = onPlay, onShuffle = onShuffle)
         is ArtistItem -> ArtistGridItem(item = item, onClick = onClick, modifier = modifier)
-        else -> {}
+        is PodcastItem -> PodcastGridItem(item = item, onClick = onClick, modifier = modifier)
+        is EpisodeItem -> EpisodeGridItem(
+            item = item,
+            onClick = onClick,
+            onClickSubtitle = { onNavigate(Route.Artist(it)) },
+            modifier = modifier,
+        )
     }
 }

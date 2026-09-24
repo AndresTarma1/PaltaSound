@@ -1195,10 +1195,12 @@ object YouTube {
 
             val allContents = mainContents + shelfContents + musicShelfContinuationContents + appendedContents
 
-            val songs =
-                allContents
-                    .mapNotNull { content: MusicShelfRenderer.Content -> content.musicResponsiveListItemRenderer }
-                    .mapNotNull { renderer -> PlaylistPage.fromMusicResponsiveListItemRenderer(renderer) }
+            val songs = allContents.mapNotNull { content: MusicShelfRenderer.Content ->
+                content.musicResponsiveListItemRenderer?.let { PlaylistPage.fromMusicResponsiveListItemRenderer(it) }
+                    ?: content.musicMultiRowListItemRenderer?.let { renderer ->
+                        PodcastPage.fromMusicMultiRowListItemRenderer(renderer)?.asSongItem()
+                    }
+            }
 
             val nextContinuation =
                 if (songs.isEmpty()) {

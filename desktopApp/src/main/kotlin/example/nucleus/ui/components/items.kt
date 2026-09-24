@@ -77,7 +77,9 @@ import example.nucleus.utils.LocalSnackbarScope
 import kotlinx.coroutines.launch
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.models.EpisodeItem
 import com.metrolist.innertube.models.PlaylistItem
+import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import example.nucleus.generated.resources.Res
@@ -103,15 +105,17 @@ private fun YTItem.mediaGridSubtitle(): String = when (this) {
     is ArtistItem -> stringResource(Res.string.item_artist)
     is PlaylistItem -> author?.name ?: songCountText ?: stringResource(Res.string.item_playlist)
     is SongItem -> artists.firstOrNull()?.name ?: stringResource(Res.string.item_song)
-    else -> ""
+    is PodcastItem -> author?.name ?: episodeCountText ?: stringResource(Res.string.item_podcast)
+    is EpisodeItem -> podcast?.name ?: author?.name ?: stringResource(Res.string.item_episode)
 }
 
 private fun YTItem.mediaGridPlaceholderType(): PlaceholderType = when (this) {
     is AlbumItem -> PlaceholderType.ALBUM
     is ArtistItem -> PlaceholderType.ARTIST
     is PlaylistItem -> PlaceholderType.PLAYLIST
+    is PodcastItem -> PlaceholderType.PLAYLIST
     is SongItem -> PlaceholderType.SONG
-    else -> PlaceholderType.SONG
+    is EpisodeItem -> PlaceholderType.SONG
 }
 
 @Composable
@@ -178,7 +182,7 @@ fun YouTubeGridItem(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .graphicsLayer { alpha = overlayAlpha }
+                        .alpha(overlayAlpha)
                         .background(Color.Black)
                 )
 
@@ -498,6 +502,7 @@ fun YoutubeListItem(
     val shape = when (item) {
         is ArtistItem -> circleAwareShape()
         is PlaylistItem -> RoundedCornerShape(dimens.itemCorner)
+        is PodcastItem -> RoundedCornerShape(dimens.itemCorner)
         else -> RoundedCornerShape(dimens.itemCorner - 2.dp)
     }
 
@@ -507,7 +512,8 @@ fun YoutubeListItem(
     var isHovered by remember { mutableStateOf(false) }
 
     val sourceIcon = if (source == ItemContentSource.LOCAL) Icons.Default.PhoneAndroid else null
-    val isCollectionItem = item is AlbumItem || item is PlaylistItem
+    val isCollectionItem = item is AlbumItem || item is PlaylistItem || item is PodcastItem
+    val isEpisodeItem = item is EpisodeItem
     val rowShape = AppShapes.large
 
     Box(
@@ -517,7 +523,7 @@ fun YoutubeListItem(
             .desktopInteractiveSurface(shape = rowShape, showHandCursor = true)
             .clickable { onClick(item) }
             .contextMenuArea(
-                enabled = item is SongItem || isCollectionItem,
+                enabled = item is SongItem || isEpisodeItem || isCollectionItem,
                 onHoverChange = { isHovered = it },
                 onMenuAction = {
                     showMenu = true
@@ -556,7 +562,17 @@ fun YoutubeListItem(
                         "${stringResource(Res.string.item_playlist)}$author"
                     }
 
-                    else -> ""
+                    is PodcastItem -> {
+                        val author = item.author?.name?.let { " • $it" } ?: ""
+                        val count = item.episodeCountText?.let { " • $it" } ?: ""
+                        "${stringResource(Res.string.item_podcast)}$author$count"
+                    }
+
+                    is EpisodeItem -> {
+                        val podcast = item.podcast?.name ?: item.author?.name ?: ""
+                        val date = item.publishDateText?.let { " • $it" } ?: ""
+                        "${stringResource(Res.string.item_episode)} • $podcast$date"
+                    }
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -598,14 +614,15 @@ fun YoutubeListItem(
                         is ArtistItem -> PlaceholderType.ARTIST
                         is AlbumItem -> PlaceholderType.ALBUM
                         is PlaylistItem -> PlaceholderType.PLAYLIST
+                        is PodcastItem -> PlaceholderType.PLAYLIST
                         else -> PlaceholderType.SONG
                     },
                     contentScale = ContentScale.Crop,
-                    iconSize = if (item is PlaylistItem) 28.dp else 24.dp,
+                    iconSize = if (item is PlaylistItem || item is PodcastItem) 28.dp else 24.dp,
                 )
             },
             trailingContent = {
-                if (item is SongItem || isCollectionItem) {
+                if (item is SongItem || isEpisodeItem || isCollectionItem) {
                     IconButton(
                         onClick = {
                             showMenu = true
@@ -628,7 +645,13 @@ fun YoutubeListItem(
                 onDismiss = { showMenu = false },
                 song = item
             )
-        } else if (item is AlbumItem || item is PlaylistItem) {
+        } else if (item is EpisodeItem) {
+            SongContextMenuPopup(
+                expanded = showMenu,
+                onDismiss = { showMenu = false },
+                song = item.asSongItem()
+            )
+        } else if (item is AlbumItem || item is PlaylistItem || item is PodcastItem) {
             val playlistsViewModel = LocalPlaylistsViewModel.current
             val scope = LocalSnackbarScope.current
             val snackbar = LocalSnackbarHostState.current

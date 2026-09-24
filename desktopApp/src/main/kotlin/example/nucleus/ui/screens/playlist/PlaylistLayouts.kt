@@ -485,7 +485,11 @@ internal fun PlaylistInfoPanel(
         horizontalArrangement = Arrangement.Center
     ) {
         Text(
-            text = stringResource(Res.string.item_playlist),
+            text = if (playlistPage.playlist.isPodcast) {
+                stringResource(Res.string.item_podcast)
+            } else {
+                stringResource(Res.string.item_playlist)
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

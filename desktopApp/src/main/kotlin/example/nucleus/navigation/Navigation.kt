@@ -399,7 +399,11 @@ fun Route.toConfig(): ScreenConfig = when (this) {
     Route.ListenTogether -> ScreenConfig.ListenTogether
     Route.NowPlaying -> ScreenConfig.NowPlaying
     Route.Stats -> ScreenConfig.Stats
-    is Route.Album -> ScreenConfig.Album(browseId)
+    // Los episodios de pódcast usan un álbum con id MPSP... (el id del pódcast);
+    // ese id solo es válido en la ruta de Playlist (PlaylistScreen reutilizado).
+    is Route.Album ->
+        if (browseId.startsWith("MPSP")) ScreenConfig.Playlist(browseId)
+        else ScreenConfig.Album(browseId)
     is Route.Playlist -> ScreenConfig.Playlist(playlistId)
     is Route.Artist -> ScreenConfig.Artist(artistId)
     is Route.YouTubeBrowse -> ScreenConfig.YouTubeBrowse(browseId, params)

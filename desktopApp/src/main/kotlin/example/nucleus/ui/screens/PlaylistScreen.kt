@@ -88,7 +88,7 @@ fun PlaylistScreenRoute(
     // dislike real, por lo que sigue siendo editable.
     val currentPlaylistId = successState?.playlistPage?.playlist?.id
     val isNonEditableAutoPlaylist = currentPlaylistId != null &&
-        (currentPlaylistId == "SE" || currentPlaylistId.startsWith("RD"))
+        (currentPlaylistId == "SE" || currentPlaylistId.startsWith("RD") || currentPlaylistId.startsWith("MPSP"))
     val canEditPlaylist = !isNonEditableAutoPlaylist &&
         (currentPlaylistId?.startsWith("LOCAL_") == true || successState?.isSaved == true)
 

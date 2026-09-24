@@ -455,13 +455,13 @@ internal fun SongListItem(
                                     )
                                 } else {
                                     Text(
-                                        text = formatDuration(song.duration ?: 0),
+                                        text = song.duration?.takeIf { it > 0 }?.let { formatDuration(it) }.orEmpty(),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
                                         softWrap = false,
                                         textAlign = TextAlign.Center,
-                                        modifier = Modifier.width(40.dp)
+                                        modifier = Modifier.width(44.dp)
                                     )
                                 }
 

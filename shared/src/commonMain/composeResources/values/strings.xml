@@ -229,6 +229,8 @@
     <string name="filter_albums">Álbumes</string>
     <string name="filter_artists">Artistas</string>
     <string name="filter_playlists">Playlists</string>
+    <string name="filter_podcasts">Pódcasts</string>
+    <string name="filter_episodes">Episodios</string>
     <string name="something_went_wrong">Algo salió mal</string>
     <string name="no_results">No se encontraron resultados</string>
     <string name="explore_trends">Explora tendencias y busca tu música</string>
@@ -406,6 +408,8 @@
     <string name="item_playlist">Playlist</string>
     <string name="item_song">Canción</string>
     <string name="item_list">Lista</string>
+    <string name="item_podcast">Pódcast</string>
+    <string name="item_episode">Episodio</string>
 
     <!-- Equalizer -->
     <string name="eq_gain">Ganancia (dB)</string>
