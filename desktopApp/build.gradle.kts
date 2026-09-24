@@ -144,47 +144,33 @@ nucleus.application {
         "-Xss768k",
         // Pool IO de coroutines: default real es 64 hilos (~1MB stack c/u).
         "-Dkotlinx.coroutines.io.parallelism=16",
-        // Silencia el warning de Truffle del solver EJS (corre en intérprete si no hay
-        // compilador Graal; opción 2 del perfil de rendimiento).
         "-Dpolyglot.engine.WarnInterpreterOnly=false",
-        // JVMCI: habilita el JIT de Truffle/GraalJS si la JVM trae el compilador Graal
-        // (p. ej. corriendo sobre GraalVM JDK). En un JDK sin compilador Graal no acelera
-        // (sigue en intérprete) pero es inofensivo. Inofensivo también si el JVM lo ignora.
         "-XX:+UnlockExperimentalVMOptions",
         "-XX:+EnableJVMCI",
-        // Skiko: render en GPU (Direct3D) pero con caché de recursos acotada (default ilimitada).
         "-Dskiko.gpu.resourceCacheLimit=32M",
-//        "-Dskiko.buffering=DOUBLE",
-//        "-Dskiko.vsync.enabled=true",
     )
 
 
     nativeDistributions {
-        // El AOT cache del JDK 25 (JEP 483) tiene un límite fijo de tamaño de la región 'ro'
-        // (~40 MB); con el volumen de clases actual la app se desborda por pocos KB al
-        // escribir app.aot ("Unable to allocate from 'ro' region", sin flag para agrandarlo).
-        // Desactivado: además falla en CI ("An error has occurred while writing the shared archive file").
-        enableAotCache = false
+        enableAotCache = true
         appName = "PaltaSound"
         packageName = "PaltaSound"
         packageVersion = "0.8.2"
         vendor = "Tarma"
         homepage = "https://github.com/AndresTarma1/PaltaSound"
-        // Nsis (no Exe): el updater selecciona el instalador .exe filtrando por el sufijo
-        // "-nsis." del nombre del artefacto, y el plugin solo añade ese sufijo para el target
-        // Nsis/NsisWeb/Portable. Ambos generan el mismo instalador electron-builder "nsis".
+
         targetFormats(TargetFormat.Nsis, TargetFormat.Deb, TargetFormat.Rpm)
 
         windows {
             upgradeUuid = "4A2F8B6C-1D3E-4F5A-B7C8-9D0E1F2A3B4C"
             menu = true
-            perUserInstall = true
             iconFile.set(project.file("src/icons/PaltaSound.ico"))
             // NSIS (EXE): instalador asistido con página de licencia GPL-3.0 y elección de carpeta.
             nsis {
                 oneClick = false
                 allowToChangeInstallationDirectory = true
                 license = rootProject.file("LICENSE")
+                perMachine = true
             }
         }
 
