@@ -92,19 +92,48 @@ fun parseCookieString(cookie: String): Map<String, String> =
         .toMap()
 
 fun String.parseTime(): Int? {
+    val text = trim()
+    if (text.isEmpty()) return null
+
+    // Human formats YTM uses for podcasts / long content: "45 min", "1 h 30 min", "1,5 h"
+    parseHumanDuration(text)?.let { return it }
+
     try {
         // YouTube Music returns duration with locale-dependent separators
         // (":" en-US, "." some locales, "," EU). Accept all.
-        val parts = split(Regex("[:.,]")).map { it.toInt() }
+        val parts = text.split(Regex("[:.,]")).map { it.trim().toInt() }
         if (parts.size == 2) {
             return parts[0] * 60 + parts[1]
         }
         if (parts.size == 3) {
             return parts[0] * 3600 + parts[1] * 60 + parts[2]
         }
-    } catch (e: Exception) {
-        return null
+    } catch (_: Exception) {
+        // not a clock-style duration — fall through
     }
+    return null
+}
+
+private fun parseHumanDuration(text: String): Int? {
+    // "1 h 30 min" / "1 hr 20 minutes" / "2 horas 15 min"
+    val hoursPattern = Regex(
+        """(?i)(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours|hora|horas)\s*(?:(\d+)\s*(?:m|min|mins|minute|minutes|minuto|minutos))?"""
+    )
+    hoursPattern.find(text)?.let { match ->
+        val hours = match.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return@let
+        val minutes = match.groupValues[2].toIntOrNull() ?: 0
+        return (hours * 3600.0).toInt() + minutes * 60
+    }
+
+    // "45 min" / "90 minutes" / "45 minutos"
+    val minutesPattern = Regex(
+        """(?i)(\d+(?:[.,]\d+)?)\s*(?:m|min|mins|minute|minutes|minuto|minutos)\b"""
+    )
+    minutesPattern.find(text)?.let { match ->
+        val minutes = match.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return@let
+        return (minutes * 60.0).toInt()
+    }
+
     return null
 }
 

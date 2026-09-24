@@ -12,10 +12,14 @@ fun calculateTotalDuration(songs: List<SongItem>): String {
         else -> "< 1 min"
     }
 }
-
 fun formatDuration(seconds: Int): String {
-    val minutes = seconds / 60
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
     val remainingSeconds = seconds % 60
-    return "$minutes:${remainingSeconds.toString().padStart(2, '0')}"
+    return if (hours > 0) {
+        "$hours:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}"
+    } else {
+        "$minutes:${remainingSeconds.toString().padStart(2, '0')}"
+    }
 }
 

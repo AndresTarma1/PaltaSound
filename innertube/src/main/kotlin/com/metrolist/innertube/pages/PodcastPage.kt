@@ -6,6 +6,7 @@ import com.metrolist.innertube.models.EpisodeItem
 import com.metrolist.innertube.models.MusicMultiRowListItemRenderer
 import com.metrolist.innertube.models.MusicResponsiveListItemRenderer
 import com.metrolist.innertube.models.PodcastItem
+import com.metrolist.innertube.models.Run
 import com.metrolist.innertube.models.splitBySeparator
 import com.metrolist.innertube.utils.parseTime
 
@@ -16,11 +17,25 @@ data class PodcastPage(
     val isChannelSubscribed: Boolean = false,
 ) {
     companion object {
+        /**
+         * Scans every •-separated group until one parses as a duration.
+         * Podcast episodes don't always put the clock in the last group
+         * (it can live in secondSubtitle/secondarySubtitle, or after a date).
+         */
+        private fun findDuration(vararg groupLists: List<List<Run>>?): Int? =
+            groupLists.firstNotNullOfOrNull { groups ->
+                groups?.firstNotNullOfOrNull { group ->
+                    group.firstOrNull()?.text?.parseTime()
+                }
+            }
+
         fun fromMusicMultiRowListItemRenderer(
             renderer: MusicMultiRowListItemRenderer,
             podcast: PodcastItem? = null
         ): EpisodeItem? {
-            val subtitleRuns = renderer.subtitle?.runs?.splitBySeparator()
+            val subtitleGroups = renderer.subtitle?.runs?.splitBySeparator()
+            val secondSubtitleGroups = renderer.secondSubtitle?.runs?.splitBySeparator()
+            val secondarySubtitleGroups = renderer.secondarySubtitle?.runs?.splitBySeparator()
             val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
             return EpisodeItem(
@@ -30,8 +45,8 @@ data class PodcastPage(
                 podcast = podcast?.let {
                     Album(name = it.title, id = it.id)
                 },
-                duration = subtitleRuns?.lastOrNull()?.firstOrNull()?.text?.parseTime(),
-                publishDateText = subtitleRuns?.firstOrNull()?.firstOrNull()?.text,
+                duration = findDuration(subtitleGroups, secondSubtitleGroups, secondarySubtitleGroups),
+                publishDateText = subtitleGroups?.firstOrNull()?.firstOrNull()?.text,
                 thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
                 explicit = false,
                 endpoint = renderer.onTap.watchEndpoint,
@@ -44,12 +59,19 @@ data class PodcastPage(
             renderer: MusicResponsiveListItemRenderer,
             podcast: PodcastItem? = null
         ): EpisodeItem? {
-            val secondaryLineRuns = renderer.flexColumns
+            val secondaryLineGroups = renderer.flexColumns
                 .getOrNull(1)
                 ?.musicResponsiveListItemFlexColumnRenderer
                 ?.text
                 ?.runs
                 ?.splitBySeparator()
+            val fixedDuration = renderer.fixedColumns?.firstOrNull()
+                ?.musicResponsiveListItemFlexColumnRenderer
+                ?.text
+                ?.runs
+                ?.firstOrNull()
+                ?.text
+                ?.parseTime()
             val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
             return EpisodeItem(
@@ -57,7 +79,7 @@ data class PodcastPage(
                 title = renderer.flexColumns.firstOrNull()
                     ?.musicResponsiveListItemFlexColumnRenderer?.text
                     ?.runs?.firstOrNull()?.text ?: return null,
-                author = podcast?.author ?: secondaryLineRuns?.firstOrNull()?.firstOrNull()?.let {
+                author = podcast?.author ?: secondaryLineGroups?.firstOrNull()?.firstOrNull()?.let {
                     Artist(
                         name = it.text,
                         id = it.navigationEndpoint?.browseEndpoint?.browseId,
@@ -66,8 +88,8 @@ data class PodcastPage(
                 podcast = podcast?.let {
                     Album(name = it.title, id = it.id)
                 },
-                duration = secondaryLineRuns?.lastOrNull()?.firstOrNull()?.text?.parseTime(),
-                publishDateText = secondaryLineRuns?.getOrNull(1)?.firstOrNull()?.text,
+                duration = fixedDuration ?: findDuration(secondaryLineGroups),
+                publishDateText = secondaryLineGroups?.getOrNull(1)?.firstOrNull()?.text,
                 thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
                 explicit = renderer.badges?.find {
                     it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
