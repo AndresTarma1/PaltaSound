@@ -49,6 +49,9 @@ class NowPlayingSettingsViewModel(
     val queuePersistenceEnabled: StateFlow<Boolean> = preferencesRepository.queuePersistenceEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val nowPlayingAutoHide: StateFlow<Boolean> = preferencesRepository.nowPlayingAutoHide
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     fun setHighResCoverArt(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setHighResCoverArt(enabled) }
     }
@@ -83,6 +86,10 @@ class NowPlayingSettingsViewModel(
 
     fun setQueuePersistenceEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setQueuePersistenceEnabled(enabled) }
+    }
+
+    fun setNowPlayingAutoHide(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setNowPlayingAutoHide(enabled) }
     }
 
     fun setNowPlayingDesign(design: NowPlayingDesign) {

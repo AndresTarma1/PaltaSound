@@ -409,6 +409,7 @@ fun PlayerVolumeVertical(
     modifier: Modifier = Modifier,
     trackHeight: Dp = 120.dp,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
+    onBusyChange: ((Boolean) -> Unit)? = null,
 ) {
     val volume by playerViewModel.volume.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
@@ -419,6 +420,10 @@ fun PlayerVolumeVertical(
     var isPopupHovered by remember { mutableStateOf(false) }
     var isDragging by remember { mutableStateOf(false) }
     var showPopup by remember { mutableStateOf(false) }
+
+    // El popup abierto (o el arrastre) mantiene despierto el auto-hide de Now Playing
+    LaunchedEffect(showPopup) { onBusyChange?.invoke(showPopup) }
+    DisposableEffect(Unit) { onDispose { onBusyChange?.invoke(false) } }
 
     // Periodo de gracia para evitar desvanecimientos repentinos al mover el puntero entre botón y popup
     LaunchedEffect(isButtonHovered, isPopupHovered, isDragging) {

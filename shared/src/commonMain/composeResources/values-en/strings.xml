@@ -108,6 +108,8 @@
     <string name="queue_persistence_subtitle">Restore the playback queue on the next session</string>
     <string name="high_res_artwork">High resolution artwork</string>
     <string name="high_res_artwork_subtitle">Load high-resolution cover images (if available)</string>
+    <string name="now_playing_auto_hide">Auto-hide controls</string>
+    <string name="now_playing_auto_hide_subtitle">They hide when the mouse stops moving and come back when it moves</string>
     <string name="now_playing_background">Player background style</string>
     <string name="show_images">Show images</string>
     <string name="show_images_subtitle">Display cover images</string>

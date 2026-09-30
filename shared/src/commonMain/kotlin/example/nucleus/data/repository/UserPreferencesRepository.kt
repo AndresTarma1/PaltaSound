@@ -181,6 +181,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val SELECTED_FONT = stringPreferencesKey("selected_font")
         val PREFERENCES_MIGRATION_VERSION = intPreferencesKey("preferences_migration_version")
         val ANIMATIONS_ENABLED = booleanPreferencesKey("animations_enabled")
+        val NOW_PLAYING_AUTO_HIDE = booleanPreferencesKey("now_playing_auto_hide")
         val TASKBAR_WIDGET_ENABLED = booleanPreferencesKey("taskbar_widget_enabled")
         val LOUDNESS_LEVEL = stringPreferencesKey("loudness_level")
         val SAVED_QUEUE = stringPreferencesKey("saved_queue")
@@ -218,6 +219,14 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setAnimationsEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.ANIMATIONS_ENABLED] = enabled }
+    }
+
+    /** Ocultar automáticamente el cromo de Now Playing (barra, progreso, transporte,
+     *  volumen) al dejar de mover el ratón; reaparece con el primer movimiento. */
+    val nowPlayingAutoHide: Flow<Boolean> = dataStore.data.map { it[PreferencesKeys.NOW_PLAYING_AUTO_HIDE] ?: true }
+
+    suspend fun setNowPlayingAutoHide(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.NOW_PLAYING_AUTO_HIDE] = enabled }
     }
 
     /** Widget del reproductor en la barra de tareas de Windows (SMTC). */

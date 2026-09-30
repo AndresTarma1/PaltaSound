@@ -10,6 +10,7 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -31,6 +32,7 @@ fun NowPlayingSettingsGroup() {
     val highResCover by viewModel.highResCoverArt.collectAsState()
     val imagesEnabled by viewModel.imagesEnabled.collectAsState()
     val crossfadeEnabled by viewModel.crossfadeEnabled.collectAsState()
+    val autoHideEnabled by viewModel.nowPlayingAutoHide.collectAsState()
 
     val lyricsTextSize by viewModel.lyricsTextSize.collectAsState()
     val lyricsLineSpacing by viewModel.lyricsLineSpacing.collectAsState()
@@ -43,7 +45,7 @@ fun NowPlayingSettingsGroup() {
     var showSpacingDropdown by remember { mutableStateOf(false) }
     var showOffsetDropdown by remember { mutableStateOf(false) }
 
-    val itemCount = 7
+    val itemCount = 8
     var idx = 0
 
     SettingsGroup(
@@ -81,6 +83,15 @@ fun NowPlayingSettingsGroup() {
             colors = colors,
             state = crossfadeEnabled,
             onCheckedChange = { viewModel.setCrossfadeEnabled(it) }
+        )
+        SettingsSwitch(
+            icon = { Icon(Icons.Rounded.Visibility, null) },
+            title = { Text(stringResource(Res.string.now_playing_auto_hide)) },
+            subtitle = { Text(stringResource(Res.string.now_playing_auto_hide_subtitle)) },
+            shapes = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
+            colors = colors,
+            state = autoHideEnabled,
+            onCheckedChange = { viewModel.setNowPlayingAutoHide(it) }
         )
         DropdownSelector(
             label = stringResource(Res.string.lyrics_animation_style),

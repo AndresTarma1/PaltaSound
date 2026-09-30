@@ -110,6 +110,8 @@
     <string name="queue_persistence_subtitle">Restaurar la cola de reproducción en la próxima sesión</string>
     <string name="high_res_artwork">Carátulas en alta resolución</string>
     <string name="high_res_artwork_subtitle">Cargar imágenes de portada en alta resolución (si está disponible)</string>
+    <string name="now_playing_auto_hide">Ocultar controles automáticamente</string>
+    <string name="now_playing_auto_hide_subtitle">Se ocultan al dejar de mover el ratón y vuelven al moverlo</string>
     <string name="now_playing_background">Estilo del fondo del reproductor</string>
     <string name="show_images">Mostrar imágenes</string>
     <string name="show_images_subtitle">Mostrar imágenes de portada</string>

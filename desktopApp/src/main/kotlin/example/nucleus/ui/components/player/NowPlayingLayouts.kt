@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalComposeUiApi::class)
 
 package example.nucleus.ui.components.player
 
@@ -6,6 +6,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -23,12 +25,17 @@ import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -49,10 +56,156 @@ import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.utils.LocalUserPreferences
 import example.nucleus.viewmodels.PlayerUiState
 import example.nucleus.viewmodels.QueueSource
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.modifier.onHover
 
 enum class NowPlayingTab { LYRICS, QUEUE, INFO }
+
+/** Espera (ms) sin actividad del puntero antes de que el cromo de Now Playing se oculte. */
+private const val AUTO_HIDE_REST_MS = 1_500L
+
+/**
+ * Estado del auto-hide del cromo de Now Playing (barra superior, progreso, transporte,
+ * volumen y botón de colapso), inspirado en Sonora.
+ *
+ * `hidden` va de 0 (visible) a 1 (oculto). El cromo permanece despierto mientras el
+ * puntero esté sobre alguno de sus elementos (`topBarHover`/`chromeHover`), mientras el
+ * popup de volumen esté abierto (`volumePopup`), mientras haya un botón del ratón
+ * presionado (`pointerDown`, cubre seeks y reordenados lentos) o mientras corran menús
+ * locales. Cualquier movimiento/press/scroll hace `wake()`; hasta que eso no ocurre
+ * una vez, el cromo nunca se oculta (al abrir Now Playing permanece visible).
+ */
+@Stable
+internal class NowPlayingAutoHide {
+    var lastActiveNanos by mutableStateOf(System.nanoTime())
+        private set
+    var interacted by mutableStateOf(false)
+        private set
+    var topBarHover by mutableStateOf(false)
+    var chromeHover by mutableStateOf(false)
+    var volumePopup by mutableStateOf(false)
+    var pointerDown by mutableStateOf(false)
+
+    val busy: Boolean
+        get() = topBarHover || chromeHover || volumePopup || pointerDown
+
+    val hidden = Animatable(0f)
+
+    fun wake() {
+        lastActiveNanos = System.nanoTime()
+        interacted = true
+    }
+}
+
+/**
+ * Motor del auto-hide: cada 100 ms decide si el cromo debe ocultarse y anima `hidden`
+ * con un muelle (o snap si las animaciones están desactivadas). `extraBusy` cubre
+ * overlays locales (menú de la barra, ecualizador).
+ */
+@Composable
+private fun NowPlayingAutoHideDriver(
+    autoHide: NowPlayingAutoHide,
+    enabled: Boolean,
+    extraBusy: () -> Boolean,
+) {
+    val scope = rememberCoroutineScope()
+    val animationsEnabled = LocalAnimationsEnabled.current
+
+    LaunchedEffect(enabled, animationsEnabled) {
+        var target = 0f
+        while (true) {
+            val idleMs = (System.nanoTime() - autoHide.lastActiveNanos) / 1_000_000
+            val next =
+                if (enabled && autoHide.interacted && !autoHide.busy && !extraBusy() &&
+                    idleMs >= AUTO_HIDE_REST_MS
+                ) {
+                    1f
+                } else {
+                    0f
+                }
+            if (next != target) {
+                target = next
+                if (animationsEnabled) {
+                    // En un scope aparte para no bloquear el tick: cada animateTo sobre el
+                    // mismo Animatable cancela al anterior, así el wake corta el hundimiento.
+                    scope.launch {
+                        autoHide.hidden.animateTo(
+                            targetValue = next,
+                            animationSpec = spring(
+                                dampingRatio = 0.86f,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                        )
+                    }
+                } else {
+                    autoHide.hidden.snapTo(next)
+                }
+            }
+            delay(100)
+        }
+    }
+}
+
+/**
+ * Croma auto-ocultable: se desvanece y se hunde (o sube, con `sink` negativo) según
+ * `autoHide.hidden`. Mientras está oculto bloquea los punteros con botón presionado para
+ * que no se pulse a ciegas; mover el ratón lo devuelve en ≤100 ms.
+ */
+private fun Modifier.autoHideChrome(
+    autoHide: NowPlayingAutoHide,
+    sink: Dp,
+): Modifier = this
+    .graphicsLayer {
+        val h = autoHide.hidden.value
+        alpha = 1f - h
+        translationY = h * sink.toPx()
+    }
+    .pointerInput(autoHide) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                if (autoHide.hidden.value > 0.5f) {
+                    event.changes.forEach { change ->
+                        if (change.pressed) change.consume()
+                    }
+                }
+            }
+        }
+    }
+
+/**
+ * Re-escala la carátula solo en el compositor mientras el cromo se oculta (estilo Sonora,
+ * fullscreen.rs:1082): el layout en Dp queda fijo y `graphicsLayer` crece el raster hasta
+ * `restScale`, centrado. Cero reflow, y la capa solo se invalida al cambiar `hidden`.
+ */
+private fun Modifier.autoHideCoverGrow(
+    autoHide: NowPlayingAutoHide,
+    restScale: Float,
+): Modifier = graphicsLayer {
+    val scale = 1f + (restScale - 1f) * autoHide.hidden.value
+    scaleX = scale
+    scaleY = scale
+}
+
+/**
+ * Empuja los metadatos lo que la carátula desborda al crecer (crece centrada: overflow/2
+ * por lado) para que el hueco visual entre carátula y detalles no se cierre. En modo
+ * compacto los detalles están a la derecha, así que el empuje es horizontal.
+ */
+private fun Modifier.autoHideCoverLift(
+    autoHide: NowPlayingAutoHide,
+    lift: Dp,
+    horizontal: Boolean = false,
+): Modifier = graphicsLayer {
+    val offset = lift.toPx() * autoHide.hidden.value
+    if (horizontal) {
+        translationX = offset
+    } else {
+        translationY = offset
+    }
+}
 
 /**
  * Animación de entrada para la carátula en Now Playing: escala y desvanecimiento suaves.
@@ -103,7 +256,35 @@ fun NowPlayingLayout(
     val bottomInset = LocalMiniPlayerInset.current
     val queueCount = state.queue.size
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    // Auto-hide del cromo (barra, progreso, transporte, volumen, colapso)
+    val autoHideEnabled by preferencesRepo.nowPlayingAutoHide.collectAsState(initial = true)
+    val autoHide = remember { NowPlayingAutoHide() }
+    NowPlayingAutoHideDriver(
+        autoHide = autoHide,
+        enabled = autoHideEnabled,
+        extraBusy = { showMenu || showEqualizer },
+    )
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            // Cualquier actividad del puntero mantiene/repierte el cromo.
+            .onPointerEvent(PointerEventType.Move) { autoHide.wake() }
+            .onPointerEvent(PointerEventType.Press) {
+                autoHide.wake()
+                autoHide.pointerDown = true
+            }
+            .onPointerEvent(PointerEventType.Release) {
+                autoHide.pointerDown = false
+                autoHide.wake()
+            }
+            .onPointerEvent(PointerEventType.Exit) {
+                // El release puede caer fuera de la ventana (popup encima):
+                // no quedarse con el botón "abajo" y el cromo visible para siempre.
+                autoHide.pointerDown = false
+            }
+            .onPointerEvent(PointerEventType.Scroll) { autoHide.wake() },
+    ) {
         val isCompact = maxWidth < 640.dp || maxHeight < 400.dp
         val screenWidth = maxWidth
 
@@ -122,7 +303,9 @@ fun NowPlayingLayout(
                 compact = isCompact,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 8.dp),
+                    .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 8.dp)
+                    .autoHideChrome(autoHide, sink = (-14).dp)
+                    .onHover { autoHide.topBarHover = it },
             )
 
             Box(
@@ -142,6 +325,7 @@ fun NowPlayingLayout(
                     screenWidth = screenWidth,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
+                    autoHide = autoHide,
                 )
 
                 // Colapsar (volver) — el mini player está oculto en Now Playing
@@ -151,6 +335,8 @@ fun NowPlayingLayout(
                         .align(Alignment.BottomEnd)
                         .padding(end = 12.dp, bottom = 8.dp)
                         .size(40.dp)
+                        .autoHideChrome(autoHide, sink = 16.dp)
+                        .onHover { autoHide.chromeHover = it }
                         .pointerHoverIcon(PointerIcon.Hand),
                 ) {
                     Icon(
@@ -337,6 +523,7 @@ private fun SpaciousNowPlayingBody(
     screenWidth: Dp,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
+    autoHide: NowPlayingAutoHide,
 ) {
     val (coverScale, coverAlpha) = rememberCoverEnter()
     // En modo compacto el volumen va horizontal y solo cabe si hay ancho suficiente
@@ -361,7 +548,8 @@ private fun SpaciousNowPlayingBody(
                     modifier = Modifier
                         .size(104.dp)
                         .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                        .coverEnter(coverScale, coverAlpha),
+                        .coverEnter(coverScale, coverAlpha)
+                        .autoHideCoverGrow(autoHide, restScale = 1.12f),
                 )
                 NowPlayingSongDetails(
                     state = state,
@@ -370,13 +558,18 @@ private fun SpaciousNowPlayingBody(
                     onNavigate = onNavigate,
                     onCollapse = onCollapse,
                     compact = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .autoHideCoverLift(autoHide, lift = 6.24.dp, horizontal = true),
                 )
             }
 
             // Controles (el mini player está oculto en Now Playing)
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .autoHideChrome(autoHide, sink = 18.dp)
+                    .onHover { autoHide.chromeHover = it },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -450,6 +643,17 @@ private fun SpaciousNowPlayingBody(
                         360.dp,
                     ).coerceAtLeast(96.dp)
 
+                    // Carátula en reposo: con los controles ocultos el reserve baja de 170
+                    // a ~96dp, así que puede crecer (Sonora fullscreen.rs:1082) sin reflow —
+                    // solo se re-escala el raster y se compensa el desbordamiento en los detalles.
+                    val coverRest = minOf(
+                        maxWidth * 0.92f,
+                        maxHeight - 96.dp,
+                        440.dp,
+                    ).coerceAtLeast(coverDimension)
+                    val coverRestScale = (coverRest / coverDimension).coerceAtMost(1.25f)
+                    val coverLift = coverDimension * (coverRestScale - 1f) / 2f
+
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -460,7 +664,8 @@ private fun SpaciousNowPlayingBody(
                             modifier = Modifier
                                 .size(coverDimension)
                                 .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                                .coverEnter(coverScale, coverAlpha),
+                                .coverEnter(coverScale, coverAlpha)
+                                .autoHideCoverGrow(autoHide, coverRestScale),
                         )
 
                         NowPlayingSongDetails(
@@ -473,7 +678,8 @@ private fun SpaciousNowPlayingBody(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .widthIn(max = 440.dp)
-                                .padding(horizontal = 8.dp),
+                                .padding(horizontal = 8.dp)
+                                .autoHideCoverLift(autoHide, coverLift),
                         )
                     }
                 }
@@ -483,7 +689,9 @@ private fun SpaciousNowPlayingBody(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 460.dp)
-                        .padding(top = 8.dp),
+                        .padding(top = 8.dp)
+                        .autoHideChrome(autoHide, sink = 18.dp)
+                        .onHover { autoHide.chromeHover = it },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -494,7 +702,11 @@ private fun SpaciousNowPlayingBody(
 
             // Volumen vertical estilo pista al borde inferior derecho del panel
             PlayerVolumeVertical(
-                modifier = Modifier.padding(end = 4.dp, bottom = 12.dp),
+                modifier = Modifier
+                    .padding(end = 4.dp, bottom = 12.dp)
+                    .autoHideChrome(autoHide, sink = 18.dp)
+                    .onHover { autoHide.chromeHover = it },
+                onBusyChange = { autoHide.volumePopup = it },
             )
         }
 
