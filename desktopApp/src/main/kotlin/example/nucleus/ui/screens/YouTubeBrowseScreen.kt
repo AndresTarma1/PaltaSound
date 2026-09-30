@@ -25,7 +25,9 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import example.nucleus.navigation.Route
+import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.components.SectionSkeleton
+import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
 import example.nucleus.ui.screens.shared.SectionGridItem
@@ -179,12 +181,11 @@ private fun BrowseSection(
 
     val playerViewModel = LocalPlayerViewModel.current
 
-    Column(modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) {
+    Column(modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)) {
         section.title?.let { title ->
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMediumEmphasized,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            SectionHeaderRow(
+                title = title,
+                modifier = Modifier.padding(bottom = 6.dp),
             )
         }
 
@@ -192,8 +193,8 @@ private fun BrowseSection(
         HorizontalScrollableRow(
             modifier = Modifier.fillMaxWidth(),
             state = scrollState,
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(
                 count = section.items.size,

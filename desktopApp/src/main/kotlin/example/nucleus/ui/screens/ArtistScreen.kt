@@ -188,13 +188,9 @@ private fun ArtistScreenContent(
                         .padding(vertical = 10.dp)
                 ) {
 
-                    Text(
-                        text = section.title,
-                        style = MaterialTheme.typography.headlineSmallEmphasized,
-                        modifier = Modifier.padding(
-                            horizontal = AppScreenContentHorizontal,
-                            vertical = 4.dp,
-                        ),
+                    SectionHeaderRow(
+                        title = section.title,
+                        modifier = Modifier.padding(bottom = 6.dp),
                     )
 
                     if (index == 0) {

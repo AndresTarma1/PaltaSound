@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import example.nucleus.db.entities.SearchHistoryEntry
 import example.nucleus.navigation.Route
 import example.nucleus.ui.components.ExpressiveEmptyState
+import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.components.layout.AppScrollbarGutter
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
@@ -307,22 +308,12 @@ fun SearchSection(
             if (query.isEmpty()) {
                 if (searchHistory.isNotEmpty()) {
                     item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(end = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            SectionHeader(stringResource(Res.string.recent_searches))
-                            Text(
-                                text = stringResource(Res.string.clear_all),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { onClearHistory() }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
+                        SectionHeaderRow(
+                            title = stringResource(Res.string.recent_searches),
+                            actionLabel = stringResource(Res.string.clear_all),
+                            onAction = onClearHistory,
+                            modifier = Modifier.padding(end = 12.dp),
+                        )
                     }
 
                     items(searchHistory, key = { it.query }) { entry ->
@@ -336,11 +327,11 @@ fun SearchSection(
                         )
                     }
                 } else {
-                    item { SectionHeader(stringResource(Res.string.recent_searches)) }
+                    item { SectionHeaderRow(title = stringResource(Res.string.recent_searches)) }
                     item { EmptyStateText() }
                 }
             } else {
-                item { SectionHeader(stringResource(Res.string.suggestions_title)) }
+                item { SectionHeaderRow(title = stringResource(Res.string.suggestions_title)) }
 
                 items(suggestions.take(8), key = { it }) { suggestion ->
                     SuggestionListItem(
@@ -370,8 +361,16 @@ fun SearchSection(
     }
 }
 
+/**
+ * Antetitulo en mayusculas para **agrupar** resultados dentro de una pantalla.
+ *
+ * No es lo mismo que [SectionHeaderRow]: aqui el texto no titula un bloque con
+ * contenido propio (esas cabeceras usan el componente compartido), sino que separa
+ * grupos de resultados. Por eso va en `primary` y en versalitas, para no competir
+ * con los titulos reales.
+ */
 @Composable
-private fun SectionHeader(title: String) {
+private fun EyebrowHeader(title: String) {
     Text(
         text = title.uppercase(),
         style = MaterialTheme.typography.labelLargeEmphasized.copy(
@@ -625,7 +624,7 @@ fun ResultsList(
                         } else {
                             summaries.forEachIndexed { index, summary ->
                                 item(key = "header_$index") {
-                                    SectionHeader(summary.title)
+                                    EyebrowHeader(summary.title)
                                 }
                                 items(
                                     items = summary.items,

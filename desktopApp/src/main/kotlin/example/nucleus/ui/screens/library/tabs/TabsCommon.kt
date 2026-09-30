@@ -21,15 +21,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -38,58 +35,38 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.ExpressiveEmptyState
+import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.utils.LocalAnimationsEnabled
 
+/**
+ * Cabecera de las secciones de la biblioteca. Ambas delegan en [SectionHeaderRow], el
+ * componente compartido con el resto de pantallas de exploración; aquí solo aportan el
+ * icono de origen y, en el caso de YouTube Music, el spinner de carga.
+ */
 @Composable
 internal fun YtmSectionHeader(title: String, isLoading: Boolean = false) {
-    androidx.compose.foundation.layout.Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(
-            Icons.Default.CloudDone,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            title,
-            style = MaterialTheme.typography.labelLargeEmphasized,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.weight(1f)
-        )
-        if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 1.5.dp)
-        }
-    }
+    SectionHeaderRow(
+        title = title,
+        icon = Icons.Default.CloudDone,
+        modifier = Modifier.padding(vertical = 6.dp),
+        trailing = {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 1.5.dp)
+            }
+        },
+    )
 }
 
 @Composable
 internal fun LocalSectionHeader(title: String) {
-    androidx.compose.foundation.layout.Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(
-            Icons.Default.PhoneAndroid,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            title,
-            style = MaterialTheme.typography.labelLargeEmphasized,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    SectionHeaderRow(
+        title = title,
+        icon = Icons.Default.PhoneAndroid,
+        iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(vertical = 6.dp),
+    )
 }
 
 @Composable
