@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -165,11 +164,16 @@ fun YouTubeGridItem(
 
     val coverScale by animateDesktopPressScale(pressed = isPressed, hovered = isHovered)
 
-    // Scrim y acciones de portada se abren con fade; el boton de opciones no (ver mas abajo).
+    // Scrim y acciones de portada se abren con fade al pasar el raton por el item.
     val scrimAlpha by animateFloatAsState(
         targetValue = if (isHovered) 0.30f else 0f,
         animationSpec = expressiveFadeTween(),
         label = "gridScrim",
+    )
+    val actionAlpha by animateFloatAsState(
+        targetValue = if (isHovered) 1f else 0f,
+        animationSpec = expressiveFadeTween(),
+        label = "gridActions",
     )
     val playAlpha by animateFloatAsState(
         targetValue = if (isHovered && centerPlayVisible) 1f else 0f,
@@ -243,17 +247,18 @@ fun YouTubeGridItem(
                 }
 
                 if (onContextMenuAction != null) {
-                    // Siempre visible: el menu de opciones de un item no debe depender de
-                    // acertar el raton encima para existir (igual que en las filas de lista).
+                    // Como el play: solo con el raton sobre el item, para no saturar la
+                    // rejilla de iconos en reposo.
                     HoverCornerActionButton(
                         icon = Icons.Rounded.MoreVert,
                         contentDescription = stringResource(Res.string.options),
                         onClick = { onMoreClick?.invoke() ?: openMenuFromButton() },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(6.dp),
+                            .padding(6.dp)
+                            .alpha(actionAlpha),
                         buttonModifier = menuButtonModifier.pointerHoverIcon(PointerIcon.Hand),
-                        visible = true,
+                        visible = isHovered,
                         onButtonHoverChange = { if (it) isHovered = true }
                     )
                 }
@@ -700,31 +705,35 @@ fun YoutubeListItem(
             },
             trailingContent = {
                 if (item is SongItem || isEpisodeItem || isCollectionItem) {
-                    // Tonal en vez de IconButton pelado: el "mas" deja de perderse al final
-                    // de la fila. Aparece con el hover del item, no de forma permanente, para
-                    // no ensuciar la columna en reposo.
-                    val menuAlpha by animateFloatAsState(
-                        targetValue = if (isHovered) 1f else 0f,
+                    // El icono se ve siempre; solo el fondo tonal aparece cuando el raton
+                    // esta sobre el, no sobre la fila entera.
+                    var isButtonHovered by remember { mutableStateOf(false) }
+                    val bgAlpha by animateFloatAsState(
+                        targetValue = if (isButtonHovered) 1f else 0f,
                         animationSpec = expressiveFadeTween(),
-                        label = "rowMenuAlpha",
+                        label = "rowMenuBg",
                     )
-                    Box(modifier = Modifier.alpha(menuAlpha)) {
-                        FilledTonalIconButton(
-                            onClick = {
-                                showMenu = true
-                            },
-                            // Con alpha 0 el boton seguiria siendo pulsable (alpha no afecta
-                            // al hit-test), lo que dejaria una trampa invisible.
-                            enabled = menuAlpha > 0.01f,
-                            modifier = Modifier.size(36.dp),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
+                    Box(
+                        modifier = Modifier.size(36.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .alpha(bgAlpha)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        )
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .onHover { isButtonHovered = it },
                         ) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = stringResource(Res.string.more_options),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp),
                             )
                         }
