@@ -110,23 +110,35 @@ fun <T> uiSpring(
  * reduce-motion. Para dar a un componente el ritmo del sistema en vez de una curva elegida
  * a mano. Los helpers de arriba son la vía del chrome propio, que busca "sin rebote";
  * este es el de los componentes M3 que ya traen el suyo.
+ *
+ * @param fast Ritmo `fastSpatialSpec`: menús y elementos que aparecen de golpe.
+ * @param slow Ritmo `slowSpatialSpec`: algo que entra con calma desde el fondo.
  */
 @Composable
-fun <T> rememberUiSpatialSpec(slow: Boolean = false): FiniteAnimationSpec<T> {
+fun <T> rememberUiSpatialSpec(fast: Boolean = false, slow: Boolean = false): FiniteAnimationSpec<T> {
     val enabled = LocalAnimationsEnabled.current
     return if (!enabled) {
         snap()
     } else {
         val scheme = MaterialTheme.motionScheme
-        if (slow) scheme.slowSpatialSpec() else scheme.defaultSpatialSpec()
+        when {
+            fast -> scheme.fastSpatialSpec()
+            slow -> scheme.slowSpatialSpec()
+            else -> scheme.defaultSpatialSpec()
+        }
     }
 }
 
-/** Spec de efectos oficial (color/size) de M3 Expressive, o [snap] con reduce-motion. */
+/**
+ * Spec de efectos oficial (color/size) de M3 Expressive, o [snap] con reduce-motion.
+ * @param fast Ritmo `fastEffectsSpec`, el que usan los menús para su alpha.
+ */
 @Composable
-fun <T> rememberUiEffectsSpec(): FiniteAnimationSpec<T> {
+fun <T> rememberUiEffectsSpec(fast: Boolean = false): FiniteAnimationSpec<T> {
     val enabled = LocalAnimationsEnabled.current
-    return if (enabled) MaterialTheme.motionScheme.defaultEffectsSpec() else snap()
+    return if (!enabled) snap() else MaterialTheme.motionScheme.let {
+        if (fast) it.fastEffectsSpec() else it.defaultEffectsSpec()
+    }
 }
 
 /**

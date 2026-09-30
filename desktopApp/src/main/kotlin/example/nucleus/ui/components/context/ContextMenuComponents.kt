@@ -1,10 +1,17 @@
 package example.nucleus.ui.components.context
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.rememberCursorPositionProvider
@@ -12,6 +19,8 @@ import example.nucleus.models.toMediaMetadata
 import example.nucleus.ui.components.song.AddToPlaylistDialog
 import example.nucleus.ui.helpers.rememberSongDownloadState
 import example.nucleus.ui.helpers.rememberSongLikedState
+import example.nucleus.ui.themes.rememberUiEffectsSpec
+import example.nucleus.ui.themes.rememberUiSpatialSpec
 import example.nucleus.utils.LocalDownloadViewModel
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.utils.LocalPlaylistsViewModel
@@ -26,9 +35,18 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 
+/** Escala del menu cerrado, el mismo valor que usa `DropdownMenu` de M3. */
+private const val MenuClosedScale = 0.8f
+
 /**
  * Wrapper compartido: posiciona un context menu en la posición del cursor.
  * Evita repetir el boilerplate de Popup/PopupProperties en cada menú.
+ *
+ * Anima con los mismos objetivos que `DropdownMenu` de M3 (escala 0.8 → 1 y alpha 0 → 1,
+ * con los specs del motionScheme). El detalle que faltaba era mantener el `Popup`
+ * montado mientras dura la salida — con un `if (!expanded) return` el menú se
+ * desmontaba de golpe en ambos sentidos, que es justo lo que se veía al abrir
+ * con el botón derecho.
  */
 @Composable
 private fun ContextMenuPopup(
@@ -36,14 +54,38 @@ private fun ContextMenuPopup(
     onDismiss: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    if (!expanded) return
+    val expandedState = remember { MutableTransitionState(false) }
+    expandedState.targetState = expanded
 
-    Popup(
-        onDismissRequest = onDismiss,
-        popupPositionProvider = rememberCursorPositionProvider(),
-        properties = PopupProperties(focusable = true),
-    ) {
-        content()
+    // Igual que DropdownMenuPopup: `currentState || targetState` mantiene vivo el Popup
+    // durante la transición de cierre, que es lo que permite animarla.
+    if (expandedState.currentState || expandedState.targetState) {
+        Popup(
+            onDismissRequest = onDismiss,
+            popupPositionProvider = rememberCursorPositionProvider(),
+            properties = PopupProperties(focusable = true),
+        ) {
+            val scaleSpec = rememberUiSpatialSpec<Float>(fast = true)
+            val alphaSpec = rememberUiEffectsSpec<Float>(fast = true)
+            // El menú crece desde el cursor (esquina superior izquierda), no desde su centro.
+            val origin = TransformOrigin(0f, 0f)
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(alphaSpec) + scaleIn(
+                    animationSpec = scaleSpec,
+                    initialScale = MenuClosedScale,
+                    transformOrigin = origin,
+                ),
+                exit = fadeOut(alphaSpec) + scaleOut(
+                    animationSpec = scaleSpec,
+                    targetScale = MenuClosedScale,
+                    transformOrigin = origin,
+                ),
+            ) {
+                content()
+            }
+        }
     }
 }
 

@@ -84,7 +84,7 @@ class ArtistManagerViewModel(
             val canPushRemote = channelId != null &&
                 AccountManager.isLoggedIn &&
                 userPreferences.ytmSyncEnabled.first()
-            if (canPushRemote && channelId != null) {
+            if (canPushRemote) {
                 retryWithBackoff { YouTube.subscribeChannel(channelId, subscribe = !wasSaved) }
                     .onFailure {
                         Napier.w("Failed to push subscribe state for $channelId: ${it.message}")
