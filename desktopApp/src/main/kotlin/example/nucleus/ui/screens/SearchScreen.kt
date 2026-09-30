@@ -55,6 +55,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -215,25 +216,13 @@ fun SearchScreen(
                 onClearHistory = actions.onClearHistory,
             )
 
-            val hasSearchResults = when (state.uiState) {
-                is SearchState.Success -> true
-                is SearchState.SummarySuccess -> true
-                else -> false
-            }
-
-            if (hasSearchResults) {
-                FilterRow(
-                    selectedFilter = state.filter,
-                    onFilterSelected = actions.onFilterChange,
-                )
-            }
 
             ResultsList(
                 uiState = state.uiState,
                 charts = state.charts,
                 explore = state.explore,
                 moodAndGenres = state.moodAndGenres,
-                showFilterRow = false,
+                showFilterRow = true,
                 filter = state.filter,
                 playerViewModel = playerViewModel,
                 onItemClick = { item -> onYTItemClick(item, actions.onNavigate, playerViewModel) },
@@ -369,9 +358,8 @@ fun SearchSection(
                             modifier = Modifier.fillMaxWidth().padding(32.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(
+                            CircularWavyProgressIndicator(
                                 modifier = Modifier.size(28.dp),
-                                strokeWidth = 3.dp,
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                             )
                         }
@@ -544,152 +532,155 @@ fun ResultsList(
     onFilterChange: (YouTube.SearchFilter?) -> Unit,
     onLoadMore: () -> Unit,
 ) {
-    val scrollable = rememberLazyListState()
+    val listState = rememberLazyListState()
 
-    val items = when (uiState) {
-        is SearchState.Success -> uiState.items
-        else -> emptyList()
+    // ---- Datos derivados (una sola vez por cambio de estado) ----
+    val items = remember(uiState) {
+        (uiState as? SearchState.Success)?.items.orEmpty().distinctBy { it.id }
     }
+    val summaries = remember(uiState) {
+        (uiState as? SearchState.SummarySuccess)?.summary?.summaries.orEmpty()
+    }
+    val hasItems = items.isNotEmpty() || summaries.isNotEmpty()
 
-    val summaries = when (uiState) {
-        is SearchState.SummarySuccess -> uiState.summary.summaries
-        else -> emptyList()
-    }
-
-    // Al cambiar de filtro o al llegar resultados de una búsqueda nueva, volver
-    // arriba: si no, se mantiene la posición del filtro anterior (bug reportado).
-    // Se clavea por el primer item para no resetear al paginar (load more añade
-    // al final y mantiene el primer id).
-    val contentKey = when (uiState) {
-        is SearchState.Success -> items.firstOrNull()?.id
-        is SearchState.SummarySuccess -> summaries.firstOrNull()?.items?.firstOrNull()?.id
-        else -> null
-    }
+    // ---- Volver arriba al cambiar de filtro o al llegar una búsqueda nueva ----
+    // Se clavea por el primer id para no resetear al paginar.
+    val contentKey = items.firstOrNull()?.id
+        ?: summaries.firstOrNull()?.items?.firstOrNull()?.id
     LaunchedEffect(filter, contentKey) {
-        scrollable.scrollToItem(0)
+        listState.scrollToItem(0)
     }
 
-    val shouldLoadMore = remember(uiState) {
+    // ---- Paginación ----
+    val currentState by rememberUpdatedState(uiState)
+    val currentOnLoadMore by rememberUpdatedState(onLoadMore)
+    val shouldLoadMore by remember {
         derivedStateOf {
-            if (uiState !is SearchState.Success) return@derivedStateOf false
+            val state = currentState
+            if (state !is SearchState.Success) return@derivedStateOf false
 
-            val layoutInfo = scrollable.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
 
-            lastVisibleItem >= totalItems - 3 &&
-                    !uiState.isLoadingMore &&
-                    uiState.continuation != null
+            lastVisible >= info.totalItemsCount - 3 &&
+                    !state.isLoadingMore &&
+                    state.continuation != null
         }
     }
-
-    LaunchedEffect(shouldLoadMore.value) {
-        if (shouldLoadMore.value) onLoadMore()
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) onLoadMore()
     }
 
-    when (uiState) {
-        is SearchState.Loading -> {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                item { ChipRowSkeleton() }
-                items(10) { SongSkeleton() }
-            }
+    // ---- UI ----
+    Column(Modifier.fillMaxSize()) {
+        // La fila de filtros queda fija: siempre se puede cambiar de filtro,
+        // incluso con "sin resultados" o con error.
+        if (showFilterRow && uiState !is SearchState.Idle) {
+            FilterRow(selectedFilter = filter, onFilterSelected = onFilterChange)
         }
 
-        is SearchState.Error -> {
-            EmptyStateView(
-                icon = Icons.Default.ErrorOutline,
-                message = stringResource(Res.string.something_went_wrong),
-            )
-        }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            when {
+                uiState is SearchState.Idle -> {
+                    SearchChartsContent(
+                        charts = charts,
+                        explore = explore,
+                        moodAndGenres = moodAndGenres,
+                        playerViewModel = playerViewModel,
+                        onItemClick = onItemClick,
+                        onMoodClick = onMoodClick,
+                    )
+                }
 
-        SearchState.Idle -> {
-            SearchChartsContent(
-                charts = charts,
-                explore = explore,
-                moodAndGenres = moodAndGenres,
-                playerViewModel = playerViewModel,
-                onItemClick = onItemClick,
-                onMoodClick = onMoodClick,
-            )
-        }
+                uiState is SearchState.Error -> {
+                    EmptyStateView(
+                        icon = Icons.Default.ErrorOutline,
+                        message = stringResource(Res.string.something_went_wrong),
+                    )
+                }
 
-        else -> {
-            val hasItems = when (uiState) {
-                is SearchState.Success -> items.isNotEmpty()
-                is SearchState.SummarySuccess -> summaries.isNotEmpty()
-            }
+                uiState !is SearchState.Loading && !hasItems -> {
+                    EmptyStateView(
+                        icon = Icons.Default.Search,
+                        message = stringResource(Res.string.no_results),
+                    )
+                }
 
-            if (!hasItems) {
-                EmptyStateView(
-                    icon = Icons.Default.Search,
-                    message = stringResource(Res.string.no_results),
-                )
-            } else {
-                Box(Modifier.fillMaxSize()) {
+                else -> {
+                    val isLoading = uiState is SearchState.Loading
+
+                    // Un solo LazyColumn para Loading y resultados: mismo padding,
+                    // sin saltos visuales al pasar de uno a otro.
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
+                        state = listState,
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        state = scrollable,
                         contentPadding = appScrollContentPadding(
                             end = AppScrollbarGutter + 4.dp,
                             bottom = LocalMiniPlayerInset.current,
                         ),
                     ) {
-                        if (showFilterRow) {
-                            item {
-                                FilterRow(selectedFilter = filter, onFilterSelected = onFilterChange)
-                            }
-                        }
-
-
-                        if (summaries.isNotEmpty()) {
-                            summaries.forEach { summary ->
-                                item(key = "header_${summary.title}") {
+                        if (isLoading) {
+                            items(10, key = { "skeleton_$it" }) { SongSkeleton() }
+                        } else {
+                            summaries.forEachIndexed { index, summary ->
+                                item(key = "header_$index") {
                                     SectionHeader(summary.title)
                                 }
-                                items(items = summary.items, key = { "item_${it.id}" }) { item ->
-                                    SectionListItem(
-                                        item = item,
-                                        onNavigate = { onItemClick(item) },
-                                        playerViewModel = playerViewModel,
-                                        modifier = Modifier.padding(horizontal = AppScreenContentHorizontal - 8.dp),
-                                    )
+                                items(
+                                    items = summary.items,
+                                    // La misma canción puede salir en dos secciones,
+                                    // por eso la key incluye la sección.
+                                    key = { "${index}_${it.id}" },
+                                ) { item ->
+                                    ResultRow(item, playerViewModel, onItemClick)
                                 }
                             }
-                        } else {
-                            items(items = items, key = { it.id }) { item ->
-                                SectionListItem(
-                                    item = item,
-                                    onNavigate = { onItemClick(item) },
-                                    playerViewModel = playerViewModel,
-                                    modifier = Modifier.padding(horizontal = AppScreenContentHorizontal - 8.dp),
-                                )
-                            }
-                        }
 
-                        if (uiState is SearchState.Success && uiState.isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    LoadingIndicator(
-                                        modifier = Modifier.fillMaxSize(),
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
+                            items(items = items, key = { it.id }) { item ->
+                                ResultRow(item, playerViewModel, onItemClick)
+                            }
+
+                            if (uiState is SearchState.Success && uiState.isLoadingMore) {
+                                item(key = "loading_more") {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        LoadingIndicator(
+                                            modifier = Modifier.size(32.dp),
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
 
-                    AppVerticalScrollbar(
-                        state = scrollable,
-                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                    )
+                    if (!isLoading) {
+                        AppVerticalScrollbar(
+                            state = listState,
+                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ResultRow(
+    item: YTItem,
+    playerViewModel: PlayerViewModel,
+    onItemClick: (YTItem) -> Unit,
+) {
+    SectionListItem(
+        item = item,
+        onNavigate = { onItemClick(item) },
+        playerViewModel = playerViewModel,
+        modifier = Modifier.padding(horizontal = AppScreenContentHorizontal - 8.dp),
+    )
 }
 
 @Composable
