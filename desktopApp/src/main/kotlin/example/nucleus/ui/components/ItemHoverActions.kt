@@ -78,7 +78,6 @@ fun HoverCornerActionButton(
                     else Color.Black.copy(alpha = 0.40f)
                 )
         )
-
         IconButton(
             onClick = onClick,
             modifier = buttonModifier

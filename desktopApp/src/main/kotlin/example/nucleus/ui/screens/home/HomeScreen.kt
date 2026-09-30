@@ -2,6 +2,8 @@
 
 package example.nucleus.ui.screens.home
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -321,6 +323,12 @@ private fun HomeSectionRow(
                         item = section.items[index],
                         onNavigate = onNavigate,
                         playerViewModel = playerViewModel,
+                        modifier = Modifier.animateItem(
+                            placementSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            )
+                        ),
                     )
                 }
             }

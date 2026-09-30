@@ -1,7 +1,10 @@
 package example.nucleus.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -62,10 +66,12 @@ import example.nucleus.ui.components.context.SongContextMenuPopup
 import example.nucleus.ui.components.context.CollectionContextMenuPopup
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.helpers.animateDesktopPressScale
 import example.nucleus.ui.helpers.contextMenuArea
 import example.nucleus.ui.helpers.desktopInteractiveSurface
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalDimens
+import example.nucleus.ui.themes.expressiveFadeTween
 import example.nucleus.ui.themes.mediaItemTitle
 import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.ui.utils.isCircleLikeShape
@@ -149,21 +155,58 @@ fun YouTubeGridItem(
     val cardWidth = cardHeight * aspectRatio
     val contentPadding = 10.dp
 
+    // Fuente propia para la pulsacion: las tarjetas de rejilla no tenian feedback de
+    // hover/press de escritorio (escala suave), solo el salto de opacidad del scrim.
+    val pressSource = remember { MutableInteractionSource() }
+    val isPressed by pressSource.collectIsPressedAsState()
     var isHovered by remember { mutableStateOf(false) }
 
-    val overlayAlpha = if (isHovered) 0.38f else 0f
-    val playIconAlpha = if (isHovered && centerPlayVisible) 1f else 0f
-    val menuBtnAlpha = if (isHovered) 1f else 0f
-    val quickPlayAlpha = if (isHovered && quickPlay != null) 1f else 0f
+    val coverScale by animateDesktopPressScale(pressed = isPressed, hovered = isHovered)
+
+    // Scrim y acciones se abren progresivamente en vez de aparecer de golpe.
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (isHovered) 0.30f else 0f,
+        animationSpec = expressiveFadeTween(),
+        label = "gridScrim",
+    )
+    val actionAlpha by animateFloatAsState(
+        targetValue = if (isHovered) 1f else 0f,
+        animationSpec = expressiveFadeTween(),
+        label = "gridActions",
+    )
+    val playAlpha by animateFloatAsState(
+        targetValue = if (isHovered && centerPlayVisible) 1f else 0f,
+        animationSpec = expressiveFadeTween(),
+        label = "gridPlay",
+    )
+    val quickPlayAlpha by animateFloatAsState(
+        targetValue = if (isHovered && quickPlay != null) 1f else 0f,
+        animationSpec = expressiveFadeTween(),
+        label = "gridQuickPlay",
+    )
+    // El titulo se atenua con el raton encima: refuerza que la imagen es el blanco del
+    // click y evita que el texto compita con los iconos de accion.
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (isHovered) 0.7f else 1f,
+        animationSpec = expressiveFadeTween(),
+        label = "gridTitleAlpha",
+    )
 
     Box(modifier = modifier.width(cardWidth + contentPadding * 2).padding(contentPadding)) {
         Column(horizontalAlignment = alignment) {
             BoxForContainerContextMenuItem(
                 modifier = Modifier
                     .aspectRatio(aspectRatio)
+                    .graphicsLayer {
+                        scaleX = coverScale
+                        scaleY = coverScale
+                    }
                     .clip(imageShape)
                     .onHover { isHovered = it }
-                    .clickable { onClick(item) }
+                    .clickable(
+                        interactionSource = pressSource,
+                        indication = null,
+                    ) { onClick(item) }
                     .pointerHoverIcon(PointerIcon.Hand),
                 enabled = contextMenuEnabled,
                 onMenuAction = onContextMenuAction.let { { it?.invoke() } }
@@ -182,7 +225,7 @@ fun YouTubeGridItem(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .alpha(overlayAlpha)
+                        .alpha(scrimAlpha)
                         .background(Color.Black)
                 )
 
@@ -197,7 +240,7 @@ fun YouTubeGridItem(
                             tint = Color.White,
                             modifier = Modifier
                                 .size(56.dp)
-                                .alpha(playIconAlpha)
+                                .alpha(playAlpha)
                         )
                     }
                 }
@@ -210,7 +253,7 @@ fun YouTubeGridItem(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(6.dp)
-                            .alpha(menuBtnAlpha),
+                            .alpha(actionAlpha),
                         buttonModifier = menuButtonModifier.pointerHoverIcon(PointerIcon.Hand),
                         visible = isHovered,
                         onButtonHoverChange = { if (it) isHovered = true }
@@ -245,7 +288,9 @@ fun YouTubeGridItem(
                 style = MaterialTheme.typography.mediaItemTitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .alpha(titleAlpha),
                 textAlign = titleAlign
             )
 
@@ -299,11 +344,29 @@ fun MediaGridItem(
     var isImageHovered by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val showImageActions = placeholderType == PlaceholderType.ALBUM || placeholderType == PlaceholderType.PLAYLIST
-    val overlayAlpha = if (isImageHovered && showImageActions) 0.32f else 0f
 
-    val menuAlpha = if (isImageHovered && showImageActions) 1f else 0f
+    // Mismo tratamiento que YouTubeGridItem: scrim y acciones con fade, y escala de
+    // hover/press en la portada.
+    val pressSource = remember { MutableInteractionSource() }
+    val isPressed by pressSource.collectIsPressedAsState()
+    val coverScale by animateDesktopPressScale(pressed = isPressed, hovered = isImageHovered)
 
-    val playAlpha = if (isImageHovered && onPlay != null && showImageActions) 1f else 0f
+    val actionsVisible = isImageHovered && showImageActions
+    val overlayAlpha by animateFloatAsState(
+        targetValue = if (actionsVisible) 0.30f else 0f,
+        animationSpec = expressiveFadeTween(),
+        label = "mediaScrim",
+    )
+    val menuAlpha by animateFloatAsState(
+        targetValue = if (actionsVisible) 1f else 0f,
+        animationSpec = expressiveFadeTween(),
+        label = "mediaMenu",
+    )
+    val playAlpha by animateFloatAsState(
+        targetValue = if (actionsVisible && onPlay != null) 1f else 0f,
+        animationSpec = expressiveFadeTween(),
+        label = "mediaPlay",
+    )
 
     val sourceIcon = if (source == ItemContentSource.LOCAL) Icons.Default.LibraryMusic else null
 
@@ -326,7 +389,15 @@ fun MediaGridItem(
             ) { menuButtonModifier, openMenuFromButton ->
                 Box(
                     modifier = Modifier
-                        .clickable(onClick = onClick)
+                        .graphicsLayer {
+                            scaleX = coverScale
+                            scaleY = coverScale
+                        }
+                        .clickable(
+                            interactionSource = pressSource,
+                            indication = null,
+                            onClick = onClick,
+                        )
                         .onHover { isImageHovered = it }
                 ) {
                     MusicPlayerImage(
@@ -376,20 +447,29 @@ fun MediaGridItem(
                     }
 
                     if (showImageActions) {
-                        IconButton(
-                            onClick = openMenuFromButton,
-                            modifier = menuButtonModifier
+                        // Scrim circular detras del icono: sin el, el "mas" desaparece
+                        // sobre portadas claras.
+                        Box(
+                            modifier = Modifier
                                 .align(Alignment.TopEnd)
+                                .padding(6.dp)
                                 .size(32.dp)
-                                .padding(4.dp)
-                                .alpha(menuAlpha)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.40f))
+                                .alpha(menuAlpha),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                Icons.Default.MoreVert,
-                                stringResource(Res.string.options),
-                                modifier = Modifier.size(18.dp),
-                                tint = Color.White.copy(alpha = 0.9f)
-                            )
+                            IconButton(
+                                onClick = openMenuFromButton,
+                                modifier = menuButtonModifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    stringResource(Res.string.options),
+                                    modifier = Modifier.size(18.dp),
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
 
