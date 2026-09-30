@@ -2,6 +2,7 @@ package example.nucleus.ui.components.context
 
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -74,7 +75,7 @@ private fun ContextMenuPopup(
             val scaleSpec = rememberUiSpatialSpec<Float>(fast = true)
             val alphaSpec = rememberUiEffectsSpec<Float>(fast = true)
 
-            val transition = updateTransition(expandedState, "ContextMenu")
+            val transition = rememberTransition(expandedState, "ContextMenu")
             val scale by transition.animateFloat(transitionSpec = { scaleSpec }) { isOpen ->
                 if (isOpen) 1f else MenuClosedScale
             }
@@ -87,7 +88,6 @@ private fun ContextMenuPopup(
                     scaleX = scale
                     scaleY = scale
                     this.alpha = alpha
-                    // Crece desde el cursor, no desde su centro.
                     transformOrigin = MenuTransformOrigin
                 },
             ) {

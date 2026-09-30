@@ -1,6 +1,10 @@
 package example.nucleus.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -22,7 +26,9 @@ import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
 import example.nucleus.ui.screens.settings.*
 import example.nucleus.ui.themes.LocalMiniPlayerInset
+import example.nucleus.ui.themes.expressiveFadeTween
 import example.nucleus.ui.themes.screenTitle
+import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -73,6 +79,21 @@ fun SettingsScreen() {
     }
 }
 
+/**
+ * Transición al cambiar de categoría de Ajustes.
+ *
+ * [AnimatedContent] trae `fadeIn togetherWith fadeOut` por defecto, así que quitar el
+ * `transitionSpec` no elimina la animación: hay que pasar una explícita que respete
+ * la preferencia. Compartida por el layout ancho y el estrecho, que no deben divergir.
+ */
+@OptIn(ExperimentalAnimationApi::class)
+private fun settingsCategoryTransition(animationsEnabled: Boolean): ContentTransform =
+    if (animationsEnabled) {
+        fadeIn(expressiveFadeTween()) togetherWith fadeOut(expressiveFadeTween())
+    } else {
+        EnterTransition.None togetherWith ExitTransition.None
+    }
+
 @Composable
 private fun WideSettingsLayout(
     selected: SettingsCategory,
@@ -80,6 +101,7 @@ private fun WideSettingsLayout(
     activeDialog: SettingsDialog?,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
+    val animationsEnabled = LocalAnimationsEnabled.current
     Column(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -97,6 +119,7 @@ private fun WideSettingsLayout(
         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             AnimatedContent(
                 targetState = selected,
+                transitionSpec = { settingsCategoryTransition(animationsEnabled) },
                 label = "settings_category",
             ) { cat ->
                 SettingsCategoryDetail(
@@ -163,6 +186,7 @@ private fun NarrowSettingsLayout(
     activeDialog: SettingsDialog?,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
+    val animationsEnabled = LocalAnimationsEnabled.current
     Column(modifier = Modifier.fillMaxSize()) {
         // Top tabs para narrow
         SecondaryScrollableTabRow(
@@ -201,7 +225,7 @@ private fun NarrowSettingsLayout(
         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             AnimatedContent(
                 targetState = selected,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                transitionSpec = { settingsCategoryTransition(animationsEnabled) },
                 label = "settings_category_narrow",
             ) { cat ->
                 SettingsCategoryDetail(category = cat, onDialog = onDialog)

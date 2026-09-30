@@ -142,9 +142,10 @@ fun AppTheme(
         shapes = MaterialShapes,
         typography = remember(fontFamily) { paltaTypography(fontFamily) },
         // Scheme oficial de M3 Expressive: los componentes M3 que lo consulten (menús,
-        // chips, indicators) toman ya sus curvas. El chrome propio sigue usando Motion.kt,
-        // que mantiene el carácter "sin rebote" de escritorio.
-        motionScheme = MotionScheme.expressive(),
+        // chips, indicators) toman ya sus curvas. Con las animaciones apagadas se
+        // sustituye por uno neutro, porque esos componentes leen el scheme por dentro y
+        // no aceptan un spec propio.
+        motionScheme = if (animationsEnabled) MotionScheme.expressive() else InstantMotionScheme,
     ) {
         CompositionLocalProvider(
             LocalDimens provides dimensFor(layoutMode, islandStyle),

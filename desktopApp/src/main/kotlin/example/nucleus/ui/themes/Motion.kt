@@ -10,6 +10,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import example.nucleus.utils.LocalAnimationsEnabled
 
@@ -196,4 +197,35 @@ fun <T> rememberInteractionSpring(): FiniteAnimationSpec<T> =
 fun <T> rememberExpressiveLayout(): FiniteAnimationSpec<T> {
     val enabled = LocalAnimationsEnabled.current
     return if (enabled) expressiveLayoutTween() else snap()
+}
+
+/**
+ * [MotionScheme] sin ninguna animación: todas sus ranuras devuelven [snap].
+ *
+ * Es la pieza que hace que la preferencia "animaciones" llegue a los componentes de
+ * Material 3 por sí sola. `DropdownMenu`, `ModalBottomSheet`, `Snackbar`, `LoadingIndicator`
+ * y compañía leen `MaterialTheme.motionScheme` internamente y no hay forma de pasarles
+ * un spec; sustituyendo el scheme entero por este en [AppTheme], todos se vuelven
+ * instantáneos de una sola vez, en lugar de tener que parchear cada llamada.
+ *
+ * No afecta al chrome propio, que ya consulta [LocalAnimationsEnabled] por su cuenta.
+ */
+object InstantMotionScheme : MotionScheme {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = snap()
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = snap()
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = snap()
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
 }
