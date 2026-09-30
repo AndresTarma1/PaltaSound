@@ -31,12 +31,6 @@ fun HorizontalScrollableRow(
     state: LazyListState,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    /**
-     * Barra de scroll horizontal bajo la fila. Es el detalle "nativo de escritorio" que
-     * usan la mayoría de pantallas; se puede apagar donde el carril debe leerse como una
-     * banda de contenido (Home) en lugar de como un scroller más.
-     */
-    showScrollbar: Boolean = true,
     content: LazyListScope.() -> Unit
 ) {
     val scrollbarStyle = appScrollbarStyle()
@@ -53,18 +47,15 @@ fun HorizontalScrollableRow(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        if (showScrollbar) {
-            HorizontalScrollbar(
-                adapter = rememberScrollbarAdapter(state),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth() // Ocupa todo el ancho para simular la integración nativa
-                    .height(12.dp)
-                    .padding(vertical = 2.dp, horizontal = 28.dp),
-                style = scrollbarStyle
-            )
-        }
-
+        HorizontalScrollbar(
+            adapter = rememberScrollbarAdapter(state),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth() // Ocupa todo el ancho para simular la integración nativa
+                .height(12.dp)
+                .padding(vertical = 2.dp, horizontal = 28.dp),
+            style = scrollbarStyle
+        )
     }
 }
 

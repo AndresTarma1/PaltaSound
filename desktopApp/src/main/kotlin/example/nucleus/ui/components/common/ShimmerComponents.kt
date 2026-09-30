@@ -175,7 +175,6 @@ fun SectionSkeleton() {
             contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             state = scrollState,
-            showScrollbar = false,
         ) {
             items(8) {
                 Column(

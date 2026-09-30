@@ -295,6 +295,7 @@ fun NucleusApplicationScope.App(
                         onCloseRequest = { if (minimizeToTray) isVisible = false else handleExit() },
                         state = windowState,
                         visible = isVisible,
+                        transparent = true,
                         title = stringResource(Res.string.app_name),
                         icon = painterResource(Res.drawable.PaltaSound),
                         minimumSize = DpSize(900.dp, 600.dp),

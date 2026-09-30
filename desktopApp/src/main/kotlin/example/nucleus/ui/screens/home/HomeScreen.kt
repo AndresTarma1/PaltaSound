@@ -2,13 +2,11 @@
 
 package example.nucleus.ui.screens.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -20,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
@@ -242,7 +239,6 @@ private fun ChipFilterRow(
             state = lazyListState,
             contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            showScrollbar = false,
         ) {
             items(chips.size) { index ->
                 val chip = chips[index]
@@ -302,7 +298,6 @@ private fun HomeSectionRow(
                 rowSpacing = 8.dp,
                 columnSpacing = 12.dp,
                 itemKey = { it.id },
-                showScrollbar = false,
             ) { item ->
                 SectionListItem(
                     item = item,
@@ -317,7 +312,6 @@ private fun HomeSectionRow(
                 state = sectionScrollState,
                 contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                showScrollbar = false,
             ) {
                 items(
                     count = section.items.size,
@@ -338,8 +332,7 @@ private fun HomeSectionRow(
 /**
  * Renderizar la sección de "Quick Picks" (canciones recientes) en la pantalla de inicio.
  *
- * El bloque va en un contenedor tonal y no suelto sobre el fondo: le da presencia de
- * bloque y lo separa de los carruseles de abajo, que siguen siendo planos.
+ * Sin contenedor: las secciones se leen como bandas planas sobre el fondo, sin cajas.
  *
  * @param songs Los sonidos que nos devuelven.
  */
@@ -357,34 +350,24 @@ private fun QuickPicksSection(
         SectionHeaderRow(
             title = stringResource(Res.string.recently_played),
             icon = Icons.Default.History,
-            modifier = Modifier.padding(bottom = 8.dp),
+            modifier = Modifier.padding(bottom = 4.dp),
         )
+        HorizontalGridLikeRow(
+            items = songs,
+            rows = rowCount,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal, vertical = 8.dp),
+            columnWidth = columnWidth,
+            rowSpacing = rowSpacing,
+            columnSpacing = 12.dp,
+            itemKey = { it.id },
+        ) { song ->
 
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            shape = MaterialTheme.shapes.extraLarge,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = AppScreenContentHorizontal),
-        ) {
-            HorizontalGridLikeRow(
-                items = songs,
-                rows = rowCount,
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
-                columnWidth = columnWidth,
-                rowSpacing = rowSpacing,
-                columnSpacing = 8.dp,
-                itemKey = { it.id },
-                showScrollbar = false,
-            ) { song ->
-
-                SectionListItem(
-                    item = song,
-                    playerViewModel = playerViewModel,
-                    modifier = Modifier.fillMaxWidth().height(itemHeight)
-                )
-            }
+            SectionListItem(
+                item = song,
+                playerViewModel = playerViewModel,
+                modifier = Modifier.fillMaxWidth().height(itemHeight)
+            )
         }
     }
 }
