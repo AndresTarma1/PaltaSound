@@ -191,20 +191,13 @@ private fun Modifier.autoHideCoverGrow(
 
 /**
  * Empuja los metadatos lo que la carátula desborda al crecer (crece centrada: overflow/2
- * por lado) para que el hueco visual entre carátula y detalles no se cierre. En modo
- * compacto los detalles están a la derecha, así que el empuje es horizontal.
+ * por lado) para que el hueco visual entre carátula y detalles no se cierre.
  */
 private fun Modifier.autoHideCoverLift(
     autoHide: NowPlayingAutoHide,
     lift: Dp,
-    horizontal: Boolean = false,
 ): Modifier = graphicsLayer {
-    val offset = lift.toPx() * autoHide.hidden.value
-    if (horizontal) {
-        translationX = offset
-    } else {
-        translationY = offset
-    }
+    translationY = lift.toPx() * autoHide.hidden.value
 }
 
 /**
@@ -286,27 +279,46 @@ fun NowPlayingLayout(
             .onPointerEvent(PointerEventType.Scroll) { autoHide.wake() },
     ) {
         val isCompact = maxWidth < 640.dp || maxHeight < 400.dp
-        val screenWidth = maxWidth
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = bottomInset),
         ) {
-            NowPlayingTopBar(
-                selectedTab = selectedTab,
-                onTabSelected = onTabSelected,
-                queueCount = queueCount,
-                showMenu = showMenu,
-                onMenuToggle = { showMenu = it },
-                onOpenEqualizer = { showEqualizer = true },
-                compact = isCompact,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 8.dp)
-                    .autoHideChrome(autoHide, sink = (-14).dp)
-                    .onHover { autoHide.topBarHover = it },
-            )
+            // En compacto las pestañas no ocupan la barra: flotan sobre el contenido, de
+            // modo que aquí solo queda el menú y el ecualizador.
+            if (isCompact) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .padding(end = 8.dp)
+                        .autoHideChrome(autoHide, sink = (-14).dp)
+                        .onHover { autoHide.topBarHover = it },
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    NowPlayingTopActions(
+                        showMenu = showMenu,
+                        onMenuToggle = { showMenu = it },
+                        onOpenEqualizer = { showEqualizer = true },
+                    )
+                }
+            } else {
+                NowPlayingTopBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = onTabSelected,
+                    queueCount = queueCount,
+                    showMenu = showMenu,
+                    onMenuToggle = { showMenu = it },
+                    onOpenEqualizer = { showEqualizer = true },
+                    compact = isCompact,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 8.dp)
+                        .autoHideChrome(autoHide, sink = (-14).dp)
+                        .onHover { autoHide.topBarHover = it },
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -322,29 +334,49 @@ fun NowPlayingLayout(
                     onNavigate = onNavigate,
                     onCollapse = onCollapse,
                     compact = isCompact,
-                    screenWidth = screenWidth,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
                     autoHide = autoHide,
                 )
 
-                // Colapsar (volver) — el mini player está oculto en Now Playing
-                IconButton(
-                    onClick = onCollapse,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 12.dp, bottom = 8.dp)
-                        .size(40.dp)
-                        .autoHideChrome(autoHide, sink = 16.dp)
-                        .onHover { autoHide.chromeHover = it }
-                        .pointerHoverIcon(PointerIcon.Hand),
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ExpandMore,
-                        contentDescription = stringResource(Res.string.mp_collapse),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(26.dp),
-                    )
+                // Píldoras de pestañas flotando sobre el contenido.
+                if (isCompact) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 12.dp)
+                            .autoHideChrome(autoHide, sink = 18.dp)
+                            .onHover { autoHide.chromeHover = it },
+                    ) {
+                        NowPlayingIconTabs(
+                            selectedTab = selectedTab,
+                            onTabSelected = onTabSelected,
+                            queueCount = queueCount,
+                            showLabels = false,
+                        )
+                    }
+                }
+
+                // Colapsar (volver) — solo en el layout ancho; en compacto va al final de la
+                // fila de transporte. El mini player está oculto en Now Playing.
+                if (!isCompact) {
+                    IconButton(
+                        onClick = onCollapse,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 12.dp, bottom = 8.dp)
+                            .size(40.dp)
+                            .autoHideChrome(autoHide, sink = 16.dp)
+                            .onHover { autoHide.chromeHover = it }
+                            .pointerHoverIcon(PointerIcon.Hand),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ExpandMore,
+                            contentDescription = stringResource(Res.string.mp_collapse),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
                 }
             }
         }
@@ -520,91 +552,100 @@ private fun SpaciousNowPlayingBody(
     onNavigate: ((Route) -> Unit)?,
     onCollapse: () -> Unit,
     compact: Boolean,
-    screenWidth: Dp,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     autoHide: NowPlayingAutoHide,
 ) {
     val (coverScale, coverAlpha) = rememberCoverEnter()
-    // En modo compacto el volumen va horizontal y solo cabe si hay ancho suficiente
-    // (no se usa BoxWithConstraints anidado: colisiona con el maxWidth raíz del layout).
-    val showVolume = screenWidth >= 420.dp
 
     if (compact) {
+        // Layout vertical tipo móvil: el contenido scrolleable (letra, información, cola)
+        // manda y ocupa todo el espacio disponible; el chrome se ancla abajo. En una ventana
+        // angosta una fila de portada de 104dp arriba se comería media pantalla y dejaría
+        // la letra ilegible.
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
             ) {
-                CoverArt(
-                    url = song.thumbnailUrl,
-                    title = song.title,
-                    modifier = Modifier
-                        .size(104.dp)
-                        .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                        .coverEnter(coverScale, coverAlpha)
-                        .autoHideCoverGrow(autoHide, restScale = 1.12f),
-                )
-                NowPlayingSongDetails(
-                    state = state,
+                NowPlayingTabContent(
+                    tab = selectedTab,
                     song = song,
-                    textAlign = TextAlign.Start,
+                    state = state,
+                    lyrics = lyrics,
+                    lyricsTextStyle = MaterialTheme.typography.bodyLarge,
                     onNavigate = onNavigate,
-                    onCollapse = onCollapse,
-                    compact = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .autoHideCoverLift(autoHide, lift = 6.24.dp, horizontal = true),
+                    mediaInfo = mediaInfo,
                 )
             }
 
-            // Controles (el mini player está oculto en Now Playing)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Chrome anclado abajo: pista, progreso y transporte.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .autoHideChrome(autoHide, sink = 18.dp)
                     .onHover { autoHide.chromeHover = it },
-                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                PlayerProgressRow()
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CoverArt(
+                        url = song.thumbnailUrl,
+                        title = song.title,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
+                            .coverEnter(coverScale, coverAlpha),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    NowPlayingSongDetails(
+                        state = state,
+                        song = song,
+                        textAlign = TextAlign.Start,
+                        onNavigate = onNavigate,
+                        onCollapse = onCollapse,
+                        compact = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                PlayerProgressRow()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     PlayerTransportRow()
-                    if (showVolume) {
-                        Spacer(Modifier.width(10.dp))
-                        PlayerVolumeControl()
-                    }
-                }
-            }
-
-            TransparentPanel(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
-                ) {
-                    NowPlayingTabContent(
-                        tab = selectedTab,
-                        song = song,
-                        state = state,
-                        lyrics = lyrics,
-                        lyricsTextStyle = MaterialTheme.typography.bodyLarge,
-                        onNavigate = onNavigate,
-                        mediaInfo = mediaInfo,
+                    // Se usa el botón que despliega el slider en un popup, que en el
+                    // layout ancho ya está en uso.
+                    Spacer(Modifier.width(4.dp))
+                    PlayerVolumeVertical(
+                        trackHeight = 88.dp,
+                        onBusyChange = { autoHide.volumePopup = it },
                     )
+                    IconButton(
+                        onClick = onCollapse,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .pointerHoverIcon(PointerIcon.Hand),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ExpandMore,
+                            contentDescription = stringResource(Res.string.mp_collapse),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
                 }
             }
         }
