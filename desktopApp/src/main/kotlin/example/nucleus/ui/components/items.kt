@@ -701,6 +701,7 @@ fun <T> HorizontalGridLikeRow(
     rowSpacing: Dp = 8.dp,
     columnSpacing: Dp = 12.dp,
     itemKey: ((T) -> Any)? = null,
+    showScrollbar: Boolean = true,
     itemContent: @Composable (T) -> Unit,
 ) {
     val safeRows = rows.coerceAtLeast(1)
@@ -711,6 +712,7 @@ fun <T> HorizontalGridLikeRow(
         modifier = modifier,
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(columnSpacing),
+        showScrollbar = showScrollbar,
     ) {
         items(
             count = columns.size,

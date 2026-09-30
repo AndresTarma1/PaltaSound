@@ -8,10 +8,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
@@ -21,12 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import example.nucleus.navigation.Route
 import example.nucleus.ui.components.ChipRowSkeleton
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.HorizontalGridLikeRow
+import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.components.SectionSkeleton
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
@@ -87,20 +89,28 @@ fun HomeScreen(
                 modifier = Modifier.padding(top = 16.dp)
             )
 
-            is HomeState.Success -> HomeScreenContent(
-                page = uiState.page,
-                recentSongs = recentSongs,
-                selectedParams = uiState.selectedParams,
-                isLoadingMore = uiState.isLoadingMore,
-                onChipClick = { params -> onEvent(HomeUiEvent.ChipSelected(params)) },
-                onScrollNearEnd = { onEvent(HomeUiEvent.LoadMore) },
-                onNavigate = onNavigate,
-                playerViewModel = playerViewModel,
-                contentPadding = appScrollContentPadding(
-                    top = 16.dp,
-                    bottom = LocalMiniPlayerInset.current,
-                ),
-            )
+            is HomeState.Success -> {
+                // Sin secciones ni canciones recientes la lista saldria vacia: se muestra
+                // el estado vacio en su lugar.
+                if (uiState.page.sections.isEmpty() && recentSongs.isEmpty()) {
+                    HomeScreenEmpty(onRetry = { onEvent(HomeUiEvent.Retry) })
+                } else {
+                    HomeScreenContent(
+                        page = uiState.page,
+                        recentSongs = recentSongs,
+                        selectedParams = uiState.selectedParams,
+                        isLoadingMore = uiState.isLoadingMore,
+                        onChipClick = { params -> onEvent(HomeUiEvent.ChipSelected(params)) },
+                        onScrollNearEnd = { onEvent(HomeUiEvent.LoadMore) },
+                        onNavigate = onNavigate,
+                        playerViewModel = playerViewModel,
+                        contentPadding = appScrollContentPadding(
+                            top = 16.dp,
+                            bottom = LocalMiniPlayerInset.current,
+                        ),
+                    )
+                }
+            }
 
             is HomeState.Error -> HomeScreenError(
                 message = uiState.message,
@@ -199,7 +209,9 @@ fun HomeScreenContent(
                         contentAlignment = Alignment.Center,
                     ) {
                         LoadingIndicator(
-                            modifier = Modifier.fillMaxSize(),
+                            // Antes con fillMaxSize() el indicador se estiraba a todo el
+                            // alto del Box; LoadingIndicator controla su propio tamano.
+                            modifier = Modifier.size(32.dp),
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
@@ -226,10 +238,11 @@ private fun ChipFilterRow(
     val lazyListState = rememberLazyListState()
     Column {
         HorizontalScrollableRow(
-            modifier = Modifier.padding(vertical = 10.dp),
+            modifier = Modifier.padding(vertical = 8.dp),
             state = lazyListState,
             contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            showScrollbar = false,
         ) {
             items(chips.size) { index ->
                 val chip = chips[index]
@@ -237,10 +250,11 @@ private fun ChipFilterRow(
                 FilterChip(
                     selected = isSelected,
                     onClick = { onChipClick(chip.endpoint?.params) },
+                    shape = AppShapes.extraLarge,
                     label = {
                         Text(
-                            chip.title,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            text = chip.title,
+                            style = MaterialTheme.typography.labelLargeEmphasized,
                         )
                     },
                     modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
@@ -249,10 +263,15 @@ private fun ChipFilterRow(
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = stringResource(Res.string.selected),
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(FilterChipDefaults.IconSize),
                             )
                         }
                     },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
                 )
             }
         }
@@ -265,11 +284,10 @@ private fun HomeSectionRow(
     onNavigate: (Route) -> Unit,
     playerViewModel: PlayerViewModel,
 ) {
-    Column(modifier = Modifier.padding(vertical = 10.dp)) {
-        Text(
-            text = section.title,
-            style = MaterialTheme.typography.headlineSmallEmphasized,
-            modifier = Modifier.padding(horizontal = AppScreenContentHorizontal, vertical = 4.dp),
+    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+        SectionHeaderRow(
+            title = section.title,
+            modifier = Modifier.padding(bottom = 6.dp),
         )
 
         val rows = section.numItemsPerColumn ?: 1
@@ -284,6 +302,7 @@ private fun HomeSectionRow(
                 rowSpacing = 8.dp,
                 columnSpacing = 12.dp,
                 itemKey = { it.id },
+                showScrollbar = false,
             ) { item ->
                 SectionListItem(
                     item = item,
@@ -298,6 +317,7 @@ private fun HomeSectionRow(
                 state = sectionScrollState,
                 contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
+                showScrollbar = false,
             ) {
                 items(
                     count = section.items.size,
@@ -318,6 +338,9 @@ private fun HomeSectionRow(
 /**
  * Renderizar la sección de "Quick Picks" (canciones recientes) en la pantalla de inicio.
  *
+ * El bloque va en un contenedor tonal y no suelto sobre el fondo: le da presencia de
+ * bloque y lo separa de los carruseles de abajo, que siguen siendo planos.
+ *
  * @param songs Los sonidos que nos devuelven.
  */
 @Composable
@@ -330,28 +353,38 @@ private fun QuickPicksSection(
     val rowSpacing = 8.dp
     val columnWidth = 320.dp
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Text(
-            text = stringResource(Res.string.recently_played),
-            style = MaterialTheme.typography.headlineSmallEmphasized,
-            modifier = Modifier.padding(horizontal = AppScreenContentHorizontal, vertical = 4.dp),
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+        SectionHeaderRow(
+            title = stringResource(Res.string.recently_played),
+            icon = Icons.Default.History,
+            modifier = Modifier.padding(bottom = 8.dp),
         )
-        HorizontalGridLikeRow(
-            items = songs,
-            rows = rowCount,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal, vertical = 8.dp),
-            columnWidth = columnWidth,
-            rowSpacing = rowSpacing,
-            columnSpacing = 12.dp,
-            itemKey = { it.id }
-        ) { song ->
 
-            SectionListItem(
-                item = song,
-                playerViewModel = playerViewModel,
-                modifier = Modifier.fillMaxWidth().height(itemHeight)
-            )
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppScreenContentHorizontal),
+        ) {
+            HorizontalGridLikeRow(
+                items = songs,
+                rows = rowCount,
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                columnWidth = columnWidth,
+                rowSpacing = rowSpacing,
+                columnSpacing = 8.dp,
+                itemKey = { it.id },
+                showScrollbar = false,
+            ) { song ->
+
+                SectionListItem(
+                    item = song,
+                    playerViewModel = playerViewModel,
+                    modifier = Modifier.fillMaxWidth().height(itemHeight)
+                )
+            }
         }
     }
 }
@@ -368,6 +401,35 @@ fun HomeScreenLoading(
     ) {
         ChipRowSkeleton()
         repeat(3) { SectionSkeleton() }
+    }
+}
+
+@Composable
+fun HomeScreenEmpty(modifier: Modifier = Modifier, onRetry: () -> Unit) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        ExpressiveEmptyState(
+            icon = Icons.Default.ErrorOutline,
+            title = stringResource(Res.string.home_empty_title),
+            subtitle = stringResource(Res.string.home_empty_message),
+            modifier = Modifier.weight(1f, fill = false).heightIn(max = 280.dp),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = onRetry,
+            shape = AppShapes.extraLarge,
+            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
+        ) {
+            Text(
+                stringResource(Res.string.home_retry),
+                style = MaterialTheme.typography.ctaLabel,
+            )
+        }
     }
 }
 

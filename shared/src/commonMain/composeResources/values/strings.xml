@@ -301,6 +301,8 @@
     <!-- Home -->
     <string name="recently_played">Reproducido recientemente</string>
     <string name="home_error">¡Oops! Algo salió mal</string>
+    <string name="home_empty_title">Nada que mostrar</string>
+    <string name="home_empty_message">No hay secciones para este filtro. Prueba con otro chip o reintenta la carga.</string>
     <string name="home_retry">Reintentar</string>
     <string name="home_offline_title">Sin conexión a internet</string>
     <string name="home_offline_message">Mostraremos tu biblioteca local mientras tanto. Reintentaremos solos cuando vuelva la conexión.</string>

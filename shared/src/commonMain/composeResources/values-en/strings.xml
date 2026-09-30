@@ -293,6 +293,8 @@
     <!-- Home -->
     <string name="recently_played">Recently played</string>
     <string name="home_error">Oops! Something went wrong</string>
+    <string name="home_empty_title">Nothing to show</string>
+    <string name="home_empty_message">There are no sections for this filter. Try another chip or reload.</string>
     <string name="home_retry">Retry</string>
     <string name="home_offline_title">No internet connection</string>
     <string name="home_offline_message">Showing your local library meanwhile. We'll retry automatically once you're back online.</string>

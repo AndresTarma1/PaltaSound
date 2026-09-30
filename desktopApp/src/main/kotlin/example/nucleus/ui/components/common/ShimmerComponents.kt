@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
 import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.utils.LocalAnimationsEnabled
@@ -126,8 +127,8 @@ fun Modifier.shimmerBackground(
 @Composable
 fun ChipRowSkeleton() {
     LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-        contentPadding = PaddingValues(horizontal = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(3) {
@@ -135,7 +136,7 @@ fun ChipRowSkeleton() {
                 modifier = Modifier
                     .width(90.dp)
                     .height(32.dp)
-                    .shimmerBackground(RoundedCornerShape(20.dp))
+                    .shimmerBackground(RoundedCornerShape(28.dp))
             )
         }
     }
@@ -144,22 +145,37 @@ fun ChipRowSkeleton() {
 @Composable
 fun SectionSkeleton() {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
     ) {
-        Box(
+        // Icono + titulo: la misma composicion que SectionHeaderRow, para que el esqueleto
+        // y el contenido no diverjan al cargar.
+        Row(
             modifier = Modifier
-                .padding(horizontal = 24.dp, vertical = 8.dp)
-                .width(180.dp)
-                .height(28.dp)
-                .shimmerBackground(RoundedCornerShape(4.dp))
-        )
+                .fillMaxWidth()
+                .padding(horizontal = AppScreenContentHorizontal, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .shimmerBackground(RoundedCornerShape(4.dp))
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .width(180.dp)
+                    .height(24.dp)
+                    .shimmerBackground(RoundedCornerShape(4.dp))
+            )
+        }
 
         val scrollState = rememberLazyListState()
         HorizontalScrollableRow(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = AppScreenContentHorizontal, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             state = scrollState,
+            showScrollbar = false,
         ) {
             items(8) {
                 Column(
