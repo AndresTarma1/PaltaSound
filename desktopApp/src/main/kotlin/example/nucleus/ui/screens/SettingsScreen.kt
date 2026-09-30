@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -16,9 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppScrollbarGutter
@@ -85,7 +81,6 @@ private fun WideSettingsLayout(
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // Tabs superiores estilo NowPlaying — pill, centrados, con icono + label
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -98,13 +93,10 @@ private fun WideSettingsLayout(
             )
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-
         // Detail — solo la categoría seleccionada, desacoplado
         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             AnimatedContent(
                 targetState = selected,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "settings_category",
             ) { cat ->
                 SettingsCategoryDetail(
@@ -173,13 +165,14 @@ private fun NarrowSettingsLayout(
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Top tabs para narrow
-        ScrollableTabRow(
+        SecondaryScrollableTabRow(
             selectedTabIndex = SettingsCategory.entries.indexOf(selected),
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
             divider = {},
             edgePadding = 8.dp,
-        ) {
+            indicator = {},
+        ){
             SettingsCategory.entries.forEach { cat ->
                 Tab(
                     selected = cat == selected,
@@ -189,8 +182,21 @@ private fun NarrowSettingsLayout(
                 )
             }
         }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+//        ScrollableTabRow(
+//            selectedTabIndex = SettingsCategory.entries.indexOf(selected),
+//            contentColor = MaterialTheme.colorScheme.onSurface,
+//            divider = {},
+//            edgePadding = 8.dp,
+//        ) {
+//            SettingsCategory.entries.forEach { cat ->
+//                Tab(
+//                    selected = cat == selected,
+//                    onClick = { onSelect(cat) },
+//                    text = { Text(stringResource(cat.titleRes), style = MaterialTheme.typography.labelLargeEmphasized) },
+//                    icon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp)) },
+//                )
+//            }
+//        }
 
         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             AnimatedContent(
@@ -205,7 +211,7 @@ private fun NarrowSettingsLayout(
 }
 
 @Composable
-private fun BoxScope.SettingsCategoryDetail(
+private fun SettingsCategoryDetail(
     category: SettingsCategory,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
@@ -223,38 +229,6 @@ private fun BoxScope.SettingsCategoryDetail(
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item {
-                Column(modifier = Modifier.padding(bottom = 8.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                        ) {
-                            Icon(
-                                category.icon, null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(10.dp).size(22.dp),
-                            )
-                        }
-                        Column {
-                            Text(
-                                stringResource(category.titleRes),
-                                style = MaterialTheme.typography.screenTitle,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Text(
-                                stringResource(category.subtitleRes),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-
             // Contenido desacoplado por categoría — solo se compone la activa
             when (category) {
                 SettingsCategory.AUDIO -> item {

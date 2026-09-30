@@ -1,9 +1,11 @@
 package example.nucleus.ui.components.player
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudOff
@@ -123,16 +125,23 @@ fun LyricsContent(
                             bottom = 120.dp,
                         )
                 ) {
-                    Text(
-                        text = lyrics,
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = 920.dp)
                             .align(if (textAlign == TextAlign.Start) Alignment.Start else Alignment.CenterHorizontally),
-                        style = immersiveLyricsStyle,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.94f),
-                        textAlign = textAlign,
-                    )
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
+                    ) {
+                        Text(
+                            text = lyrics,
+                            modifier = Modifier.padding(24.dp),
+                            style = immersiveLyricsStyle,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.94f),
+                            textAlign = textAlign,
+                        )
+                    }
                 }
                 AppVerticalScrollbar(
                     state = scrollState,

@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
@@ -366,19 +367,26 @@ private fun LyricLineRow(
         label = "lyricWeight",
     )
 
-    val hoverBgAlpha by animateFloatAsState(
-        targetValue = if (isHovered && !isActive) 0.07f else 0f,
-        animationSpec = motionSpec,
-        label = "hoverBgAlpha",
-    )
+    val activeShape = RoundedCornerShape(16.dp)
+    val inactiveShape = RoundedCornerShape(12.dp)
+
+    val rowBg = when {
+        isActive -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
+        isHovered -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f)
+        else -> Color.Transparent
+    }
+
+    val rowBorder = when {
+        isActive -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+        isHovered -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+        else -> null
+    }
 
     val baseModifier = Modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(12.dp))
-        .background(
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = hoverBgAlpha),
-            shape = RoundedCornerShape(12.dp),
-        )
+        .clip(if (isActive) activeShape else inactiveShape)
+        .background(color = rowBg, shape = if (isActive) activeShape else inactiveShape)
+        .then(if (rowBorder != null) Modifier.border(rowBorder, if (isActive) activeShape else inactiveShape) else Modifier)
         .clickable(
             interactionSource = interactionSource,
             indication = null,
@@ -391,7 +399,7 @@ private fun LyricLineRow(
             alpha = rowAlpha
             transformOrigin = if (startAligned) TransformOrigin(0f, 0.5f) else TransformOrigin(0.5f, 0.5f)
         }
-        .padding(horizontal = 14.dp, vertical = 7.dp)
+        .padding(horizontal = 16.dp, vertical = if (isActive) 10.dp else 7.dp)
 
     val rowModifier = if (isActive && animationStyle == LyricsAnimationStyle.GLOW) {
         baseModifier.shadow(

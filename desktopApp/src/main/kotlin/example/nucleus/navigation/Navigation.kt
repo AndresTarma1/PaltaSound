@@ -8,9 +8,11 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -334,8 +336,14 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
 
                     AnimatedVisibility(
                         visible = barMiniPlayer && !isOnNowPlaying,
-                        enter = if (animationsEnabled) fadeIn() else EnterTransition.None,
-                        exit = if (animationsEnabled) fadeOut() else ExitTransition.None,
+                        enter = if (animationsEnabled) {
+                            fadeIn(expressiveFadeTween()) +
+                                    expandVertically(expressiveLayoutTween(), expandFrom = Alignment.Top)
+                        } else EnterTransition.None,
+                        exit = if (animationsEnabled) {
+                            fadeOut(expressiveFadeTween()) +
+                                    shrinkVertically(expressiveLayoutTween(), shrinkTowards = Alignment.Top)
+                        } else ExitTransition.None,
                     ) {
                         miniPlayerSlot(Modifier.fillMaxWidth())
                     }
