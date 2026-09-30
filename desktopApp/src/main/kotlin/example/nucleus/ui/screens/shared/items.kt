@@ -341,6 +341,7 @@ fun SectionListItem(
     item: YTItem,
     onNavigate: (Route) -> Unit = {},
     modifier: Modifier = Modifier,
+    dividerBelow: Boolean = false,
     playerViewModel: PlayerViewModel
 ) {
     val onClick = { it: YTItem -> onYTItemClick(it, onNavigate, playerViewModel) }
@@ -351,6 +352,7 @@ fun SectionListItem(
         onPlay = { playYTItem(it, onNavigate, playerViewModel, onClick) },
         onShuffle = { shuffleYTItem(it, playerViewModel, onClick) },
         modifier = modifier,
+        dividerBelow = dividerBelow,
         source = ItemContentSource.YOUTUBE,
     )
 }

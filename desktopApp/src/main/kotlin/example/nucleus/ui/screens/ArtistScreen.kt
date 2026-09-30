@@ -201,11 +201,12 @@ private fun ArtistScreenContent(
                         Column(
                             modifier = Modifier.padding(horizontal = AppScreenContentHorizontal - 8.dp),
                         ) {
-                            section.items.forEach { item ->
+                            section.items.forEachIndexed { rowIndex, item ->
                                 SectionListItem(
                                     item = item,
                                     onNavigate = onNavigate,
-                                    playerViewModel = playerViewModel
+                                    playerViewModel = playerViewModel,
+                                    dividerBelow = rowIndex != section.items.lastIndex,
                                 )
                             }
                         }

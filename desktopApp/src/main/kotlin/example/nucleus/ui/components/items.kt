@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -163,16 +165,11 @@ fun YouTubeGridItem(
 
     val coverScale by animateDesktopPressScale(pressed = isPressed, hovered = isHovered)
 
-    // Scrim y acciones se abren progresivamente en vez de aparecer de golpe.
+    // Scrim y acciones de portada se abren con fade; el boton de opciones no (ver mas abajo).
     val scrimAlpha by animateFloatAsState(
         targetValue = if (isHovered) 0.30f else 0f,
         animationSpec = expressiveFadeTween(),
         label = "gridScrim",
-    )
-    val actionAlpha by animateFloatAsState(
-        targetValue = if (isHovered) 1f else 0f,
-        animationSpec = expressiveFadeTween(),
-        label = "gridActions",
     )
     val playAlpha by animateFloatAsState(
         targetValue = if (isHovered && centerPlayVisible) 1f else 0f,
@@ -246,16 +243,17 @@ fun YouTubeGridItem(
                 }
 
                 if (onContextMenuAction != null) {
+                    // Siempre visible: el menu de opciones de un item no debe depender de
+                    // acertar el raton encima para existir (igual que en las filas de lista).
                     HoverCornerActionButton(
                         icon = Icons.Rounded.MoreVert,
                         contentDescription = stringResource(Res.string.options),
                         onClick = { onMoreClick?.invoke() ?: openMenuFromButton() },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(6.dp)
-                            .alpha(actionAlpha),
+                            .padding(6.dp),
                         buttonModifier = menuButtonModifier.pointerHoverIcon(PointerIcon.Hand),
-                        visible = isHovered,
+                        visible = true,
                         onButtonHoverChange = { if (it) isHovered = true }
                     )
                 }
@@ -357,11 +355,6 @@ fun MediaGridItem(
         animationSpec = expressiveFadeTween(),
         label = "mediaScrim",
     )
-    val menuAlpha by animateFloatAsState(
-        targetValue = if (actionsVisible) 1f else 0f,
-        animationSpec = expressiveFadeTween(),
-        label = "mediaMenu",
-    )
     val playAlpha by animateFloatAsState(
         targetValue = if (actionsVisible && onPlay != null) 1f else 0f,
         animationSpec = expressiveFadeTween(),
@@ -448,15 +441,14 @@ fun MediaGridItem(
 
                     if (showImageActions) {
                         // Scrim circular detras del icono: sin el, el "mas" desaparece
-                        // sobre portadas claras.
+                        // sobre portadas claras. Siempre visible, igual que en las filas.
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(6.dp)
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.40f))
-                                .alpha(menuAlpha),
+                                .background(Color.Black.copy(alpha = 0.40f)),
                             contentAlignment = Alignment.Center,
                         ) {
                             IconButton(
@@ -577,6 +569,11 @@ fun YoutubeListItem(
     onPlay: (YTItem) -> Unit,
     onShuffle: (YTItem) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Linea divisoria bajo la fila. Solo tiene sentido en listas de una columna; en el
+     * grid de dos filas de Home las lineas cairian dentro de cada columna.
+     */
+    dividerBelow: Boolean = false,
 ) {
     val dimens = LocalDimens.current
     val shape = when (item) {
@@ -703,21 +700,36 @@ fun YoutubeListItem(
             },
             trailingContent = {
                 if (item is SongItem || isEpisodeItem || isCollectionItem) {
-                    IconButton(
+                    // Tonal en vez de IconButton pelado: el "mas" deja de perderse al final
+                    // de la fila, especialmente sobre portadas con titulo largo.
+                    FilledTonalIconButton(
                         onClick = {
                             showMenu = true
                         },
-                        modifier = Modifier
+                        modifier = Modifier.size(36.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = stringResource(Res.string.more_options),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                 }
             }
         )
+
+        if (dividerBelow) {
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 8.dp, end = 8.dp),
+            )
+        }
 
         if (item is SongItem) {
             SongContextMenuPopup(

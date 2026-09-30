@@ -680,6 +680,7 @@ private fun ResultRow(
         onNavigate = { onItemClick(item) },
         playerViewModel = playerViewModel,
         modifier = Modifier.padding(horizontal = AppScreenContentHorizontal - 8.dp),
+        dividerBelow = true,
     )
 }
 
