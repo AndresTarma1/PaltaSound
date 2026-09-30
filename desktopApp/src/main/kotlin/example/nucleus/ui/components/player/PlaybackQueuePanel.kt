@@ -137,11 +137,6 @@ fun PlaybackQueuePanel(
                 queueLocked = queueLocked,
             )
 
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
-                thickness = 0.5.dp,
-            )
-
             Box(Modifier.fillMaxSize()) {
                 if (state.queue.isEmpty()) {
                     EmptyQueuePlaceholder()
@@ -248,12 +243,7 @@ private fun QueueHeader(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    val totalDurationSeconds = remember(state.queue) {
-        state.queue.sumOf { it.duration.toLong() }
-    }
-    val formattedDuration = remember(totalDurationSeconds) {
-        formatQueueDuration(totalDurationSeconds)
-    }
+
 
     val sourceLabel = when (val source = state.queueSource) {
         is QueueSource.Album -> stringResource(Res.string.from_album, source.title)
@@ -266,8 +256,9 @@ private fun QueueHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Column(
             modifier = Modifier.weight(1f),
@@ -275,64 +266,42 @@ private fun QueueHeader(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
                     text = stringResource(Res.string.queue_title),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = (-0.3).sp
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ) {
                     Text(
                         text = "${state.queue.size}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
                     )
                 }
-                if (formattedDuration.isNotEmpty()) {
-                    Text(
-                        text = "· $formattedDuration",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        maxLines = 1,
-                    )
-                }
-            }
-            if (sourceLabel != null) {
-                Text(
-                    text = sourceLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
         }
 
         Box {
             IconButton(
                 onClick = { showMenu = true },
-                modifier = Modifier
-                    .size(32.dp)
-                    .pointerHoverIcon(PointerIcon.Hand),
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
             ) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = stringResource(Res.string.options),
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-
             QueueActionsMenu(
                 expanded = showMenu,
                 onDismiss = { showMenu = false },
@@ -348,15 +317,12 @@ private fun QueueHeader(
         if (showCloseButton) {
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier
-                    .size(32.dp)
-                    .pointerHoverIcon(PointerIcon.Hand),
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = stringResource(Res.string.close_queue),
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -424,9 +390,9 @@ internal fun formatQueueDuration(totalSeconds: Long): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     return if (hours > 0) {
-        "${hours} h ${minutes} min"
+        "$hours h $minutes min"
     } else {
-        "${minutes} min"
+        "$minutes min"
     }
 }
 
