@@ -9,6 +9,7 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import example.nucleus.utils.LocalAnimationsEnabled
 
@@ -103,6 +104,30 @@ fun <T> uiSpring(
     animationsEnabled: Boolean,
     spec: () -> SpringSpec<T> = { expressiveSpring() },
 ): FiniteAnimationSpec<T> = if (animationsEnabled) spec() else snap()
+
+/**
+ * Spec espacial oficial de M3 Expressive (`MaterialTheme.motionScheme`), o [snap] con
+ * reduce-motion. Para dar a un componente el ritmo del sistema en vez de una curva elegida
+ * a mano. Los helpers de arriba son la vía del chrome propio, que busca "sin rebote";
+ * este es el de los componentes M3 que ya traen el suyo.
+ */
+@Composable
+fun <T> rememberUiSpatialSpec(slow: Boolean = false): FiniteAnimationSpec<T> {
+    val enabled = LocalAnimationsEnabled.current
+    return if (!enabled) {
+        snap()
+    } else {
+        val scheme = MaterialTheme.motionScheme
+        if (slow) scheme.slowSpatialSpec() else scheme.defaultSpatialSpec()
+    }
+}
+
+/** Spec de efectos oficial (color/size) de M3 Expressive, o [snap] con reduce-motion. */
+@Composable
+fun <T> rememberUiEffectsSpec(): FiniteAnimationSpec<T> {
+    val enabled = LocalAnimationsEnabled.current
+    return if (enabled) MaterialTheme.motionScheme.defaultEffectsSpec() else snap()
+}
 
 /**
  * Tween or [snap] depending on [animationsEnabled].

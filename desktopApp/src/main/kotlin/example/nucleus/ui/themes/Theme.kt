@@ -6,6 +6,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
@@ -28,8 +29,8 @@ val LocalIsSolidBackground = staticCompositionLocalOf { true }
 /**
  * Escala de formas Material 3 Expressive: superficies más suaves que el M3 clásico
  * (xLarge en 20dp en vez de 24) y extraLarge para diálogos y tarjetas hero.
- * Se usa directamente como [AppShapes] porque el `Shapes` de esta versión de
- * material3 aún no expone `xLarge`.
+ * Se usa directamente como [AppShapes] porque `xLarge` no tiene equivalente en
+ * [MaterialTheme.shapes].
  */
 object AppShapes {
     val extraSmall: RoundedCornerShape = RoundedCornerShape(4.dp)
@@ -38,14 +39,28 @@ object AppShapes {
     val large: RoundedCornerShape = RoundedCornerShape(16.dp)
     val xLarge: RoundedCornerShape = RoundedCornerShape(20.dp)
     val extraLarge: RoundedCornerShape = RoundedCornerShape(28.dp)
+
+    // Roles "increased" de M3 Expressive: un punto más de redondeo sobre large/extraLarge.
+    // Los usan contenedores que alojan contenido (tarjetas de rejilla, bloques de sección).
+    val largeIncreased: RoundedCornerShape = RoundedCornerShape(20.dp)
+    val extraLargeIncreased: RoundedCornerShape = RoundedCornerShape(32.dp)
+    val extraExtraLarge: RoundedCornerShape = RoundedCornerShape(40.dp)
 }
 
+/**
+ * [MaterialTheme.shapes] con los ocho roles de la alpha actual. Los tres primeros son los
+ * increased, que antes se emulaban pasando [AppShapes.large] a mano y quedaban fuera del
+ * tema: cualquier componente de M3 que los pida por defecto los toma ya de aqui.
+ */
 private val MaterialShapes = Shapes(
     extraSmall = AppShapes.extraSmall,
     small = AppShapes.small,
     medium = AppShapes.medium,
     large = AppShapes.large,
     extraLarge = AppShapes.extraLarge,
+    largeIncreased = AppShapes.largeIncreased,
+    extraLargeIncreased = AppShapes.extraLargeIncreased,
+    extraExtraLarge = AppShapes.extraExtraLarge,
 )
 
 @Composable
@@ -126,6 +141,10 @@ fun AppTheme(
         colorScheme = colorScheme,
         shapes = MaterialShapes,
         typography = remember(fontFamily) { paltaTypography(fontFamily) },
+        // Scheme oficial de M3 Expressive: los componentes M3 que lo consulten (menús,
+        // chips, indicators) toman ya sus curvas. El chrome propio sigue usando Motion.kt,
+        // que mantiene el carácter "sin rebote" de escritorio.
+        motionScheme = MotionScheme.expressive(),
     ) {
         CompositionLocalProvider(
             LocalDimens provides dimensFor(layoutMode, islandStyle),
