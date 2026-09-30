@@ -701,22 +701,33 @@ fun YoutubeListItem(
             trailingContent = {
                 if (item is SongItem || isEpisodeItem || isCollectionItem) {
                     // Tonal en vez de IconButton pelado: el "mas" deja de perderse al final
-                    // de la fila, especialmente sobre portadas con titulo largo.
-                    FilledTonalIconButton(
-                        onClick = {
-                            showMenu = true
-                        },
-                        modifier = Modifier.size(36.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = stringResource(Res.string.more_options),
-                            modifier = Modifier.size(18.dp),
-                        )
+                    // de la fila. Aparece con el hover del item, no de forma permanente, para
+                    // no ensuciar la columna en reposo.
+                    val menuAlpha by animateFloatAsState(
+                        targetValue = if (isHovered) 1f else 0f,
+                        animationSpec = expressiveFadeTween(),
+                        label = "rowMenuAlpha",
+                    )
+                    Box(modifier = Modifier.alpha(menuAlpha)) {
+                        FilledTonalIconButton(
+                            onClick = {
+                                showMenu = true
+                            },
+                            // Con alpha 0 el boton seguiria siendo pulsable (alpha no afecta
+                            // al hit-test), lo que dejaria una trampa invisible.
+                            enabled = menuAlpha > 0.01f,
+                            modifier = Modifier.size(36.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = stringResource(Res.string.more_options),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
             }
