@@ -3448,6 +3448,16 @@ object YouTube {
         val value: String,
     ) {
         companion object {
+            /**
+             * Filtros de busqueda de YouTube Music. El bloque de dos caracteres tras
+             * `EgWKAQ` es el codigo de tipo de contenido:
+             * II canciones · IQ videos · IY albunes · Ig artistas · Io playlists ·
+             * JQ podcasts · **JI episodios** · JY perfiles.
+             *
+             * FILTER_EPISODE llevaba `JY`, que es el codigo de perfiles: la API devolvia
+             * canales en lugar de episodios. Verificado contra la API, que con `JY` responde
+             * con browseId UC... y con `JI` responde con episodios (videoId en el overlay).
+             */
             val FILTER_SONG = SearchFilter("EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D")
             val FILTER_VIDEO = SearchFilter("EgWKAQIQAWoKEAkQChAFEAMQBA%3D%3D")
             val FILTER_ALBUM = SearchFilter("EgWKAQIYAWoKEAkQChAFEAMQBA%3D%3D")
@@ -3455,7 +3465,7 @@ object YouTube {
             val FILTER_FEATURED_PLAYLIST = SearchFilter("EgeKAQQoADgBagwQDhAKEAMQBRAJEAQ%3D")
             val FILTER_COMMUNITY_PLAYLIST = SearchFilter("EgeKAQQoAEABagoQAxAEEAoQCRAF")
             val FILTER_PODCAST = SearchFilter("EgWKAQJQAWoKEAkQChAFEAMQBA%3D%3D")
-            val FILTER_EPISODE = SearchFilter("EgWKAQJYAWoKEAkQChAFEAMQBA%3D%3D")
+            val FILTER_EPISODE = SearchFilter("EgWKAQJIAWoKEAkQChAFEAMQBA%3D%3D")
             val FILTER_PROFILE = SearchFilter("EgWKAQJYAWoSEAUQCRADEAQQEBAVEAoQDhAR")
         }
     }
