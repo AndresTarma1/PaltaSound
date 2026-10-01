@@ -17,6 +17,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -168,7 +170,14 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onBackground,
         ) {
-            Box(Modifier.fillMaxSize()) {
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+
+                // Ancho real de la ventana: la cola superpuesta nunca debe excederlo.
+                val windowWidth = maxWidth
+                // La cola solo se acopla al lado si al contenido le queda sitio legible
+                // después de ceder los 420dp del panel. Con el rail al lado y una ventana
+                // estrecha, compartir la fila dejaba ambas mitades inservibles.
+                val queueDocked = maxWidth - queueWidth >= 320.dp
 
                 Column(modifier = Modifier.fillMaxSize()) {
                     Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -299,6 +308,7 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                                     enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
                                     exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
                                 ) {
+                                    if (queueDocked) {
                                     Row(modifier = Modifier.fillMaxHeight()) {
                                         if (square) {
                                             Box(
@@ -326,8 +336,50 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                                                     )
                                                     else Modifier
                                                 ),
-                                            containerColor = Color.Transparent
+                                            containerColor = Color.Transparent,
+                                            // La lista de la cola no debe quedar bajo el mini
+                                            // reproductor cuando este flota o está acoplado.
+                                            bottomInset = LocalMiniPlayerInset.current,
                                         )
+                                    }
+                                    } else {
+                                        // Sin sitio para la cola acoplada: se superpone al
+                                        // contenido como un panel, en vez de compartir la fila
+                                        // y dejar ambas mitades ilegibles. El ancho nunca
+                                        // excede el de la ventana.
+                                        Box(modifier = Modifier.fillMaxSize()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(Color.Black.copy(alpha = 0.45f))
+                                                    .clickable(
+                                                        interactionSource = remember {
+                                                            MutableInteractionSource()
+                                                        },
+                                                        indication = null,
+                                                        onClick = { isQueueVisible = false },
+                                                    ),
+                                            )
+                                            PlaybackQueuePanel(
+                                                state = playerState,
+                                                onDismiss = { isQueueVisible = false },
+                                                modifier = Modifier
+                                                    .align(Alignment.CenterEnd)
+                                                    .fillMaxHeight()
+                                                    .width(windowWidth.coerceAtMost(queueWidth))
+                                                    .clip(contentShape)
+                                                    .then(
+                                                        if (islands) Modifier.border(
+                                                            0.5.dp,
+                                                            MaterialTheme.colorScheme.outlineVariant,
+                                                            contentShape
+                                                        )
+                                                        else Modifier
+                                                    ),
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                                bottomInset = LocalMiniPlayerInset.current,
+                                            )
+                                        }
                                     }
                                 }
                             }

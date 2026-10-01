@@ -19,11 +19,16 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -37,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -55,7 +62,10 @@ import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.blur.materials.HazeMaterials
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
+import example.nucleus.models.MediaMetadata
 import example.nucleus.player.PlaybackState
+import example.nucleus.viewmodels.PlayerUiState
+import example.nucleus.viewmodels.PlayerViewModel
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.mp_collapse
 import example.nucleus.generated.resources.mp_error
@@ -126,193 +136,35 @@ fun MiniPlayer(
     val colorScheme = MaterialTheme.colorScheme
 
     val playerContent: @Composable () -> Unit = {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // —— IZQUIERDA: cover + metadatos + like ——
-                BoxWithConstraints(
-                    modifier = Modifier.weight(1f).padding(vertical = 10.dp),
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    val infoHeight = maxHeight
-                    val thumbSize = (infoHeight * 0.88f).coerceIn(48.dp, 68.dp)
-                    val coverShape = AppShapes.medium
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        val animationsEnabled = LocalAnimationsEnabled.current
-                        AnimatedVisibility(
-                            visible = !isOnNowPlaying,
-                            enter = if (animationsEnabled) {
-                                fadeIn(expressiveFadeTween()) +
-                                    expandHorizontally(animationSpec = expressiveLayoutTween())
-                            } else {
-                                EnterTransition.None
-                            },
-                            exit = if (animationsEnabled) {
-                                fadeOut(expressiveTween(180)) +
-                                    shrinkHorizontally(animationSpec = expressiveLayoutTween())
-                            } else {
-                                ExitTransition.None
-                            },
-                        ) {
-                            var isHovered by remember { mutableStateOf(false) }
-                            val overlayAlpha by animateFloatAsState(
-                                targetValue = if (isHovered) 0.42f else 0f,
-                                animationSpec = rememberUiTween(durationMillis = 160),
-                                label = "coverHover",
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .sizeIn(maxWidth = thumbSize * ratio, maxHeight = thumbSize)
-                                    .aspectRatio(ratio)
-                                    .heroCoverElement(song.id, sharedTransitionScope, this)
-                                    .clip(coverShape)
-                                    .onHover { isHovered = it }
-                                    .clickable(onClick = onNowPlaying, role = Role.Button)
-                                    .pointerHoverIcon(PointerIcon.Hand),
-                            ) {
-                                MusicPlayerImage(
-                                    url = song.thumbnailUrl,
-                                    contentDescription = song.title,
-                                    modifier = Modifier.fillMaxSize(),
-                                    shape = coverShape,
-                                    contentScale = ContentScale.Crop,
-                                    placeholderType = PlaceholderType.SONG,
-                                    iconSize = 24.dp,
-                                )
-
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .alpha(overlayAlpha)
-                                        .background(Color.Black),
-                                )
-
-                                if (overlayAlpha > 0.01f) {
-                                    Icon(
-                                        imageVector = if (isOnNowPlaying) {
-                                            Icons.Rounded.ExpandMore
-                                        } else {
-                                            Icons.Rounded.ExpandLess
-                                        },
-                                        contentDescription = if (isOnNowPlaying) {
-                                            stringResource(Res.string.mp_collapse)
-                                        } else {
-                                            stringResource(Res.string.mp_expand)
-                                        },
-                                        tint = Color.White.copy(alpha = overlayAlpha.coerceIn(0f, 1f) / 0.42f),
-                                        modifier = Modifier
-                                            .align(Alignment.Center)
-                                            .size(28.dp)
-                                            .alpha(overlayAlpha / 0.42f),
-                                    )
-                                }
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable(onClick = onNowPlaying, role = Role.Button)
-                                .pointerHoverIcon(PointerIcon.Hand)
-                                .padding(end = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-                        ) {
-                            Text(
-                                text = song.title,
-                                style = MaterialTheme.typography.songTitle,
-                                color = colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = if (isError) {
-                                    state.error ?: stringResource(Res.string.mp_error)
-                                } else {
-                                    song.artists.joinToString(", ") { it.name }
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (isError) {
-                                    colorScheme.error
-                                } else {
-                                    colorScheme.onSurfaceVariant
-                                },
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-
-                        val liked = state.currentSong?.liked == true
-                        LikeToggle(
-                            liked = liked,
-                            onToggle = { playerViewModel.toggleLike() },
-                        )
-                    }
-                }
-
-                // —— CENTRO: transporte + seek (firma Google media) ——
-                Column(
-                    modifier = Modifier.weight(1.55f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-                ) {
-                    PlayerTransportRow()
-                    PlayerProgressRow()
-                }
-
-                // —— DERECHA: volumen + cola + expand ——
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PlayerVolumeControl(modifier = Modifier.padding(end = 6.dp))
-
-                    PlayerIconToggle(
-                        selected = isQueueVisible,
-                        onClick = onToggleQueue,
-                        imageVector = Icons.AutoMirrored.Filled.QueueMusic,
-                        contentDescription = stringResource(Res.string.mp_queue),
-                        size = 40.dp,
-                        iconSize = 22.dp,
-                    )
-
-                    FilledTonalIconButton(
-                        onClick = onNowPlaying,
-                        modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
-                        shape = CircleShape,
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = if (isOnNowPlaying) {
-                                colorScheme.primaryContainer
-                            } else {
-                                colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
-                            },
-                            contentColor = if (isOnNowPlaying) {
-                                colorScheme.onPrimaryContainer
-                            } else {
-                                colorScheme.onSurfaceVariant
-                            },
-                        ),
-                    ) {
-                        Icon(
-                            imageVector = if (isOnNowPlaying) {
-                                Icons.Rounded.ExpandMore
-                            } else {
-                                Icons.Rounded.ExpandLess
-                            },
-                            contentDescription = stringResource(Res.string.play_item),
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                }
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            if (maxWidth < MiniPlayerWideMinWidth) {
+                MiniPlayerCompactRow(
+                    song = song,
+                    state = state,
+                    isError = isError,
+                    isOnNowPlaying = isOnNowPlaying,
+                    isQueueVisible = isQueueVisible,
+                    onNowPlaying = onNowPlaying,
+                    onToggleQueue = onToggleQueue,
+                    ratio = ratio,
+                    sharedTransitionScope = sharedTransitionScope,
+                    playerViewModel = playerViewModel,
+                    colorScheme = colorScheme,
+                )
+            } else {
+                MiniPlayerWideRow(
+                    song = song,
+                    state = state,
+                    isError = isError,
+                    isOnNowPlaying = isOnNowPlaying,
+                    isQueueVisible = isQueueVisible,
+                    onNowPlaying = onNowPlaying,
+                    onToggleQueue = onToggleQueue,
+                    ratio = ratio,
+                    sharedTransitionScope = sharedTransitionScope,
+                    playerViewModel = playerViewModel,
+                    colorScheme = colorScheme,
+                )
             }
         }
     }
@@ -501,6 +353,395 @@ fun MiniPlayer(
             shadowElevation = if (islands) 2.dp else 0.dp,
         ) {
             playerContent()
+        }
+    }
+}
+
+/**
+ * Ancho mínimo para el layout de tres zonas (portada · transporte · volumen/cola/expand).
+ * Medido: la zona central necesita ~232dp de transporte, la derecha ~232dp de volumen,
+ * cola y expandir, y la portada ~240dp con el texto. Por debajo de esto las tres zonas se
+ * comprimen y los botones de la derecha se salen de la barra, que es lo que pasaba al
+ * reducir la ventana.
+ */
+private val MiniPlayerWideMinWidth = 700.dp
+
+/**
+ * Barra de reproducción compacta para ventanas estrechas, siguiendo el criterio de
+ * Metrolist: en vez de recortar el layout de escritorio, se cambia a la firma de móvil —
+ * portada con anillo de progreso, información y las acciones que caben. El progreso
+ * pasa al anillo de la portada y desaparecen la barra de búsqueda, el volumen y los
+ * controles de transporte, que es donde estaba el problema.
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun MiniPlayerCompactRow(
+    song: MediaMetadata,
+    state: PlayerUiState,
+    isError: Boolean,
+    isOnNowPlaying: Boolean,
+    isQueueVisible: Boolean,
+    onNowPlaying: () -> Unit,
+    onToggleQueue: () -> Unit,
+    ratio: Float,
+    sharedTransitionScope: SharedTransitionScope?,
+    playerViewModel: PlayerViewModel,
+    colorScheme: ColorScheme,
+) {
+    val progress by playerViewModel.progressState.collectAsState()
+    val isPlaying = state.playbackState == PlaybackState.PLAYING
+    val fraction =
+        if (progress.durationMs > 0) {
+            (progress.positionMs.toFloat() / progress.durationMs).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Portada con el anillo de progreso: hace de botón de play/pause.
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .drawBehind {
+                    val stroke = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                    val diameter = size.minDimension
+                    val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
+                    val arcSize = Size(diameter, diameter)
+                    drawArc(
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = stroke,
+                    )
+                    if (fraction > 0f) {
+                        drawArc(
+                            color = colorScheme.primary,
+                            startAngle = -90f,
+                            sweepAngle = 360f * fraction,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = stroke,
+                        )
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button) { playerViewModel.togglePlayPause() }
+                    .pointerHoverIcon(PointerIcon.Hand),
+                contentAlignment = Alignment.Center,
+            ) {
+                MusicPlayerImage(
+                    url = song.thumbnailUrl,
+                    contentDescription = song.title,
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    contentScale = ContentScale.Crop,
+                    placeholderType = PlaceholderType.SONG,
+                    iconSize = 20.dp,
+                )
+
+                if (!isPlaying) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                    )
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onNowPlaying, role = Role.Button)
+                .pointerHoverIcon(PointerIcon.Hand),
+            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        ) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.songTitle,
+                color = colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = if (isError) {
+                    state.error ?: stringResource(Res.string.mp_error)
+                } else {
+                    song.artists.joinToString(", ") { it.name }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isError) colorScheme.error else colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        LikeToggle(
+            liked = song.liked,
+            onToggle = { playerViewModel.toggleLike() },
+        )
+
+        PlayerIconToggle(
+            selected = isQueueVisible,
+            onClick = onToggleQueue,
+            imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+            contentDescription = stringResource(Res.string.mp_queue),
+            size = 36.dp,
+            iconSize = 20.dp,
+        )
+
+        FilledTonalIconButton(
+            onClick = onNowPlaying,
+            modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
+            shape = CircleShape,
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = if (isOnNowPlaying) {
+                    colorScheme.primaryContainer
+                } else {
+                    colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+                },
+                contentColor = if (isOnNowPlaying) {
+                    colorScheme.onPrimaryContainer
+                } else {
+                    colorScheme.onSurfaceVariant
+                },
+            ),
+        ) {
+            Icon(
+                imageVector = if (isOnNowPlaying) {
+                    Icons.Rounded.ExpandMore
+                } else {
+                    Icons.Rounded.ExpandLess
+                },
+                contentDescription = stringResource(Res.string.mp_expand),
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+/** Layout de escritorio del mini reproductor: portada · transporte + seek · volumen/cola. */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun MiniPlayerWideRow(
+    song: MediaMetadata,
+    state: PlayerUiState,
+    isError: Boolean,
+    isOnNowPlaying: Boolean,
+    isQueueVisible: Boolean,
+    onNowPlaying: () -> Unit,
+    onToggleQueue: () -> Unit,
+    ratio: Float,
+    sharedTransitionScope: SharedTransitionScope?,
+    playerViewModel: PlayerViewModel,
+    colorScheme: ColorScheme,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // —— IZQUIERDA: cover + metadatos + like ——
+        BoxWithConstraints(
+            modifier = Modifier.weight(1f).padding(vertical = 10.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            val infoHeight = maxHeight
+            val thumbSize = (infoHeight * 0.88f).coerceIn(48.dp, 68.dp)
+            val coverShape = AppShapes.medium
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                val animationsEnabled = LocalAnimationsEnabled.current
+                AnimatedVisibility(
+                    visible = !isOnNowPlaying,
+                    enter = if (animationsEnabled) {
+                        fadeIn(expressiveFadeTween()) +
+                            expandHorizontally(animationSpec = expressiveLayoutTween())
+                    } else {
+                        EnterTransition.None
+                    },
+                    exit = if (animationsEnabled) {
+                        fadeOut(expressiveTween(180)) +
+                            shrinkHorizontally(animationSpec = expressiveLayoutTween())
+                    } else {
+                        ExitTransition.None
+                    },
+                ) {
+                    var isHovered by remember { mutableStateOf(false) }
+                    val overlayAlpha by animateFloatAsState(
+                        targetValue = if (isHovered) 0.42f else 0f,
+                        animationSpec = rememberUiTween(durationMillis = 160),
+                        label = "coverHover",
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .sizeIn(maxWidth = thumbSize * ratio, maxHeight = thumbSize)
+                            .aspectRatio(ratio)
+                            .heroCoverElement(song.id, sharedTransitionScope, this)
+                            .clip(coverShape)
+                            .onHover { isHovered = it }
+                            .clickable(onClick = onNowPlaying, role = Role.Button)
+                            .pointerHoverIcon(PointerIcon.Hand),
+                    ) {
+                        MusicPlayerImage(
+                            url = song.thumbnailUrl,
+                            contentDescription = song.title,
+                            modifier = Modifier.fillMaxSize(),
+                            shape = coverShape,
+                            contentScale = ContentScale.Crop,
+                            placeholderType = PlaceholderType.SONG,
+                            iconSize = 24.dp,
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .alpha(overlayAlpha)
+                                .background(Color.Black),
+                        )
+
+                        if (overlayAlpha > 0.01f) {
+                            Icon(
+                                imageVector = if (isOnNowPlaying) {
+                                    Icons.Rounded.ExpandMore
+                                } else {
+                                    Icons.Rounded.ExpandLess
+                                },
+                                contentDescription = if (isOnNowPlaying) {
+                                    stringResource(Res.string.mp_collapse)
+                                } else {
+                                    stringResource(Res.string.mp_expand)
+                                },
+                                tint = Color.White.copy(alpha = overlayAlpha.coerceIn(0f, 1f) / 0.42f),
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(28.dp)
+                                    .alpha(overlayAlpha / 0.42f),
+                            )
+                        }
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onNowPlaying, role = Role.Button)
+                        .pointerHoverIcon(PointerIcon.Hand)
+                        .padding(end = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+                ) {
+                    Text(
+                        text = song.title,
+                        style = MaterialTheme.typography.songTitle,
+                        color = colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = if (isError) {
+                            state.error ?: stringResource(Res.string.mp_error)
+                        } else {
+                            song.artists.joinToString(", ") { it.name }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isError) {
+                            colorScheme.error
+                        } else {
+                            colorScheme.onSurfaceVariant
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                LikeToggle(
+                    liked = song.liked,
+                    onToggle = { playerViewModel.toggleLike() },
+                )
+            }
+        }
+
+        // —— CENTRO: transporte + seek (firma Google media) ——
+        Column(
+            modifier = Modifier.weight(1.55f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        ) {
+            PlayerTransportRow()
+            PlayerProgressRow()
+        }
+
+        // —— DERECHA: volumen + cola + expand ——
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlayerVolumeControl(modifier = Modifier.padding(end = 6.dp))
+
+            PlayerIconToggle(
+                selected = isQueueVisible,
+                onClick = onToggleQueue,
+                imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                contentDescription = stringResource(Res.string.mp_queue),
+                size = 40.dp,
+                iconSize = 22.dp,
+            )
+
+            FilledTonalIconButton(
+                onClick = onNowPlaying,
+                modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (isOnNowPlaying) {
+                        colorScheme.primaryContainer
+                    } else {
+                        colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+                    },
+                    contentColor = if (isOnNowPlaying) {
+                        colorScheme.onPrimaryContainer
+                    } else {
+                        colorScheme.onSurfaceVariant
+                    },
+                ),
+            ) {
+                Icon(
+                    imageVector = if (isOnNowPlaying) {
+                        Icons.Rounded.ExpandMore
+                    } else {
+                        Icons.Rounded.ExpandLess
+                    },
+                    contentDescription = stringResource(Res.string.play_item),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }
