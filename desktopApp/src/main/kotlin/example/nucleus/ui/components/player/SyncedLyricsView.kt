@@ -103,10 +103,25 @@ fun Modifier.lyricsFadingEdges(
 )
 
 /**
- * Letras sincronizadas interactivas al estilo Spotify / Metrolist:
+ * Retardo relativo de una fila respecto al ancla en la cascada. Las filas lejanas siguen
+ * el salto mas despacio, hasta un tope: pasado un tope el retraso ya no se percibe y solo
+ * costaria desincronizar el conjunto (LAG_STAGGER y LAG en Sonora).
+ */
+private const val LYRICS_LAG_ROWS = 24
+private const val LYRICS_LAG_STAGGER = 0.35f
+
+private fun rowLag(distanceFromActive: Int): Float =
+    (distanceFromActive.coerceAtMost(LYRICS_LAG_ROWS).toFloat() / LYRICS_LAG_ROWS) *
+        LYRICS_LAG_STAGGER
+
+/**
+ * Letras sincronizadas interactivas al estilo Sonora:
  * - Desvanecido continuo en bordes superior e inferior
  * - La línea activa se resalta con opacidad completa, peso destacado y relleno karaoke por palabra
- * - Las líneas inactivas se atenúan suavemente y se iluminan al pasar el cursor
+ * - Sin caja en la activa: el realce es de tamaño y opacidad (lo pasado al 0,40, lo que
+ *   viene al 0,60), no un fondo, que es lo que hace que la letra respire
+ * - Columna acotada a 648dp y centrada, para que los versos no se estiren
+ * - Cascada por fila al cambiar de línea: cada una llega con retardo según su distancia
  * - Detección de navegación manual con botón flotante para resincronizar
  * - Soporte para pausas instrumentales con indicador animado
  * - Romanización integrada
@@ -130,6 +145,13 @@ fun SyncedLyricsView(
 
     val listState = rememberLazyListState()
     val linesIdentity = remember(lines) { lines.firstOrNull()?.timeMs to lines.size }
+
+    // Cascada al cambiar de linea (estilo Sonora, aside.rs:2691 `lag_spring`): la lista
+    // salta ya a su sitio y cada fila viaja con retardo segun su distancia al ancla, de
+    // modo que el cambio se propaga en vez de mover el bloque entero de golpe. Va en la
+    // capa, asi que no toca layout.
+    val cascade = remember { Animatable(1f) }
+    val cascadeOffsetPx = remember { mutableFloatStateOf(0f) }
 
     // Última línea con timeMs <= positionMs (binario O(log n) vs lineal; evita escanear 300 lineas a 10 Hz).
     val activeIndex = remember(lines, positionMs) {
@@ -213,46 +235,86 @@ fun SyncedLyricsView(
                 }
             }
 
-            // Auto-scroll hacia la línea activa cuando no se ha alejado manualmente
+            /**
+             * Coloca el ancla de golpe y devuelve cuantos pixeles se movio la lista, que es
+             * lo que despues las filas reparten con retardo (cascada). Devolver el salto es
+             * lo que permite que la lista no espere a la animacion.
+             */
+            suspend fun scrollToAnchorImmediate(target: Int): Float {
+                if (target < 0 || lines.isEmpty()) return 0f
+                val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
+                    ?: run {
+                        listState.scrollToItem(target, -topAnchorPx.toInt())
+                        snapshotFlow { listState.layoutInfo.visibleItemsInfo.any { it.index == target } }
+                            .filter { it }.first()
+                        listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
+                    }
+                val delta = (item?.offset ?: return 0f) - topAnchorPx
+                if (abs(delta) < 1f) return 0f
+                listState.scrollBy(delta)
+                return delta
+            }
+
+            // Auto-scroll hacia la línea activa cuando no se ha alejado manualmente.
+            // El salto de la lista es instantáneo y el movimiento se resuelve en la capa
+            // con la cascada de mas abajo: si no, todas las filas viajan juntas.
             LaunchedEffect(activeIndex, linesIdentity) {
                 if (activeIndex < 0 || lines.isEmpty()) return@LaunchedEffect
                 if (!userScrolledAway) {
-                    scrollToAnchor(activeIndex)
+                    val jumped = scrollToAnchorImmediate(activeIndex)
+                    if (abs(jumped) > 1f && animationsEnabled) {
+                        cascadeOffsetPx.value = jumped
+                        cascade.snapTo(1f)
+                        cascade.animateTo(0f, expressiveTween(durationMillis = 460))
+                    }
                 }
             }
 
-            LazyColumn(
-                state = listState,
+            // Columna acotada y centrada. Sin tope, en una ventana ancha los versos se
+            // estiran de borde a borde y dejan de leerse como letra (REACH en Sonora).
+            // El relleno inferior se calcula aqui porque maxHeight pertenece al
+            // BoxWithConstraints exterior y el Box anidado lo oculta.
+            val listBottomPadding = maxHeight * 0.65f + LocalMiniPlayerInset.current
+            Box(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = 40.dp,
-                    bottom = maxHeight * 0.65f + LocalMiniPlayerInset.current,
-                    start = 16.dp,
-                    end = 16.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentAlignment = Alignment.TopCenter,
             ) {
-                itemsIndexed(
-                    items = lines,
-                    key = { i, line -> "${line.timeMs}-$i-${line.text.hashCode()}" },
-                ) { i, line ->
-                    val distance = if (activeIndex >= 0) abs(i - activeIndex) else 0
-                    LyricLineRow(
-                        line = line,
-                        positionMs = positionMs,
-                        isActive = i == activeIndex,
-                        isPast = i < activeIndex,
-                        distanceFromActive = distance,
-                        startAligned = textAlign,
-                        activeTextSize = textSize,
-                        lineSpacing = lineSpacing,
-                        animationStyle = animationStyle,
-                        romanize = romanizeEnabled,
-                        onClick = {
-                            userScrolledAway = false
-                            onSeek(line.timeMs)
-                        },
-                    )
+            LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 648.dp),
+                    contentPadding = PaddingValues(
+                        top = 40.dp,
+                        bottom = listBottomPadding,
+                        start = 16.dp,
+                        end = 16.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    itemsIndexed(
+                        items = lines,
+                        key = { i, line -> "${line.timeMs}-$i-${line.text.hashCode()}" },
+                    ) { i, line ->
+                        val distance = if (activeIndex >= 0) abs(i - activeIndex) else 0
+                        LyricLineRow(
+                            line = line,
+                            positionMs = positionMs,
+                            isActive = i == activeIndex,
+                            isPast = i < activeIndex,
+                            distanceFromActive = distance,
+                            startAligned = textAlign,
+                            activeTextSize = textSize,
+                            lineSpacing = lineSpacing,
+                            animationStyle = animationStyle,
+                            romanize = romanizeEnabled,
+                            lagOffsetPx = { cascadeOffsetPx.value * rowLag(distance) * cascade.value },
+                            onClick = {
+                                userScrolledAway = false
+                                onSeek(line.timeMs)
+                            },
+                        )
+                    }
                 }
             }
 
@@ -319,6 +381,8 @@ private fun LyricLineRow(
     lineSpacing: Float,
     animationStyle: LyricsAnimationStyle,
     romanize: Boolean,
+    /** Desfase de la cascada en px. Se lee en la capa, nunca en la composición. */
+    lagOffsetPx: () -> Float = { 0f },
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -333,14 +397,15 @@ private fun LyricLineRow(
 
     val motionSpec = uiTween<Float>(animationsEnabled, durationMillis = 280)
 
-    // Base alpha: activa = 1.0f.
-    // Inactivas: atenuación suave estilo Spotify/Metrolist según distancia, y realce al pasar el cursor
+    // Base alpha: activa = 1.0f. Estilo Sonora (aside.rs:1222-1247): lo pasado al 0,40
+    // y lo que viene al 0,60, sin mas degradado por distancia — la jerarquia la marca
+    // el tamano, no un rango de transparencias.
     val targetAlpha = when {
         !useAlpha -> 1f
         isActive -> 1f
         isHovered -> 0.88f
-        isPast -> (0.40f - (distanceFromActive * 0.02f)).coerceAtLeast(0.24f)
-        else -> (0.54f - (distanceFromActive * 0.02f)).coerceAtLeast(0.32f)
+        isPast -> 0.40f
+        else -> 0.60f
     }
 
     val rowAlpha by animateFloatAsState(
@@ -349,8 +414,10 @@ private fun LyricLineRow(
         label = "lyricAlpha",
     )
 
+    // La activa crece solo 2sp como texto real, no como escala de capa: el escalado
+    // deformaria el salto de linea y el retardo de las filas vecinas.
     val scale by animateFloatAsState(
-        targetValue = if (!useScale) 1f else if (isActive) 1.035f else if (isHovered) 1.01f else 0.99f,
+        targetValue = if (!useScale) 1f else if (isHovered) 1.008f else 1f,
         animationSpec = motionSpec,
         label = "lyricScale",
     )
@@ -367,26 +434,18 @@ private fun LyricLineRow(
         label = "lyricWeight",
     )
 
-    val activeShape = RoundedCornerShape(16.dp)
-    val inactiveShape = RoundedCornerShape(12.dp)
-
-    val rowBg = when {
-        isActive -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
-        isHovered -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f)
-        else -> Color.Transparent
-    }
-
-    val rowBorder = when {
-        isActive -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
-        isHovered -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-        else -> null
+    // Sin caja en la activa: el realce lo dan el tamano, el peso y la opacidad. Solo el
+    // hover conserva un fondo, para senalar el blanco del click.
+    val rowBg = if (isHovered && !isActive) {
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f)
+    } else {
+        Color.Transparent
     }
 
     val baseModifier = Modifier
         .fillMaxWidth()
-        .clip(if (isActive) activeShape else inactiveShape)
-        .background(color = rowBg, shape = if (isActive) activeShape else inactiveShape)
-        .then(if (rowBorder != null) Modifier.border(rowBorder, if (isActive) activeShape else inactiveShape) else Modifier)
+        .clip(RoundedCornerShape(12.dp))
+        .background(color = rowBg, shape = RoundedCornerShape(12.dp))
         .clickable(
             interactionSource = interactionSource,
             indication = null,
@@ -398,6 +457,7 @@ private fun LyricLineRow(
             scaleY = scale
             alpha = rowAlpha
             transformOrigin = if (startAligned) TransformOrigin(0f, 0.5f) else TransformOrigin(0.5f, 0.5f)
+            translationY = lagOffsetPx()
         }
         .padding(horizontal = 16.dp, vertical = if (isActive) 10.dp else 7.dp)
 

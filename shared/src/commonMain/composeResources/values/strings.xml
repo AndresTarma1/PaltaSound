@@ -396,6 +396,7 @@
     <string name="queue_download_added">%1$d canciones agregadas a descargas</string>
     <string name="queue_saved_as">Cola guardada como «%1$s»</string>
     <string name="tab_lyrics">Letras</string>
+    <string name="tab_cover">Portada</string>
     <string name="lyrics_sync_jump">Sincronizar</string>
     <string name="lyrics_instrumental">Instrumental</string>
     <string name="tab_queue">Cola</string>

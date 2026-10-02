@@ -19,8 +19,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,6 +54,7 @@ import example.nucleus.ui.themes.expressiveTween
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.utils.LocalUserPreferences
+import example.nucleus.windows.HiddenCursor
 import example.nucleus.viewmodels.PlayerUiState
 import example.nucleus.viewmodels.QueueSource
 import kotlinx.coroutines.delay
@@ -61,7 +62,20 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.onHover
 
-enum class NowPlayingTab { LYRICS, QUEUE, INFO }
+/**
+ * Vistas del reproductor a pantalla completa, al estilo de Sonora: la primera no es una
+ * pestaña sino la ausencia de panel — la portada a pantalla completa. Las otras dos
+ * abren el panel lateral (letra o cola) cuando hay ancho, y ocupan toda la pantalla
+ * cuando no.
+ */
+enum class NowPlayingTab {
+    COVER,
+    LYRICS,
+    QUEUE;
+
+    /** Si este estado muestra un panel junto a la portada. */
+    val hasPanel: Boolean get() = this != COVER
+}
 
 /** Espera (ms) sin actividad del puntero antes de que el cromo de Now Playing se oculte. */
 private const val AUTO_HIDE_REST_MS = 1_500L
@@ -97,6 +111,15 @@ internal class NowPlayingAutoHide {
         lastActiveNanos = System.nanoTime()
         interacted = true
     }
+
+    /**
+     * El cursor se va con el cromo. Se hace en [wake] y no al carretar la animación, porque
+     * cualquier movimiento del ratón —también el que el usuario no nota— lo devuelve.
+     */
+    fun wakeWithCursor() {
+        wake()
+        HiddenCursor.show()
+    }
 }
 
 /**
@@ -113,6 +136,12 @@ private fun NowPlayingAutoHideDriver(
     val scope = rememberCoroutineScope()
     val animationsEnabled = LocalAnimationsEnabled.current
 
+    // Si Now Playing se cierra con el cromo hundido, el cursor se quedaria invisible en
+    // el resto de la app. Se devuelve siempre al salir de la pantalla.
+    DisposableEffect(Unit) {
+        onDispose { HiddenCursor.show() }
+    }
+
     LaunchedEffect(enabled, animationsEnabled) {
         var target = 0f
         while (true) {
@@ -127,6 +156,9 @@ private fun NowPlayingAutoHideDriver(
                 }
             if (next != target) {
                 target = next
+                // El cursor se oculta con los controles y solo se recupera con el primer
+                // movimiento del puntero (Sonora: cx.hide_cursor() al dormir el cromo).
+                if (next >= 1f) HiddenCursor.hide()
                 if (animationsEnabled) {
                     // En un scope aparte para no bloquear el tick: cada animateTo sobre el
                     // mismo Animatable cancela al anterior, así el wake corta el hundimiento.
@@ -261,24 +293,30 @@ fun NowPlayingLayout(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            // Cualquier actividad del puntero mantiene/repierte el cromo.
-            .onPointerEvent(PointerEventType.Move) { autoHide.wake() }
+            // Cualquier actividad del puntero mantiene/repierte el cromo y recupera el
+            // cursor que se ocultó con él.
+            .onPointerEvent(PointerEventType.Move) { autoHide.wakeWithCursor() }
             .onPointerEvent(PointerEventType.Press) {
-                autoHide.wake()
+                autoHide.wakeWithCursor()
                 autoHide.pointerDown = true
             }
             .onPointerEvent(PointerEventType.Release) {
                 autoHide.pointerDown = false
-                autoHide.wake()
+                autoHide.wakeWithCursor()
             }
             .onPointerEvent(PointerEventType.Exit) {
                 // El release puede caer fuera de la ventana (popup encima):
                 // no quedarse con el botón "abajo" y el cromo visible para siempre.
                 autoHide.pointerDown = false
+                // Fuera de la ventana el cursor es de otro, pero si el cromo se quedó
+                // hundido hay que devolverlo al entrar de nuevo.
+                autoHide.wakeWithCursor()
             }
-            .onPointerEvent(PointerEventType.Scroll) { autoHide.wake() },
+            .onPointerEvent(PointerEventType.Scroll) { autoHide.wakeWithCursor() },
     ) {
-        val isCompact = maxWidth < 640.dp || maxHeight < 400.dp
+        // Ancho minimo para poner portada y panel en paralelo. 740dp es el breakpoint `Wide`
+        // de Sonora: por debajo, el panel ocupa toda la pantalla y la portada sale del layout.
+        val isCompact = maxWidth < 740.dp || maxHeight < 400.dp
 
         Column(
             modifier = Modifier
@@ -445,9 +483,9 @@ private fun NowPlayingIconTabs(
     showLabels: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val coverLabel = stringResource(Res.string.tab_cover)
     val lyricsLabel = stringResource(Res.string.tab_lyrics)
     val queueLabel = stringResource(Res.string.tab_queue)
-    val infoLabel = stringResource(Res.string.tab_info)
     val colorScheme = MaterialTheme.colorScheme
 
     Surface(
@@ -468,9 +506,9 @@ private fun NowPlayingIconTabs(
             NowPlayingTab.entries.forEach { tab ->
                 val selected = tab == selectedTab
                 val label = when (tab) {
+                    NowPlayingTab.COVER -> coverLabel
                     NowPlayingTab.LYRICS -> lyricsLabel
                     NowPlayingTab.QUEUE -> if (queueCount > 0) "$queueLabel · $queueCount" else queueLabel
-                    NowPlayingTab.INFO -> infoLabel
                 }
                 val contentColor = if (selected) {
                     colorScheme.onPrimaryContainer
@@ -539,8 +577,15 @@ private fun TransparentPanel(
 }
 
 /**
- * Cuerpo principal espacioso: en escritorio divide la pantalla con proporción aireada,
- * y en pantallas muy estrechas (< 640dp) organiza la carátula y el contenido en una columna fluida.
+ * Cuerpo principal del reproductor a pantalla completa, con la misma estructura que
+ * Sonora (`fullscreen.rs:1015-1223`):
+ *
+ * - **Portada** ([NowPlayingTab.COVER]): la carátula manda, sin panel. En escritorio se
+ *   centra con los metadatos debajo; en vertical, arriba y con el chrome abajo.
+ * - **Con panel** (letra o cola): en ancho suficiente la portada se queda a la izquierda y
+ *   el panel ocupa la derecha; si no cabe, el panel ocupa toda la pantalla y la carátula
+ *   desaparece del layout sustituida por la fila compacta de arriba (Sonora llama a esto
+ *   `staged`/`split`).
  */
 @Composable
 private fun SpaciousNowPlayingBody(
@@ -557,12 +602,13 @@ private fun SpaciousNowPlayingBody(
     autoHide: NowPlayingAutoHide,
 ) {
     val (coverScale, coverAlpha) = rememberCoverEnter()
+    val hasPanel = selectedTab.hasPanel
+    // Split: panel y portada en paralelo. Solo con ancho, igual que Sonora exige Wide.
+    val split = hasPanel && !compact
 
     if (compact) {
-        // Layout vertical tipo móvil: el contenido scrolleable (letra, información, cola)
-        // manda y ocupa todo el espacio disponible; el chrome se ancla abajo. En una ventana
-        // angosta una fila de portada de 104dp arriba se comería media pantalla y dejaría
-        // la letra ilegible.
+        // Layout vertical tipo móvil: el contenido scrolleable (letra, cola) manda y ocupa
+        // todo el espacio; el chrome se ancla abajo.
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -573,20 +619,53 @@ private fun SpaciousNowPlayingBody(
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
-                NowPlayingTabContent(
-                    tab = selectedTab,
-                    song = song,
-                    state = state,
-                    lyrics = lyrics,
-                    lyricsTextStyle = MaterialTheme.typography.bodyLarge,
-                    onNavigate = onNavigate,
-                    mediaInfo = mediaInfo,
-                )
+                if (hasPanel) {
+                    NowPlayingTabContent(
+                        tab = selectedTab,
+                        song = song,
+                        state = state,
+                        lyrics = lyrics,
+                        mediaInfo = mediaInfo,
+                        lyricsTextStyle = MaterialTheme.typography.bodyLarge,
+                        onNavigate = onNavigate,
+                    )
+                } else {
+                    // Vista de portada en vertical: carátula grande arriba, metadatos debajo.
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val coverSize = minOf(maxWidth * 0.86f, maxHeight - 132.dp, 320.dp)
+                            .coerceAtLeast(96.dp)
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            CoverArt(
+                                url = song.thumbnailUrl,
+                                title = song.title,
+                                modifier = Modifier
+                                    .size(coverSize)
+                                    .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
+                                    .coverEnter(coverScale, coverAlpha)
+                                    .autoHideCoverGrow(autoHide, restScale = 1.1f),
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            NowPlayingSongDetails(
+                                state = state,
+                                song = song,
+                                textAlign = TextAlign.Center,
+                                onNavigate = onNavigate,
+                                onCollapse = onCollapse,
+                                compact = true,
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Chrome anclado abajo: pista, progreso y transporte.
+            // Chrome anclado abajo: pista, progreso y transporte. La carátula aquí solo
+            // aparece cuando hay panel — con la vista de portada ya está arriba.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -594,28 +673,30 @@ private fun SpaciousNowPlayingBody(
                     .onHover { autoHide.chromeHover = it },
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CoverArt(
-                        url = song.thumbnailUrl,
-                        title = song.title,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                            .coverEnter(coverScale, coverAlpha),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    NowPlayingSongDetails(
-                        state = state,
-                        song = song,
-                        textAlign = TextAlign.Start,
-                        onNavigate = onNavigate,
-                        onCollapse = onCollapse,
-                        compact = true,
-                        modifier = Modifier.weight(1f),
-                    )
+                if (hasPanel) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CoverArt(
+                            url = song.thumbnailUrl,
+                            title = song.title,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
+                                .coverEnter(coverScale, coverAlpha),
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        NowPlayingSongDetails(
+                            state = state,
+                            song = song,
+                            textAlign = TextAlign.Start,
+                            onNavigate = onNavigate,
+                            onCollapse = onCollapse,
+                            compact = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
 
                 PlayerProgressRow()
@@ -651,17 +732,18 @@ private fun SpaciousNowPlayingBody(
         }
     } else {
         // Diseño de escritorio tipo Apple Music / Spotify:
-        // izquierda = carátula + metadatos + progreso + transporte; derecha = panel de pestañas.
+        // izquierda = carátula + metadatos + progreso + transporte; derecha = panel de
+        // letra/cola. Sin panel (vista de portada) la izquierda ocupa todo el ancho.
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp, vertical = 16.dp),
+                .padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(32.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
         Row(
             modifier = Modifier
-                .weight(0.45f)
+                .weight(if (split) 0.45f else 1f)
                 .fillMaxHeight(),
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -751,26 +833,29 @@ private fun SpaciousNowPlayingBody(
             )
         }
 
-        // Columna derecha: panel transparente con el contenido de la pestaña activa
-        TransparentPanel(
-            modifier = Modifier
-                .weight(0.55f)
-                .fillMaxHeight(),
-        ) {
-            Box(
+        // Columna derecha: solo con panel abierto. Sin panel la columna izquierda ya
+        // ocupa el ancho completo, asi que la portada queda centrada en la ventana.
+        if (split) {
+            TransparentPanel(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 12.dp),
+                    .weight(0.55f)
+                    .fillMaxHeight(),
             ) {
-                NowPlayingTabContent(
-                    tab = selectedTab,
-                    song = song,
-                    state = state,
-                    lyrics = lyrics,
-                    lyricsTextStyle = MaterialTheme.typography.headlineMedium,
-                    onNavigate = onNavigate,
-                    mediaInfo = mediaInfo,
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 8.dp, top = 8.dp, bottom = 12.dp),
+                ) {
+                    NowPlayingTabContent(
+                        tab = selectedTab,
+                        song = song,
+                        state = state,
+                        lyrics = lyrics,
+                        lyricsTextStyle = MaterialTheme.typography.headlineMedium,
+                        onNavigate = onNavigate,
+                        mediaInfo = mediaInfo,
+                    )
+                }
             }
         }
         }
@@ -914,9 +999,9 @@ private fun NowPlayingSongDetails(
 }
 
 private fun tabIcon(tab: NowPlayingTab) = when (tab) {
+    NowPlayingTab.COVER -> Icons.Rounded.Album
     NowPlayingTab.LYRICS -> Icons.Rounded.Lyrics
     NowPlayingTab.QUEUE -> Icons.AutoMirrored.Filled.QueueMusic
-    NowPlayingTab.INFO -> Icons.Rounded.Info
 }
 
 /**
@@ -948,6 +1033,8 @@ private fun NowPlayingTabContent(
         modifier = Modifier.fillMaxSize(),
     ) { targetTab ->
         when (targetTab) {
+            // La vista de portada no tiene panel: la compone el layout, no este contenido.
+            NowPlayingTab.COVER -> Unit
             NowPlayingTab.LYRICS -> LyricsContent(
                 lyrics = lyrics,
                 textAlign = TextAlign.Start,
@@ -957,12 +1044,6 @@ private fun NowPlayingTabContent(
                 state = state,
                 modifier = Modifier.fillMaxSize(),
                 bottomInset = 0.dp,
-            )
-            NowPlayingTab.INFO -> SongInfoContent(
-                song = song,
-                state = state,
-                mediaInfo = mediaInfo,
-                onNavigate = onNavigate,
             )
         }
     }

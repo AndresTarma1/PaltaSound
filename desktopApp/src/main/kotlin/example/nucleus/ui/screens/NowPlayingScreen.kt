@@ -26,7 +26,9 @@ fun NowPlayingScreen(
     val currentSongMediaInfo by viewModel.currentMediaInfo.collectAsState()
     val currentSong = playerState.currentSong
 
-    var selectedTab by remember { mutableStateOf(NowPlayingTab.LYRICS) }
+    // Se abre en la portada, no en la letra: es la vista que muestra la caratula a
+    // pantalla completa, y la letra/cola se eligen desde la pill. Sonora hace lo mismo.
+    var selectedTab by remember { mutableStateOf(NowPlayingTab.COVER) }
 
     if (currentSong != null) {
 

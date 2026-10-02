@@ -388,6 +388,7 @@
     <string name="queue_download_added">%1$d songs added to downloads</string>
     <string name="queue_saved_as">Queue saved as “%1$s”</string>
     <string name="tab_lyrics">Lyrics</string>
+    <string name="tab_cover">Cover</string>
     <string name="lyrics_sync_jump">Sync</string>
     <string name="lyrics_instrumental">Instrumental</string>
     <string name="tab_queue">Queue</string>
