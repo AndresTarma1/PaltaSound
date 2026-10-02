@@ -52,11 +52,11 @@ import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.lyrics_instrumental
 import example.nucleus.generated.resources.lyrics_sync_jump
 import example.nucleus.ui.themes.LocalMiniPlayerInset
-import example.nucleus.ui.themes.expressiveScrollDuration
 import example.nucleus.ui.themes.expressiveTween
 import example.nucleus.ui.themes.uiTween
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.utils.LocalUserPreferences
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -115,6 +115,35 @@ private fun rowLag(distanceFromActive: Int): Float =
         LYRICS_LAG_STAGGER
 
 /**
+ * Muelle del desplazamiento, con los valores de Sonora (`Springs::LYRICS_SCROLL`,
+ * rigidez 170 y amortiguacion 23 sobre masa 1). El amortiguamiento relativo resultante es
+ * 0,88: llega rapido y frena sin rebote.
+ */
+private fun lyricsScrollSpring() = spring<Float>(
+    dampingRatio = 0.88f,
+    stiffness = 170f,
+    visibilityThreshold = 0.5f,
+)
+
+/**
+ * Muelle de una fila. Es el del scroll con la frecuencia escalada por la distancia al
+ * ancla, que es lo que hace `lag_spring` en Sonora (aside.rs:2691): la fila activa usa la
+ * misma frecuencia y por tanto no se separa, y las lejanas llegan progressive mas tarde.
+ *
+ * El amortiguamiento relativo se deja igual que en el scroll a proposito. Si bajase, la fila
+ * pasaria de largo y volveria, y eso se lee como un temblor; aqui lo unico que cambia es
+ * cuando llega, no si se pasa.
+ */
+private fun lyricsRowSpring(distanceFromActive: Int): FiniteAnimationSpec<Float> {
+    val frequency = 1f - rowLag(distanceFromActive)
+    return spring<Float>(
+        dampingRatio = 0.88f,
+        stiffness = 170f * frequency * frequency,
+        visibilityThreshold = 0.5f,
+    )
+}
+
+/**
  * Letras sincronizadas interactivas al estilo Sonora:
  * - Desvanecido continuo en bordes superior e inferior
  * - La línea activa se resalta con opacidad completa, peso destacado y relleno karaoke por palabra
@@ -146,12 +175,17 @@ fun SyncedLyricsView(
     val listState = rememberLazyListState()
     val linesIdentity = remember(lines) { lines.firstOrNull()?.timeMs to lines.size }
 
-    // Cascada al cambiar de linea (estilo Sonora, aside.rs:2691 `lag_spring`): la lista
-    // salta ya a su sitio y cada fila viaja con retardo segun su distancia al ancla, de
-    // modo que el cambio se propaga en vez de mover el bloque entero de golpe. Va en la
-    // capa, asi que no toca layout.
-    val cascade = remember { Animatable(1f) }
-    val cascadeOffsetPx = remember { mutableFloatStateOf(0f) }
+    // Cascada al cambiar de linea. Cada fila persigue su sitio con un muelle propio y algo
+    // mas lento cuanto mas lejos esta del ancla, que es lo que hace que el cambio se
+    // propague en vez de mover el bloque entero de golpe (Sonora, aside.rs:2691
+    // `lag_spring`). Se aplica en la capa, asi que no toca layout.
+    //
+    // `cascadeJumpPx` es el desplazamiento total de la lista; `scrollProgress` su avance.
+    // La fila se dibuja en `progress - scrollProgress`: en el instante del cambio ambas
+    // valen cero (sin salto) y, como la fila va mas lenta, se queda atras hasta que
+    // converge. Es lo que evita el tirón de un salto mas una correccion con tween.
+    val cascadeJumpPx = remember { mutableFloatStateOf(0f) }
+    val scrollProgress = remember { Animatable(1f) }
 
     // Última línea con timeMs <= positionMs (binario O(log n) vs lineal; evita escanear 300 lineas a 10 Hz).
     val activeIndex = remember(lines, positionMs) {
@@ -202,72 +236,56 @@ fun SyncedLyricsView(
             val viewportPx = with(LocalDensity.current) { maxHeight.toPx() }
             val topAnchorPx = viewportPx * 0.32f
 
-            suspend fun scrollToAnchor(target: Int, animated: Boolean = true) {
-                if (target < 0 || lines.isEmpty()) return
-
-                suspend fun deltaToAnchor(index: Int): Float? {
-                    val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
-                        ?: return null
-                    return item.offset - topAnchorPx
-                }
-
-                var delta = deltaToAnchor(target)
-                if (delta == null) {
+            /**
+             * Pixeles que faltan (o sobran) para dejar [target] en el ancla, o `null` si la
+             * fila aun no esta medida. Coloca la fila sin animar para poder medirla.
+             */
+            suspend fun anchorDelta(target: Int): Float? {
+                var item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
+                if (item == null) {
                     listState.scrollToItem(target, -topAnchorPx.toInt())
                     snapshotFlow { listState.layoutInfo.visibleItemsInfo.any { it.index == target } }
-                        .filter { it }
-                        .first()
-                    delta = deltaToAnchor(target)
+                        .filter { it }.first()
+                    item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
                 }
-
-                val distance = delta ?: return
-                if (abs(distance) < 1.5f) return
-
-                if (!animated || !animationsEnabled) {
-                    listState.scrollBy(distance)
-                } else {
-                    val spec = if (abs(distance) > viewportPx * 1.5f) {
-                        expressiveTween<Float>(durationMillis = 340)
-                    } else {
-                        uiTween<Float>(animationsEnabled = true, durationMillis = expressiveScrollDuration)
-                    }
-                    listState.animateScrollBy(distance, animationSpec = spec)
-                }
+                return item?.let { it.offset - topAnchorPx }
             }
 
             /**
-             * Coloca el ancla de golpe y devuelve cuantos pixeles se movio la lista, que es
-             * lo que despues las filas reparten con retardo (cascada). Devolver el salto es
-             * lo que permite que la lista no espere a la animacion.
+             * Lleva [target] al ancla con el muelle de scroll. [cascade] ademas reparte el
+             * movimiento entre las filas, que es lo que se ve al cambiar de linea de forma
+             * automatica; al resincronizar a mano se llama sin cascada, porque el usuario ya
+             * ha pedido un salto directo a la linea.
+             *
+             * Se ejecuta en el ambito de quien la llama: al cambiar de linea antes de que
+             * termine el salto anterior, este se cancela en vez de acumularse.
              */
-            suspend fun scrollToAnchorImmediate(target: Int): Float {
-                if (target < 0 || lines.isEmpty()) return 0f
-                val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
-                    ?: run {
-                        listState.scrollToItem(target, -topAnchorPx.toInt())
-                        snapshotFlow { listState.layoutInfo.visibleItemsInfo.any { it.index == target } }
-                            .filter { it }.first()
-                        listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
-                    }
-                val delta = (item?.offset ?: return 0f) - topAnchorPx
-                if (abs(delta) < 1f) return 0f
-                listState.scrollBy(delta)
-                return delta
+            suspend fun CoroutineScope.scrollToLine(target: Int, cascade: Boolean) {
+                val jump = anchorDelta(target) ?: return
+                if (abs(jump) < 1f) return
+
+                if (!animationsEnabled) {
+                    listState.scrollBy(jump)
+                    scrollProgress.snapTo(1f)
+                    cascadeJumpPx.value = 0f
+                    return
+                }
+
+                cascadeJumpPx.value = if (cascade) jump else 0f
+                scrollProgress.snapTo(0f)
+                // Ambas avanzan a la vez y con el mismo muelle, asi que su resta es
+                // exactamente el retardo de la fila. En paralelo y no en serie: en serie una
+                // de las dos estaria avanzada cuando la otra arranca.
+                launch {
+                    launch { scrollProgress.animateTo(1f, lyricsScrollSpring()) }
+                    listState.animateScrollBy(jump, animationSpec = lyricsScrollSpring())
+                }
             }
 
             // Auto-scroll hacia la línea activa cuando no se ha alejado manualmente.
-            // El salto de la lista es instantáneo y el movimiento se resuelve en la capa
-            // con la cascada de mas abajo: si no, todas las filas viajan juntas.
             LaunchedEffect(activeIndex, linesIdentity) {
                 if (activeIndex < 0 || lines.isEmpty()) return@LaunchedEffect
-                if (!userScrolledAway) {
-                    val jumped = scrollToAnchorImmediate(activeIndex)
-                    if (abs(jumped) > 1f && animationsEnabled) {
-                        cascadeOffsetPx.value = jumped
-                        cascade.snapTo(1f)
-                        cascade.animateTo(0f, expressiveTween(durationMillis = 460))
-                    }
-                }
+                if (!userScrolledAway) scrollToLine(activeIndex, cascade = true)
             }
 
             // Columna acotada y centrada. Sin tope, en una ventana ancha los versos se
@@ -296,7 +314,16 @@ fun SyncedLyricsView(
                         items = lines,
                         key = { i, line -> "${line.timeMs}-$i-${line.text.hashCode()}" },
                     ) { i, line ->
-                        val distance = if (activeIndex >= 0) abs(i - activeIndex) else 0
+                    val distance = if (activeIndex >= 0) abs(i - activeIndex) else 0
+                        // Progreso propio de la fila: se reinicia con cada cambio de linea y
+                        // llega con un muelle mas lento segun la distancia. Solo se compone
+                        // para las filas que la lista dibuja, asi que el coste es acotado.
+                        val rowProgress = remember { Animatable(1f) }
+                        LaunchedEffect(activeIndex, linesIdentity) {
+                            if (activeIndex < 0 || !animationsEnabled) return@LaunchedEffect
+                            rowProgress.snapTo(0f)
+                            rowProgress.animateTo(1f, lyricsRowSpring(distance))
+                        }
                         LyricLineRow(
                             line = line,
                             positionMs = positionMs,
@@ -308,7 +335,12 @@ fun SyncedLyricsView(
                             lineSpacing = lineSpacing,
                             animationStyle = animationStyle,
                             romanize = romanizeEnabled,
-                            lagOffsetPx = { cascadeOffsetPx.value * rowLag(distance) * cascade.value },
+                            lagOffsetPx = {
+                                // Se queda atras mientras su muelle va por detras del del
+                                // scroll, y converge cuando lo alcanza.
+                                val lag = cascadeJumpPx.value * rowLag(distance)
+                                if (lag == 0f) 0f else lag * (rowProgress.value - scrollProgress.value)
+                            },
                             onClick = {
                                 userScrolledAway = false
                                 onSeek(line.timeMs)
@@ -331,7 +363,7 @@ fun SyncedLyricsView(
                     onClick = {
                         userScrolledAway = false
                         coroutineScope.launch {
-                            scrollToAnchor(activeIndex)
+                            scrollToLine(activeIndex, cascade = false)
                         }
                     },
                     shape = CircleShape,
