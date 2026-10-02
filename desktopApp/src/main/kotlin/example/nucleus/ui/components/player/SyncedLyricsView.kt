@@ -446,27 +446,34 @@ private fun LyricLineRow(
         label = "lyricAlpha",
     )
 
-    // La activa crece solo 2sp como texto real, no como escala de capa: el escalado
-    // deformaria el salto de linea y el retardo de las filas vecinas.
-    val scale by animateFloatAsState(
-        targetValue = if (!useScale) 1f else if (isHovered) 1.008f else 1f,
+    // El tamano del texto NO cambia con el estado: se mide siempre con el mayor y el
+    // realce se aplica en la capa. Si el tamano fuese real, al activarse una linea se
+    // volveria a medir, una linea de una sola linea pasaria a ocupar dos y el alto de la
+    // fila cambiaria. El LazyColumn recolocaria entonces todo lo que hay debajo y el
+    // cambio se veria como un desborde, y al volver, igual. Es layout, no animacion.
+    val fontSizeSp = activeTextSize
+    val lineHeightSp = lineSpacing
+
+    // Reducir en la capa no toca layout: el ancho disponible y el numero de lineas son
+    // los mismos antes y despues, asi que la fila no se mueve al activarse.
+    val deemphasizedScale =
+        ((activeTextSize - 4f) / activeTextSize).coerceIn(0.82f, 1f)
+    val emphasisScale by animateFloatAsState(
+        targetValue = if (isActive) 1f else deemphasizedScale,
         animationSpec = motionSpec,
-        label = "lyricScale",
+        label = "lyricEmphasis",
     )
 
-    val fontSizeSp by animateFloatAsState(
-        targetValue = if (isActive) activeTextSize else (activeTextSize - 4f).coerceAtLeast(14f),
-        animationSpec = motionSpec,
-        label = "lyricFontSize",
+    // El peso tampoco cambia: el bold es mas ancho y por si solo puede anadir una linea.
+    // La jerarquia la llevan la opacidad y la escala.
+    val style = MaterialTheme.typography.headlineMedium.copy(
+        fontSize = fontSizeSp.sp,
+        lineHeight = lineHeightSp.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.2).sp,
     )
 
-    val weightProgress by animateFloatAsState(
-        targetValue = if (isActive) 1f else 0f,
-        animationSpec = motionSpec,
-        label = "lyricWeight",
-    )
-
-    // Sin caja en la activa: el realce lo dan el tamano, el peso y la opacidad. Solo el
+    // Sin caja en la activa: el realce lo dan la escala y la opacidad. Solo el
     // hover conserva un fondo, para senalar el blanco del click.
     val rowBg = if (isHovered && !isActive) {
         MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f)
@@ -485,13 +492,17 @@ private fun LyricLineRow(
         )
         .pointerHoverIcon(PointerIcon.Hand)
         .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
+            // Hover y emphasize se combinan en una sola escala: sumarlos por separado
+            // haria que la fila creciera dos veces al pasar por la activa con el raton.
+            val hoverScale = if (useScale && isHovered) 1.008f else 1f
+            val totalScale = emphasisScale * hoverScale
+            scaleX = totalScale
+            scaleY = totalScale
             alpha = rowAlpha
             transformOrigin = if (startAligned) TransformOrigin(0f, 0.5f) else TransformOrigin(0.5f, 0.5f)
             translationY = lagOffsetPx()
         }
-        .padding(horizontal = 16.dp, vertical = if (isActive) 10.dp else 7.dp)
+        .padding(horizontal = 16.dp, vertical = 10.dp)
 
     val rowModifier = if (isActive && animationStyle == LyricsAnimationStyle.GLOW) {
         baseModifier.shadow(
@@ -505,12 +516,6 @@ private fun LyricLineRow(
         baseModifier
     }
 
-    val style = MaterialTheme.typography.headlineMedium.copy(
-        fontSize = fontSizeSp.sp,
-        lineHeight = (lineSpacing * (fontSizeSp / activeTextSize)).sp,
-        fontWeight = if (weightProgress > 0.5f) FontWeight.Bold else FontWeight.SemiBold,
-        letterSpacing = (-0.2).sp,
-    )
     val horizontalArrangement = if (startAligned) Arrangement.Start else Arrangement.Center
 
     // Romanizacion cacheada por linea; si se activa para muchas lineas es CPU-bound pero
@@ -531,13 +536,22 @@ private fun LyricLineRow(
                 modifier = rowModifier,
                 startAligned = startAligned,
             )
-        } else if (isActive && line.words.isNotEmpty() && animationStyle == LyricsAnimationStyle.KARAOKE) {
+        // Con relleno por palabra la fila es SIEMPRE un FlowRow, no solo cuando es la
+        // activa. Antes solo lo era al activarse, y al pasar de `Text` a `FlowRow` el
+        // texto se re-median y envolvia de otra manera: una linea de una sola linea
+        // saltaba a dos y todo lo de abajo se recolocaba. Estructura fija, y la fila no
+        // cambia de alto al cambiar de estado.
+        } else if (line.words.isNotEmpty() && animationStyle == LyricsAnimationStyle.KARAOKE) {
             FlowRow(
                 modifier = rowModifier,
                 horizontalArrangement = horizontalArrangement,
             ) {
                 line.words.forEach { w ->
+                    // El relleno por palabra solo tiene sentido en la linea que canta. En
+                    // las demas, pintar lo ya cantado en `primary` las haria competir con la
+                    // activa en vez de cederle el foco.
                     val color = when {
+                        !isActive -> activeColor
                         positionMs >= w.endMs -> sungColor
                         positionMs >= w.startMs -> {
                             val frac = ((positionMs - w.startMs).toFloat() /
@@ -557,7 +571,7 @@ private fun LyricLineRow(
             Text(
                 text = line.text,
                 style = style,
-                color = if (isActive) activeColor else MaterialTheme.colorScheme.onSurface,
+                color = activeColor,
                 modifier = rowModifier,
                 textAlign = if (startAligned) TextAlign.Start else TextAlign.Center,
             )
@@ -665,7 +679,9 @@ private fun InstrumentalLineRow(
             text = stringResource(Res.string.lyrics_instrumental),
             style = MaterialTheme.typography.labelLarge,
             color = tint,
-            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+            // Peso fijo por lo mismo que en las lyrics: el bold es mas ancho y, al ser
+            // esta fila la que marca el pulso, cualquier salto de medida se nota mas.
+            fontWeight = FontWeight.Medium,
         )
     }
 }
