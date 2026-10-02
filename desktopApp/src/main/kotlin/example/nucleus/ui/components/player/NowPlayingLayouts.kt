@@ -156,9 +156,6 @@ private fun NowPlayingAutoHideDriver(
                 }
             if (next != target) {
                 target = next
-                // El cursor se oculta con los controles y solo se recupera con el primer
-                // movimiento del puntero (Sonora: cx.hide_cursor() al dormir el cromo).
-                if (next >= 1f) HiddenCursor.hide()
                 if (animationsEnabled) {
                     // En un scope aparte para no bloquear el tick: cada animateTo sobre el
                     // mismo Animatable cancela al anterior, así el wake corta el hundimiento.
@@ -174,6 +171,12 @@ private fun NowPlayingAutoHideDriver(
                 } else {
                     autoHide.hidden.snapTo(next)
                 }
+            }
+            // El cursor se oculta con el cromo y solo se recupera con el primer movimiento
+            // del puntero (Sonora: cx.hide_cursor() al dormir el cromo). Se refresca cada
+            // tick porque cualquier WM_SETCURSOR de la ventana repone la flecha.
+            if (next >= 1f) {
+                HiddenCursor.hide()
             }
             delay(100)
         }
