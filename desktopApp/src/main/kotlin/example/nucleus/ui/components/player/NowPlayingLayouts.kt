@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -59,6 +60,7 @@ import example.nucleus.viewmodels.PlayerUiState
 import example.nucleus.viewmodels.QueueSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.onHover
 
@@ -79,6 +81,13 @@ enum class NowPlayingTab {
 
 /** Espera (ms) sin actividad del puntero antes de que el cromo de Now Playing se oculte. */
 private const val AUTO_HIDE_REST_MS = 1_500L
+
+/**
+ * Desplazamiento (px) a partir del cual se considera que el puntero se ha movido de
+ * verdad. Filtra los eventos sinteticos que Windows emite al cambiar el cursor de la
+ * ventana, que llegan siempre con la posicion intacta.
+ */
+private const val MIN_POINTER_MOVE_PX = 2f
 
 /**
  * Estado del auto-hide del cromo de Now Playing (barra superior, progreso, transporte,
@@ -107,19 +116,48 @@ internal class NowPlayingAutoHide {
 
     val hidden = Animatable(0f)
 
+    /**
+     * Ultima posicion conocida del puntero, en pixeles de la ventana.
+     *
+     * Windows reenvia eventos de movimiento al fijar el cursor de una ventana
+     * (`WM_SETCURSOR`), y al ocultar el cromo se cambia el cursor en cada tick. Esos
+     * eventos llegan con la posicion intacta, asi que sin esta comprobacion la rafaga
+     * artificial reiniciaba el temporizador de inactividad y la pantalla nunca terminaba
+     * de dormirse. Comparar la posicion separa un movimiento real de uno sintetico.
+     */
+    private var lastPointer = Offset.Unspecified
+
     fun wake() {
         lastActiveNanos = System.nanoTime()
         interacted = true
     }
 
     /**
-     * El cursor se va con el cromo. Se hace en [wake] y no al carretar la animación, porque
-     * cualquier movimiento del ratón —también el que el usuario no nota— lo devuelve.
+     * El cursor se va con el cromo y vuelve con el primer movimiento real. Se recupera
+     * aqui y no al carretar la animación, porque cualquier movimiento lo devuelve.
      */
     fun wakeWithCursor() {
         wake()
         HiddenCursor.show()
     }
+
+    /** Solo despierta si el puntero se ha desplazado de verdad. */
+    fun onPointerMoved(position: Offset) {
+        val previous = lastPointer
+        lastPointer = position
+        // Sin posicion valida no se puede comparar, asi que se despierta: es preferible
+        // un cromo que reaparece de mas a un cursor invisible que no se recupera.
+        val moved = !position.isValid() || previous == Offset.Unspecified ||
+            abs(position.x - previous.x) > MIN_POINTER_MOVE_PX ||
+            abs(position.y - previous.y) > MIN_POINTER_MOVE_PX
+        if (moved) wakeWithCursor()
+    }
+
+    /**
+     * Avisa de una interacción deliberada (clic, rueda, tecla) que sí debe despertar,
+     * aunque el puntero no se haya desplazado.
+     */
+    fun wakeFromIntent() = wakeWithCursor()
 }
 
 /**
@@ -144,7 +182,27 @@ private fun NowPlayingAutoHideDriver(
 
     LaunchedEffect(enabled, animationsEnabled) {
         var target = 0f
+        // Ultima posicion real del raton en pantalla. Se guarda aqui, y no en la clase,
+        // porque el cursor se recupera desde el propio motor.
+        var lastScreenPosition: HiddenCursor.Point? = null
+
         while (true) {
+            // Al ocultar el cromo se cambia el cursor y Windows reenvia eventos de
+            // movimiento con la posicion intacta. Comprobar la posicion real del raton
+            // distingue esa rafaga sintetica de un movimiento de verdad, y de paso es la
+            // red de seguridad que devuelve el cursor aunque el evento se perdiera.
+            val realPosition = HiddenCursor.cursorPosition()
+            if (realPosition != null) {
+                val previousScreen = lastScreenPosition
+                if (previousScreen != null &&
+                    abs(realPosition.x - previousScreen.x) > MIN_POINTER_MOVE_PX
+                ) {
+                    // El raton se ha movido de verdad: vuelve el cromo y el cursor.
+                    autoHide.wakeWithCursor()
+                }
+                lastScreenPosition = realPosition
+            }
+
             val idleMs = (System.nanoTime() - autoHide.lastActiveNanos) / 1_000_000
             val next =
                 if (enabled && autoHide.interacted && !autoHide.busy && !extraBusy() &&
@@ -296,26 +354,26 @@ fun NowPlayingLayout(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            // Cualquier actividad del puntero mantiene/repierte el cromo y recupera el
-            // cursor que se ocultó con él.
-            .onPointerEvent(PointerEventType.Move) { autoHide.wakeWithCursor() }
+// El movimiento solo despierta si el puntero se desplaza de verdad: al ocultar
+            // el cromo se cambia el cursor y Windows reenvia eventos de posicion sin
+            // que el raton se mueva, lo que reiniciaba el temporizador en bucle.
+            .onPointerEvent(PointerEventType.Move) { event ->
+                event.changes.firstOrNull()?.let { autoHide.onPointerMoved(it.position) }
+            }
             .onPointerEvent(PointerEventType.Press) {
-                autoHide.wakeWithCursor()
+                autoHide.wakeFromIntent()
                 autoHide.pointerDown = true
             }
             .onPointerEvent(PointerEventType.Release) {
                 autoHide.pointerDown = false
-                autoHide.wakeWithCursor()
+                autoHide.wakeFromIntent()
             }
             .onPointerEvent(PointerEventType.Exit) {
                 // El release puede caer fuera de la ventana (popup encima):
                 // no quedarse con el botón "abajo" y el cromo visible para siempre.
                 autoHide.pointerDown = false
-                // Fuera de la ventana el cursor es de otro, pero si el cromo se quedó
-                // hundido hay que devolverlo al entrar de nuevo.
-                autoHide.wakeWithCursor()
             }
-            .onPointerEvent(PointerEventType.Scroll) { autoHide.wakeWithCursor() },
+            .onPointerEvent(PointerEventType.Scroll) { autoHide.wakeFromIntent() },
     ) {
         // Ancho minimo para poner portada y panel en paralelo. 740dp es el breakpoint `Wide`
         // de Sonora: por debajo, el panel ocupa toda la pantalla y la portada sale del layout.

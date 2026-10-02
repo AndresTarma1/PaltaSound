@@ -3,6 +3,7 @@ package example.nucleus.windows
 import com.sun.jna.Native
 import com.sun.jna.Platform
 import com.sun.jna.Pointer
+import com.sun.jna.Structure
 import com.sun.jna.win32.StdCallLibrary
 import io.github.aakira.napier.Napier
 import java.util.Arrays
@@ -65,6 +66,13 @@ object HiddenCursor {
     /** `SM_CXCURSOR`: ancho del cursor del sistema. */
     private const val SM_CXCURSOR = 13
 
+    /** `POINT { LONG x; LONG y; }`: dos enteros de 32 bits. */
+    @Structure.FieldOrder("x", "y")
+    class Point : Structure() {
+        @JvmField var x: Int = 0
+        @JvmField var y: Int = 0
+    }
+
     private interface User32 : StdCallLibrary {
         fun LoadCursorW(hInstance: Pointer?, lpCursorName: Pointer?): Pointer?
         fun SetCursor(hCursor: Pointer?): Pointer?
@@ -79,10 +87,33 @@ object HiddenCursor {
         ): Pointer?
 
         fun GetSystemMetrics(nIndex: Int): Int
+        fun GetCursorPos(lpPoint: Point?): Boolean
 
         companion object {
             val INSTANCE: User32 = Native.load("user32", User32::class.java)
         }
+    }
+
+    /**
+     * Posicion real del raton en pixeles de pantalla.
+     *
+     * Es la red de seguridad del auto-hide: si por lo que sea dejara de llegar el evento
+     * de movimiento —el cursor oculto no tiene por que impedirlo, pero es la unica
+     * variable que no controlamos— el motor comprueba la posicion cada tick y recupera el
+     * cursor en cuanto el raton se ha movido de verdad. Devuelve `null` si no se pudo leer.
+     */
+    fun cursorPosition(): Point? {
+        if (!supported) return null
+        return runCatching {
+            val point = Point()
+            if (User32.INSTANCE.GetCursorPos(point)) {
+                point.read()
+                point
+            } else {
+                null
+            }
+        }.onFailure { Napier.w("[cursor] no se pudo leer la posicion: ${it.message}") }
+            .getOrNull()
     }
 
     /**
