@@ -884,10 +884,14 @@ private fun SpaciousNowPlayingBody(
                 }
             }
 
-            // Volumen vertical estilo pista al borde inferior derecho del panel
+            // Volumen vertical estilo pista al borde inferior derecho del panel.
+            // Sin panel la columna izquierda ocupa todo el ancho, asi que el volumen cae en
+            // la misma esquina que el boton de colapsar y lo pisa. Se sube lo justo para
+            // quedar encima: el colapsar ocupa de 8 a 48dp del borde, el volumen empieza
+            // en 56dp y quedan 8dp de aire entre ambos.
             PlayerVolumeVertical(
                 modifier = Modifier
-                    .padding(end = 4.dp, bottom = 12.dp)
+                    .padding(end = 12.dp, bottom = if (split) 12.dp else 40.dp)
                     .autoHideChrome(autoHide, sink = 18.dp)
                     .onHover { autoHide.chromeHover = it },
                 onBusyChange = { autoHide.volumePopup = it },
