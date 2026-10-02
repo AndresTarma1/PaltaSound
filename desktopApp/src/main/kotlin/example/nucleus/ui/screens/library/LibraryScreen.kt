@@ -64,6 +64,7 @@ import example.nucleus.ui.screens.library.tabs.AlbumsTab
 import example.nucleus.ui.screens.library.tabs.ArtistsTab
 import example.nucleus.ui.screens.library.tabs.LibraryMixedTab
 import example.nucleus.ui.screens.library.tabs.PlaylistsTab
+import example.nucleus.ui.screens.library.tabs.PodcastsTab
 import example.nucleus.viewmodels.CsvImportState
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
 import example.nucleus.viewmodels.LibrarySortOrder
@@ -76,6 +77,7 @@ import example.nucleus.utils.LocalPlayerViewModel
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
+import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.WatchEndpoint
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
@@ -92,6 +94,7 @@ data class LibraryScreenState(
     val albums: List<AlbumItem> = emptyList(),
     val artists: List<ArtistItem> = emptyList(),
     val playlists: List<PlaylistItem> = emptyList(),
+    val podcasts: List<PodcastItem> = emptyList(),
     val ytmState: YtmLibraryState = YtmLibraryState.Idle,
 )
 
@@ -131,6 +134,7 @@ fun LibraryScreenRoute(
     val albums by viewModel.sortedFilteredAlbums.collectAsState()
     val artists by viewModel.sortedFilteredArtists.collectAsState()
     val playlists by viewModel.sortedFilteredPlaylists.collectAsState()
+    val podcasts by viewModel.sortedFilteredPodcasts.collectAsState()
     val ytmState by viewModel.ytmState.collectAsState()
     val csvImportState by playlistsViewModel.csvImportState.collectAsState()
 
@@ -154,6 +158,7 @@ fun LibraryScreenRoute(
         albums = albums,
         artists = artists,
         playlists = playlists,
+        podcasts = podcasts,
         ytmState = ytmState,
     )
 
@@ -531,6 +536,12 @@ fun LibraryScreen(
                     onQuickShufflePlaylist = actions.onQuickShufflePlaylist,
                 )
 
+                LibraryTab.PODCASTS -> PodcastsTab(
+                    podcasts = state.podcasts,
+                    isLoading = state.ytmState is YtmLibraryState.Loading,
+                    onNavigate = actions.onNavigate,
+                )
+
                 LibraryTab.LIBRARY -> LibraryMixedTab(
                     state = state,
                     onNavigate = actions.onNavigate,
@@ -598,6 +609,7 @@ private fun LibraryTabRow(
         LibraryTab.ALBUMS to stringResource(Res.string.tab_albums),
         LibraryTab.ARTISTS to stringResource(Res.string.tab_artists),
         LibraryTab.PLAYLISTS to stringResource(Res.string.tab_playlists),
+        LibraryTab.PODCASTS to stringResource(Res.string.tab_podcasts),
     )
 
     HorizontalScrollableRow(

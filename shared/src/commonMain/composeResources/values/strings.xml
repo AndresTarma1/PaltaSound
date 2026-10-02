@@ -664,6 +664,9 @@
     <!-- Library empty states -->
     <string name="no_saved_playlists">No hay playlists guardadas</string>
     <string name="save_playlists_hint">Guarda playlists y aparecerán aquí</string>
+    <string name="tab_podcasts">Podcasts</string>
+    <string name="no_saved_podcasts">No hay podcasts guardados</string>
+    <string name="save_podcasts_hint">Guarda podcasts y aparecerán aquí</string>
     <string name="ytm_playlists_section">Playlists de YouTube Music</string>
     <string name="downloads">Descargas</string>
     <string name="n_songs">%1$d canciones</string>

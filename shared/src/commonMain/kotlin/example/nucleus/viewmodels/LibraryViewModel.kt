@@ -23,6 +23,7 @@ import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.Artist
 import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
+import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +49,7 @@ import kotlinx.coroutines.withContext
 import kotlin.uuid.ExperimentalUuidApi
 
 enum class LibraryTab {
-    LIBRARY, ALBUMS, ARTISTS, PLAYLISTS
+    LIBRARY, ALBUMS, ARTISTS, PLAYLISTS, PODCASTS
 }
 
 enum class LibrarySortOrder {
@@ -71,6 +72,7 @@ sealed class YtmLibraryState {
         val likedSongs: List<SongItem> = emptyList(),
         val albums: List<AlbumItem> = emptyList(),
         val artists: List<ArtistItem> = emptyList(),
+        val podcasts: List<PodcastItem> = emptyList(),
     ) : YtmLibraryState()
     data class Error(val message: String) : YtmLibraryState()
 }
@@ -150,6 +152,15 @@ class LibraryViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    // Los podcasts guardados solo existen en la cuenta: no hay tabla local para ellos,
+    // porque guardar un podcast es un `likePlaylist` remoto (PlaylistManagerViewModel).
+    val sortedFilteredPodcasts = combine(ytmState, searchQuery, sortOrder) { ytm, query, order ->
+        mergedFilteredSorted(
+            emptyList(), (ytm as? YtmLibraryState.Success)?.podcasts.orEmpty(),
+            query, order, { it.id }, { it.title },
+        )
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     private fun <T> mergedFilteredSorted(
         local: List<T>,
         remote: List<T>,
@@ -184,9 +195,12 @@ class LibraryViewModel(
 
     /** Carga la biblioteca remota de YouTube Music:
      *  - Playlists propias (FEmusic_liked_playlists)
-     *  - Canciones que le gustan (FEmusic_liked_videos → tabIndex 0)
-     *  - Álbumes guardados (FEmusic_library_corpus_track_artists → tabIndex 1)
-     *  - Artistas suscritos (FEmusic_library_corpus_track_artists → tabIndex 2)
+     *  - Álbumes guardados (FEmusic_liked_albums)
+     *  - Artistas suscritos (FEmusic_library_corpus_artists)
+     *  - Podcasts guardados (FEmusic_library_non_music_audio_channels_list)
+     *
+     *  Los podcasts van en un estante aparte del de música: no aparecen en ninguno de los
+     *  tres anteriores, por eso hace falta pedirlo explícitamente.
      */
     fun loadYtmLibrary() {
         _ytmState.value = YtmLibraryState.Loading
@@ -197,19 +211,23 @@ class LibraryViewModel(
                     .getOrNull()?.items?.filterIsInstance<PlaylistItem>() ?: emptyList()
 
 
-                // Álbumes guardados (tabIndex 1)
+                // Álbumes guardados
                 val ytmAlbums = YouTube.library("FEmusic_liked_albums", tabIndex = 0)
                     .getOrNull()?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
 
-                // Artistas suscritos (tabIndex 2)
+                // Artistas suscritos
                 val ytmArtists = YouTube.library("FEmusic_library_corpus_artists", tabIndex = 0)
                     .getOrNull()?.items?.filterIsInstance<ArtistItem>() ?: emptyList()
+
+                // Podcasts guardados
+                val ytmPodcasts = fetchSavedPodcasts()
 
                 _ytmState.value = YtmLibraryState.Success(
                     playlists = playlists,
                     likedSongs = emptyList(),
                     albums = ytmAlbums,
                     artists = ytmArtists,
+                    podcasts = ytmPodcasts,
                 )
             } catch (e: Exception) {
                 _ytmState.value = YtmLibraryState.Error(e.message ?: "Error al cargar biblioteca")
@@ -217,8 +235,35 @@ class LibraryViewModel(
         }
     }
 
+    /** Podcasts guardados en la cuenta. Un fallo aquí no debe tumbar el resto de la biblioteca. */
+    private suspend fun fetchSavedPodcasts(): List<PodcastItem> =
+        YouTube.libraryPodcastChannels()
+            .getOrNull()
+            ?.items
+            ?.filterIsInstance<PodcastItem>()
+            .orEmpty()
+
+    /**
+     * Recarga solo el estante de podcasts.
+     *
+     * Guardar un podcast es una llamada remota y no toca la base de datos local, así que
+     * este ViewModel no se entera de nada: sin este refresco, uno guardado ahora no
+     * aparecería hasta reiniciar la app.
+     */
+    fun refreshPodcasts() {
+        if (loginState?.value != true) return
+        val current = _ytmState.value as? YtmLibraryState.Success ?: return
+        viewModelScope.launch {
+            _ytmState.value = current.copy(podcasts = fetchSavedPodcasts())
+        }
+    }
+
     /** Carga la biblioteca remota usando un filtro específico de innertube */
     fun loadYtmLibraryWithFilter(filter: YtmLibraryFilter) {
+        // Los filtros de innertube son de música: ningun estante devuelve podcasts, asi que
+        // se capturan antes de pasar a Loading y se vuelven a poner debajo. Si no, al
+        // cambiar de filtro la pestana de podcasts se quedaria vacia.
+        val previousPodcasts = (_ytmState.value as? YtmLibraryState.Success)?.podcasts.orEmpty()
         _ytmState.value = YtmLibraryState.Loading
         viewModelScope.launch {
             try {
@@ -235,6 +280,7 @@ class LibraryViewModel(
                     likedSongs = songs,
                     albums = albums,
                     artists = artists,
+                    podcasts = previousPodcasts,
                 )
             } catch (e: Exception) {
                 _ytmState.value = YtmLibraryState.Error(e.message ?: "Error al cargar biblioteca")
@@ -244,7 +290,12 @@ class LibraryViewModel(
 
     // ── Tabs / local actions ────────────────────────────────
 
-    fun selectTab(tab: LibraryTab) { _selectedTab.value = tab }
+    fun selectTab(tab: LibraryTab) {
+        _selectedTab.value = tab
+        // Al abrir la pestana se revalida el estante: es lo unico que puede haber cambiado
+        // desde la ultima visita, porque guardar un podcast es remoto y no avisa a nadie.
+        if (tab == LibraryTab.PODCASTS) refreshPodcasts()
+    }
 
     fun selectMixedTab() { _selectedTab.value = LibraryTab.LIBRARY }
 
