@@ -7,6 +7,7 @@ import example.nucleus.data.remote.ApiService
 import example.nucleus.data.repository.AlbumRepository
 import example.nucleus.data.repository.ArtistRepository
 import example.nucleus.data.repository.PlaylistRepository
+import example.nucleus.data.repository.PodcastRepository
 import example.nucleus.data.repository.SearchRepository
 import example.nucleus.data.repository.SongRepository
 import example.nucleus.bootstrap.JvmConfigLauncher
@@ -71,6 +72,7 @@ val appModule = module {
     single<ArtistRepository> { ArtistRepository(get()) }
     single<SongRepository> { SongRepository(get()) }
     single<PlaylistRepository> { PlaylistRepository(get(), get()) }
+    single<PodcastRepository> { PodcastRepository(get()) }
     single<SearchRepository> { SearchRepository(get()) }
     single<SyncUtils> { SyncUtils(get(), get(), get(), get(), get()) }
 
@@ -106,14 +108,14 @@ val appModule = module {
     factory { YouTubeBrowseManagerViewModel() }
     single { HomeViewModel(databaseDao = get(), loginState = AccountManager.loginState, preferencesRepository = get()) }
     single { SearchViewModel(get()) }
-    single { LibraryViewModel(get(), get(), get(), get(), get(), loginState = AccountManager.loginState) }
+    single { LibraryViewModel(get(), get(), get(), get(), get(), get(), loginState = AccountManager.loginState) }
     single { LibrarySongsViewModel(get(), get(), get(), get()) }
     single { LibraryAlbumsViewModel(get()) }
     single { LibraryArtistsViewModel(get()) }
     single { LibraryPlaylistsViewModel(get(), get()) }
     single { LibraryMixedViewModel(get()) }
     factory { AlbumManagerViewModel(get(), get()) }
-    factory { PlaylistManagerViewModel(get(), get(), get(), get()) }
+    factory { PlaylistManagerViewModel(get(), get(), get(), get(), get()) }
     factory { ArtistManagerViewModel(get(), get(), get()) }
     // ViewModels de Ajustes — uno por dominio, inyectados en su propia sección
     single { AudioSettingsViewModel(get()) }

@@ -74,11 +74,50 @@ actual object DatabaseDriverFactory {
                 log.severe("Failed to create schema: ${e.message}")
                 throw e
             }
+        } else {
+            // Tablas añadidas despues de la creacion inicial.
+            //
+            // No se sube APP_SCHEMA_VERSION a proposito: arriba, una version mayor borra
+            // el fichero entero y con el todas las playlists, canciones y descargas del
+            // usuario. Por eso las tablas nuevas se crean aqui de forma idempotente y la
+            // version se queda igual. El coste es que esto hay que acordarlo al añadir una:
+            // el DDL de abajo tiene que coincidir con el del .sq, o la base nueva y la
+            // existente acabaran con esquemas distintos.
+            applyAdditiveSchema(driver)
         }
 
         try { versionFile.writeText(APP_SCHEMA_VERSION.toString()) } catch (_: Exception) {}
 
         log.info("DB ready: ${dbFile.absolutePath}")
         return driver
+    }
+
+    /**
+     * DDL de las tablas que se Incorporaron despues de que existiera la base. Todas son
+     * `IF NOT EXISTS`, asi que repetirlas en cada arranque no cuesta nada.
+     */
+    internal fun applyAdditiveSchema(driver: SqlDriver) {
+        val statements = listOf(
+            """
+            CREATE TABLE IF NOT EXISTS SavedPodcast (
+                id TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                authorName TEXT,
+                authorId TEXT,
+                episodeCountText TEXT,
+                thumbnail TEXT,
+                savedAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        for (sql in statements) {
+            try {
+                driver.execute(null, sql, 0)
+            } catch (e: Exception) {
+                // Que falle una tabla nueva no debe impedir abrir la app: la consulta que
+                // la use ya dira que no existe, en vez de reventar el arranque.
+                log.warning("No se pudo aplicar el DDL aditivo: ${e.message}")
+            }
+        }
     }
 }

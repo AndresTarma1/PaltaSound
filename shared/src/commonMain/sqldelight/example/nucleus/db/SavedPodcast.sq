@@ -1,0 +1,33 @@
+-- Podcasts guardados localmente.
+--
+-- Guardar un podcast es un `likePlaylist` remoto, asi que la copia local no es la fuente
+-- de verdad: sirve para que la biblioteca los muestre sin conexion y para no depender de
+-- que el estante remoto venga bien parseado. Se fusiona con el remoto por `id` (MPSP...).
+CREATE TABLE IF NOT EXISTS SavedPodcast (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    authorName TEXT,
+    authorId TEXT,
+    episodeCountText TEXT,
+    thumbnail TEXT,
+    savedAt INTEGER NOT NULL
+);
+
+selectAll:
+SELECT * FROM SavedPodcast ORDER BY savedAt DESC;
+
+selectById:
+SELECT * FROM SavedPodcast WHERE id = ?;
+
+exists:
+SELECT COUNT(*) > 0 FROM SavedPodcast WHERE id = ?;
+
+insert:
+INSERT OR REPLACE INTO SavedPodcast (id, title, authorName, authorId, episodeCountText, thumbnail, savedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+delete:
+DELETE FROM SavedPodcast WHERE id = ?;
+
+deleteAll:
+DELETE FROM SavedPodcast;

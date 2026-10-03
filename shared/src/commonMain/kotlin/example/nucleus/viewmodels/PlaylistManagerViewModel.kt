@@ -3,6 +3,7 @@ package example.nucleus.viewmodels
 import androidx.lifecycle.viewModelScope
 import example.nucleus.data.account.AccountManager
 import example.nucleus.data.repository.PlaylistRepository
+import example.nucleus.data.repository.PodcastRepository
 import example.nucleus.data.repository.SongRepository
 import example.nucleus.db.DatabaseDao
 import example.nucleus.models.toMediaMetadata
@@ -11,6 +12,7 @@ import example.nucleus.viewmodels.queues.YouTubePlaylistQueue
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.PlaylistItem
+import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.pages.PlaylistPage
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.delay
@@ -42,6 +44,7 @@ sealed class PlaylistState {
 class PlaylistManagerViewModel(
     private val repository: PlaylistRepository,
     private val songRepository: SongRepository,
+    private val podcastRepository: PodcastRepository,
     private val playerCoordinator: PlayerCoordinator,
     private val databaseDao: DatabaseDao,
 ) : ApplicationViewModel() {
@@ -315,27 +318,48 @@ class PlaylistManagerViewModel(
         }
     }
 
+    /**
+     * Reverso de [PodcastItem.asPlaylistItem], que es como el podcast llega a este estado
+     * (la pantalla de podcast reutiliza la de playlist). Sin esto, al guardar solo se
+     * tendria el `PlaylistItem` y no habria forma de escribir la copia local tipada.
+     */
+    private fun PlaylistItem.asPodcastItem(): PodcastItem = PodcastItem(
+        id = id,
+        title = title,
+        author = author,
+        episodeCountText = songCountText,
+        thumbnail = thumbnail,
+        playEndpoint = playEndpoint,
+        shuffleEndpoint = shuffleEndpoint,
+    )
+
     fun toggleSave() {
         val playlistId = _currentPlaylistId.value ?: return
         val state = _uiState.value as? PlaylistState.Success ?: return
         if (state.isSaving) return
 
         viewModelScope.launch {
-            // Podcasts (MPSP...): save via YTM likePlaylist — never touch local playlist cache
+            // Podcasts (MPSP...): save via YTM likePlaylist. La copia local se escribe despues, para
+            // que la biblioteca los muestre sin conexion, pero nunca decide el estado: si el
+            // like falla, el podcast no esta guardado, diga lo que diga la tabla.
             if (playlistId.startsWith("MPSP")) {
+                val willSave = !state.isSaved
                 updateSuccess { copy(isSaving = true) }
-                try {
-                    YouTube.savePodcast(playlistId, !state.isSaved)
-                        .onSuccess {
-                            updateSuccess { copy(isSaved = !state.isSaved) }
-                            log.info("Podcast ${if (!state.isSaved) "guardado" else "eliminado"}: $playlistId")
-                        }
-                        .onFailure {
-                            log.warning("No se pudo guardar el podcast $playlistId: ${it.message}")
-                        }
-                } finally {
-                    updateSuccess { copy(isSaving = false) }
-                }
+                YouTube.savePodcast(playlistId, willSave)
+                    .onSuccess {
+                        updateSuccess { copy(isSaved = willSave) }
+                        val podcast = state.playlistPage.playlist.asPodcastItem()
+                        if (willSave) podcastRepository.savePodcast(podcast)
+                        else podcastRepository.removePodcast(playlistId)
+                        log.info("Podcast ${if (willSave) "guardado" else "eliminado"}: $playlistId")
+                    }
+                    .onFailure {
+                        // Antes solo se escribia el log y el boton se quedaba como estaba,
+                        // dando a entender que el guardado habia funcionado.
+                        log.warning("No se pudo guardar el podcast $playlistId: ${it.message}")
+                        updateSuccess { copy(isSaved = state.isSaved) }
+                    }
+                updateSuccess { copy(isSaving = false) }
                 return@launch
             }
 

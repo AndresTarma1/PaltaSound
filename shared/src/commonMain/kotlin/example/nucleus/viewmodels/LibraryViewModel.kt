@@ -7,11 +7,13 @@ import example.nucleus.data.repository.AlbumRepository
 import example.nucleus.data.repository.ArtistRepository
 import example.nucleus.data.account.AccountManager
 import example.nucleus.data.repository.PlaylistRepository
+import example.nucleus.data.repository.PodcastRepository
 import example.nucleus.data.repository.SongRepository
 import example.nucleus.data.repository.UserPreferencesRepository
 import example.nucleus.data.repository.savedAlbumToAlbumItem
 import example.nucleus.data.repository.savedArtistToArtistItem
 import example.nucleus.data.repository.savedPlaylistToPlaylistItem
+import example.nucleus.data.repository.savedPodcastToPodcastItem
 import example.nucleus.data.repository.savedSongToSongItem
 import example.nucleus.db.MusicDatabase
 import example.nucleus.platform.CsvFilePicker
@@ -83,6 +85,7 @@ class LibraryViewModel(
     private val artistRepository: ArtistRepository,
     private val songRepository: SongRepository,
     private val playlistRepository: PlaylistRepository,
+    private val podcastRepository: PodcastRepository,
     private val loginState: StateFlow<Boolean>? = null
 ) : ViewModel() {
 
@@ -152,11 +155,16 @@ class LibraryViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // Los podcasts guardados solo existen en la cuenta: no hay tabla local para ellos,
-    // porque guardar un podcast es un `likePlaylist` remoto (PlaylistManagerViewModel).
-    val sortedFilteredPodcasts = combine(ytmState, searchQuery, sortOrder) { ytm, query, order ->
+    // Los podcasts se guardan en la cuenta, pero tambien tienen copia local para que
+    // aparezcan sin conexion. Se fusionan por id,MANDANDO la local: es la que tiene el
+    // titulo y el autor cacheados del momento en que se guardo.
+    val savedPodcasts = podcastRepository.getSavedPodcasts()
+        .map { it.map(::savedPodcastToPodcastItem) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val sortedFilteredPodcasts = combine(savedPodcasts, ytmState, searchQuery, sortOrder) { local, ytm, query, order ->
         mergedFilteredSorted(
-            emptyList(), (ytm as? YtmLibraryState.Success)?.podcasts.orEmpty(),
+            local, (ytm as? YtmLibraryState.Success)?.podcasts.orEmpty(),
             query, order, { it.id }, { it.title },
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -197,7 +205,7 @@ class LibraryViewModel(
      *  - Playlists propias (FEmusic_liked_playlists)
      *  - Álbumes guardados (FEmusic_liked_albums)
      *  - Artistas suscritos (FEmusic_library_corpus_artists)
-     *  - Podcasts guardados (FEmusic_library_non_music_audio_channels_list)
+     *  - Podcasts guardados (FEmusic_library_non_music_audio_list)
      *
      *  Los podcasts van en un estante aparte del de música: no aparecen en ninguno de los
      *  tres anteriores, por eso hace falta pedirlo explícitamente.
@@ -235,9 +243,21 @@ class LibraryViewModel(
         }
     }
 
-    /** Podcasts guardados en la cuenta. Un fallo aquí no debe tumbar el resto de la biblioteca. */
+    /**
+     * Podcasts guardados en la cuenta.
+     *
+     * El estante es `FEmusic_library_non_music_audio_list`, NO el de canales: el de
+     * canales (`FEmusic_library_non_music_audio_channels_list`) devuelve los canales de
+     * música suscritos como `USER_CHANNEL` y no contiene los podcasts guardados.
+     * Este otro devuelve un grid con los accesos "Agregar podcast" / "Episodios para
+     * después" y, detras, un `musicTwoRowItemRenderer` por podcast con `pageType`
+     * `MUSIC_PAGE_TYPE_PODCAST_SHOW_DETAIL_PAGE`, que es lo que se convierte en
+     * `PodcastItem`. Los dos primeros se descartan solos al filtrar por tipo.
+     *
+     * Un fallo aquí no debe tumbar el resto de la biblioteca.
+     */
     private suspend fun fetchSavedPodcasts(): List<PodcastItem> =
-        YouTube.libraryPodcastChannels()
+        YouTube.libraryPodcastEpisodes()
             .getOrNull()
             ?.items
             ?.filterIsInstance<PodcastItem>()

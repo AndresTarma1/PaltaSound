@@ -109,7 +109,7 @@ class DatabaseDao(private val database: MusicPlayerDatabase) {
 
     /**
      * Wipes account-scoped library data when switching YouTube accounts: bookmarked remote
-     * playlists (e.g. "Liked Music") and saved songs/albums/artists. Keeps the user's local
+     * playlists (e.g. "Liked Music") and saved songs/albums/artists/podcasts. Keeps the user's local
      * playlists, downloads and local play history.
      *
      * Bookmarked playlists actually live in TWO places: the `Playlist` table (populated by
@@ -128,6 +128,9 @@ class DatabaseDao(private val database: MusicPlayerDatabase) {
         database.savedSongQueries.deleteAll()
         database.savedAlbumQueries.deleteAll()
         database.savedArtistQueries.deleteAll()
+        // Los podcasts tambien son datos de la cuenta: sin esto, al cambiar de cuenta
+        // seguirian apareciendo en la biblioteca los de la anterior.
+        database.savedPodcastQueries.deleteAll()
     }
 
     suspend fun insertLyrics(id: String, lyricsText: String, provider: String = "Unknown") = lyrics.insertLyrics(id, lyricsText, provider)
