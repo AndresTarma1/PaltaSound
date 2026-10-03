@@ -2,10 +2,13 @@
 
 Todas las versiones de PaltaSound. Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
-## [0.8.2] - 2026-08-25
+## [0.8.2] - 2026-10-03
 
 ### Añadido
 
+- **Dos instaladores Windows: JVM y GraalVM nativo.** La variante JVM incluye los runtimes JS (GraalJS + QuickJS) con cipher web completo y auto-actualización desde `latest.yml`; la variante GraalVM nativa los excluye (flag `-PjsEngines=false` → `compileOnly`, sin Truffle en la imagen) con cipher degradado y actualización manual desde la página de release. Linux sigue en JVM con motores. La app instalada en nativo lo detecta (`isGraalVmNativeImage`) y ofrece "Abrir release" (estado `ManualOnly`) en vez de migrar de variante sin avisar (`AppViewModel.kt:127`, `SupportSection.kt:59`).
+- **Podcasts guardados en Biblioteca**: pestaña Podcasts y sección en la mixta con los podcasts de la cuenta (estante `FEmusic_library_non_music_audio_list`), copia local `SavedPodcast` y refresco al abrir la pestaña (`LibraryViewModel.kt:243`, `PodcastsTab.kt:1`, `PodcastRepository.kt:1`).
+- **Now Playing estilo Sonora**: fondo ambiental animado con resplandores de la paleta a la deriva (se omite si la app ya usa portada difuminada, y queda fijo sin animaciones), letra limpia sin cajas/sombras/fondos de hover, scroll de letras con muelles (`stiffness 170`, cascada por fila), realce de la línea activa sin cambios de layout, controles acotados al ancho de la columna, auto-hide del cromo y cursor oculto real (`NowPlayingAmbientBackground.kt:1`, `SyncedLyricsView.kt:122`, `NowPlayingLayouts.kt:379`).
 - **Reproducción de video en Now Playing** con `libmpv` SW render (`vo=libmpv`, `bgr0`, `MpvRenderContext` + `MpvVideoRenderer` `~30fps`, `VideoSurface` OPAQUE). Toggle video/caratula en Now Playing y overlay a pantalla completa con cola empujando (no superpone), miniPlayer transparente auto-hide (mouse move, 2.6s), doble clic y `F11`/`Esc` para fullscreen, rueda = volumen (`VideoFullscreenOverlay.kt:284`, `App.kt:380`).
 - **Panel de ajustes de video en Now Playing** (gear en `NowPlayingTopBar` y overlay) con video on/off, calidad, ajuste `FIT`/`CROP` y auto-fullscreen; quitados del Settings global (`NowPlayingSection.kt:32`).
 - **PoTokens web vía sidecar `rustypipe-botguard`** (`RustyPipeBotGuardSidecar.kt:26` API v1, snapshot en tmp, `PoTokenManager.kt:69` `WEB_REMIX` + `WEB` con `pot=`) para clientes web (`FallbackClients.kt:15`). Bundling para GraalVM y JVM (`desktopApp/build.gradle.kts:222`, `mpv-resources/windows/rustypipe-botguard.exe`).
@@ -14,7 +17,10 @@ Todas las versiones de PaltaSound. Formato basado en [Keep a Changelog](https://
 
 ### Corregido
 
-- CI Windows GraalVM `native-image` fallaba con `ForceOnModulePath` de `truffle-runtime` (`Module descriptor for the module org.graalvm.truffle.runtime was not found` en el fat jar). Windows ahora usa JVM (`packageDistributionForCurrentOS`) en vez de GraalVM (`packageGraalvmNsis`) — se desactiva el module-system (`-H:-UseModuleSystem`) en `desktopApp/build.gradle.kts:214` como fallback.
+- Guardar un podcast no aparecía en Biblioteca: se leía el estante de canales (`..._channels_list`, devuelve canales de música como `USER_CHANNEL`) en vez del de podcasts (`..._non_music_audio_list`, con los `PodcastItem MPSP...`). Verificado contra la API real con sonda temporal. Además el guardado fallaba en silencio (solo log); ahora revierte el estado y avisa (`PlaylistManagerViewModel.kt:325`).
+- La línea activa de letras cambiaba el layout (tamaño/peso/padding + `Text`→`FlowRow` en karaoke) y movía todo lo de abajo: ahora el tamaño es fijo y el realce va en la capa, y karaoke es siempre `FlowRow` (`SyncedLyricsView.kt:449`).
+- El botón de volumen pisaba al de colapsar en la vista de portada: ahora queda encima con aire (`NowPlayingLayouts.kt:887`).
+- CI Windows GraalVM `native-image` fallaba con `ForceOnModulePath` de `truffle-runtime` (`Module descriptor for the module org.graalvm.truffle.runtime was not found` en el fat jar). Se resuelve excluyendo los runtimes JS en la variante nativa (`-PjsEngines=false`, `desktopApp/build.gradle.kts:193`, `shared/build.gradle.kts:14`): Windows vuelve a compilar `packageGraalvmNsis` sin motores junto al NSIS JVM.
 - CI `Download rustypipe-botguard`: Linux hacía `tar` sobre `.zip` por comparar `rustypipe_bin` en vez de `rustypipe_url`. Ahora compara la URL y usa directorio temporal dedicado (`build-release.yml:91`). Binario Windows `mpv-resources/windows/rustypipe-botguard.exe` añadido a `.gitignore`.
 - Seek en video ya no queda `cargando y reconectando`: `MpvAudioPlayer.kt:286` `cache-pause=no` + cache 150MiB en video y `seekTo:350` `pause=no`; `PlayerService.kt:269` `seekToMs` absoluto en video y watchdog `STALL_TICKS_VIDEO=25` + `SEEK_STALL_GRACE_MS=8000`.
 - Cerrar video/miniPlayer a NowPlaying: `NowPlayingLayouts.kt:110` usa `showVideo` compartido del `PlayerViewModel` (`PlayerViewModel.kt:86`), overlay `MiniPlayer` `onNowPlaying` cierra NowPlaying (`Navigation.kt:404`).
@@ -23,7 +29,7 @@ Todas las versiones de PaltaSound. Formato basado en [Keep a Changelog](https://
 
 ### Cambiado
 
-- **CI** `.github/workflows/build-release.yml:36` descarga `rustypipe-botguard` para Windows y Linux (`x86_64` `v0.1.2` desde Codeberg) y verifica el binario empaquetado. Windows ahora usa JVM en vez de GraalVM.
+- **CI** `.github/workflows/build-release.yml:36` descarga `rustypipe-botguard` para Windows y Linux (`x86_64` `v0.1.2` desde Codeberg) y verifica el binario empaquetado. Windows compila los dos NSIS (JVM con motores + GraalVM nativo con `-PjsEngines=false`); `merge-update-yml.py` deja solo el JVM en `latest.yml` y publica el nativo como descarga manual, con paso de verificación de ambos.
 - `App.kt:202` `LocalAppFullscreen` + `WindowPlacement.Fullscreen` oculta title bar en fullscreen (`App.kt:390`), `.gitignore` ignora `graphify-out` y `mpv-resources/windows/rustypipe-botguard.exe`.
 
 ## [0.8.1] - 2026-08-20
