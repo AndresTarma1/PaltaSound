@@ -80,6 +80,7 @@ fun LibraryMixedTab(
     val albumLabel = stringResource(Res.string.item_album)
     val artistLabel = stringResource(Res.string.item_artist)
     val playlistLabel = stringResource(Res.string.item_playlist)
+    val podcastLabel = stringResource(Res.string.item_podcast)
     val downloadsLabel = stringResource(Res.string.downloads)
     val nSongsTemplate = stringResource(Res.string.n_songs)
 
@@ -104,6 +105,7 @@ fun LibraryMixedTab(
         state.albums,
         state.artists,
         state.playlists,
+        state.podcasts,
         ytm,
         downloadedSongs,
         downloadedCount,
@@ -212,6 +214,29 @@ fun LibraryMixedTab(
                                 }
                             }
                         },
+                    )
+                )
+            }
+
+            // Podcasts guardados. Van aqui ademas de en su propia pestana porque esta es la que se
+            // abre por defecto: si solo estuvieran en la pestana, parecerian no existir.
+            // `state.podcasts` ya viene fusionado local+remoto y sin duplicar.
+            state.podcasts.forEach { podcast ->
+                add(
+                    MixedGridEntry(
+                        key = "pod_${podcast.id}",
+                        item = podcast,
+                        title = podcast.title,
+                        subtitle = podcast.author?.name ?: podcast.episodeCountText ?: podcastLabel,
+                        thumbnailUrl = podcast.thumbnail,
+                        placeholderType = PlaceholderType.PLAYLIST,
+                        shape = RoundedCornerShape(12.dp),
+                        source = if (ytm?.podcasts?.any { it.id == podcast.id } == true) {
+                            ItemContentSource.YOUTUBE
+                        } else {
+                            ItemContentSource.LOCAL
+                        },
+                        onClick = { onNavigate(Route.Playlist(podcast.id)) },
                     )
                 )
             }
