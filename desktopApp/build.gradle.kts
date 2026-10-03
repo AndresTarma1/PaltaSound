@@ -183,15 +183,19 @@ nucleus.application {
         appResourcesRootDir.set(project.layout.projectDirectory.dir("../mpv-resources"))
     }
 
-    // ── GraalVM Native Image (DESACTIVADO) ────────────────────────────────
-    // Se distribuye únicamente la variante JVM (compatibilidad): el runtime Truffle/GraalJS
-    // exige module-path y el uber-jar de classpath rompe native-image (errores ForceOnModulePath
-    // y JNI$JNIEnv word operation, verificados en GraalVM 25.2.4 y 25.3.4.1). Además el cipher
-    // EJS necesita GraalJS completo y los motores alternativos (Rhino/QuickJS) no lo cubren.
+    // ── GraalVM Native Image ──────────────────────────────────────────
+    // Segunda forma de instalación (Windows): binario nativo SIN runtimes JS.
+    // Los motores JS (GraalJS/QuickJS) se excluyen compilando con `-PjsEngines=false`,
+    // que los deja en `compileOnly`: el código compila pero los jars no entran en el
+    // análisis de native-image. Ese era el bloqueo verificado antes (el runtime Truffle
+    // exige module-path y rompía el uber-jar con ForceOnModulePath y JNI$JNIEnv en
+    // GraalVM 25.2.4/25.3.4.1). En nativo el cipher web queda degradado (ver el bloque
+    // de motores JS en shared/build.gradle.kts); la primera forma de instalación, la
+    // distribución JVM (Nsis/Deb/Rpm, con motores), no cambia.
     // Nucleus genera los metadatos de reflexión/recursos/JNI automáticamente (5 niveles) y descarga GraalVM CE.
     // Tareas: packageGraalvmNative, runGraalvmNative, runWithNativeAgent.
     graalvm {
-        isEnabled = false
+        isEnabled = true
         imageName = "paltasound"
         // GUI desktop: AWT no-headless explícito para native-image.
         buildArgs.add("-Djava.awt.headless=false")

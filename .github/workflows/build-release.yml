@@ -9,9 +9,13 @@ name: Build & Release
 #   https://github.com/AndresTarma1/PaltaSound/releases/download/v<version>/<archivo>
 # así que tag y versión tienen que coincidir exactamente (el job `release` lo valida).
 #
-# Los instaladores de Windows se compilan como binario GraalVM nativo (sin JVM) con la tarea
-# packageGraalvmNsis. En Linux se usa la distribución JVM (packageDistributionForCurrentOS):
-# el native-image de GraalVM falla en runners de GitHub (memoria) y Linux queda en alpha.
+# Los instaladores se compilan en 2 formas:
+#   - Windows: binario GraalVM nativo (sin JVM) con packageGraalvmNsis y -PjsEngines=false.
+#     Los runtimes JS (GraalJS/QuickJS) se excluyen porque el runtime Truffle exige
+#     module-path y rompe native-image; en nativo el cipher web queda degradado.
+#   - Linux: distribución JVM (packageDistributionForCurrentOS) CON runtimes JS, que es
+#     lo que trae el flag por defecto. Linux queda en JVM también porque el native-image
+#     falla en runners de GitHub (memoria).
 
 on:
   push:
@@ -39,8 +43,8 @@ jobs:
             # yt-dlp solo se empaqueta en Windows (en Linux se usa el del sistema).
             needs_yt_dlp: true
             python_cmd: python
-            # JVM (no GraalVM): el native-image falla con ForceOnModulePath de truffle-runtime.
-            gradle_tasks: ":desktopApp:packageDistributionForCurrentOS"
+            # GraalVM nativo sin motores JS (ver shared/build.gradle.kts, flag jsEngines).
+            gradle_tasks: ":desktopApp:packageGraalvmNsis -PjsEngines=false"
             rustypipe_url: "https://codeberg.org/ThetaDev/rustypipe-botguard/releases/download/v0.1.2/rustypipe-botguard-v0.1.2-x86_64-pc-windows-msvc.zip"
             rustypipe_bin: "mpv-resources/windows/rustypipe-botguard.exe"
           - os: ubuntu-latest

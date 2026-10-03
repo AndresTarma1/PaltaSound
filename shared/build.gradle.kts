@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// Variante de instalación (ver bloque de motores JS en jvmMain más abajo):
+// por defecto los runtimes JS viajan en el paquete (JVM); con -PjsEngines=false
+// se dejan en compileOnly + excludes para la imagen nativa GraalVM.
+val jsEnginesOff = findProperty("jsEngines") == "false"
+
 
 
 kotlin {
@@ -22,7 +27,13 @@ kotlin {
             api(project(":innertube"))
             // InnertubeX: cliente SABR/UMP (streaming segmentado) para URLs con enforcement
             // de Range (rqh/spc) que mpv no puede reproducir de forma progresiva.
-            implementation("com.github.MetrolistGroup.innertubex:innertubex:v0.2.1")
+            // OJO: innertubex trae QuickJS de forma transitiva (su paquete cipher, que esta
+            // app no usa: solo se usan InnerTube/models/sabr/extraction.PlaybackNonce, sin
+            // referencias a cipher). Con -PjsEngines=false se excluye para que ni el jar ni
+            // sus nativos (.dll/.so embebidos) viajen en la variante GraalVM.
+            implementation("com.github.MetrolistGroup.innertubex:innertubex:v0.2.1") {
+                if (jsEnginesOff) exclude(group = "io.github.dokar3")
+            }
             api(libs.compose.components.resources)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
@@ -54,6 +65,15 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        // Los motores JS van en tests SIEMPRE, haya o no flag: el classpath de test no se
+        // empaqueta, asi que no afecta a ninguna de las dos variantes de instalacion, y los
+        // tests del cipher (EjsCipherSolverSmokeTest, QuickJs4jEjsTest) los necesitan para
+        // correr tambien cuando se compila con -PjsEngines=false.
+        jvmTest.dependencies {
+            implementation(libs.quickjs)
+            implementation("org.graalvm.js:js-scriptengine:25.0.3")
+            implementation("org.graalvm.js:js:25.0.3")
+        }
         jvmMain.dependencies {
             api(libs.sqldelight.driver.jvm)
             // Proveedores de letras (LRC sincronizado) — módulos solo JVM
@@ -73,16 +93,28 @@ kotlin {
             // minter con un entorno tipo JSDOM, fuera del alcance de un QuickJS embebido.
             // Se delega al sidecar rustypipe-botguard (RustyPipeBotGuardSidecar, binario en
             // mpv-resources/windows). Ver PoTokenGenerator.jvm para el historial.
-            implementation(libs.quickjs)
-
-            // GraalJS (cipher `n`/`s` de player.js) — motor JS del solucionador EJS de los
-            // formatos web. Sin él, WEB_REMIX/TVHTML5 devuelven sigCipher pero no se puede
-            // deobfuscar y la calidad web no se recupera.
-            // NOTA: truffle-runtime es un módulo JPMS incompatible con el uber JAR de
-            // GraalVM native-image; si reactivas `buildGraalvmNative`, hay que excluirlo o
-            // comentar estas dos líneas (como estaba antes).
-            implementation("org.graalvm.js:js-scriptengine:25.0.3")
-            implementation("org.graalvm.js:js:25.0.3")
+            //
+            // ── Motores JS por variante de instalación ──────────────────────────
+            // - JVM (defecto, instaladores Nsis/Deb/Rpm y `run`): `implementation`, los
+            //   motores viajan en el paquete y el cipher web funciona completo.
+            // - GraalVM nativo (`-PjsEngines=false`): `compileOnly`, el código compila
+            //   (las referencias directas resuelven) pero los jars NO entran ni en el
+            //   runtimeClasspath ni en el análisis de native-image. Sin esto, el runtime
+            //   Truffle exige module-path y rompe el uber-jar (errores ForceOnModulePath
+            //   y JNI$JNIEnv, verificados en GraalVM 25.2.4 y 25.3.4.1).
+            // En runtime la ausencia se detecta sola: `getEngineByName("graal.js")`
+            // devuelve null (CipherException, ya capturada) y `QuickJs.create()` lanza
+            // LinkageError (capturado en ParsedScriptSolver.create). El cipher web queda
+            // degradado en nativo; la reproducción tira de otros clientes/yt-dlp.
+            if (!jsEnginesOff) {
+                implementation(libs.quickjs)
+                implementation("org.graalvm.js:js-scriptengine:25.0.3")
+                implementation("org.graalvm.js:js:25.0.3")
+            } else {
+                compileOnly(libs.quickjs)
+                compileOnly("org.graalvm.js:js-scriptengine:25.0.3")
+                compileOnly("org.graalvm.js:js:25.0.3")
+            }
         }
     }
 }

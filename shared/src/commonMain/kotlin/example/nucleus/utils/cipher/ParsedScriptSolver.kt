@@ -85,9 +85,18 @@ class ParsedScriptSolver private constructor(
                 "[ParsedScript] Extracted n=${parseResult.nFunctionCode != null} sig=${parseResult.sigFunctionCode != null} helpers=${parseResult.helperFunctions.size}",
             )
             val script = PlayerScriptParser.generateSolverScript(parseResult)
-            val quickJs = QuickJs.create(Dispatchers.Default).also {
-                it.memoryLimit = 512L * 1024 * 1024
-                it.evaluationTimeoutMillis = 10_000L
+            // Se captura Throwable y no Exception a proposito: sin el runtime QuickJS en el
+            // classpath (variante GraalVM nativa, -PjsEngines=false), `QuickJs.create()`
+            // lanza NoClassDefFoundError/UnsatisfiedLinkError, que son Error, no Exception.
+            // Devolver null aqui es degradar al EJS; no debe reventar el pipeline.
+            val quickJs = try {
+                QuickJs.create(Dispatchers.Default).also {
+                    it.memoryLimit = 512L * 1024 * 1024
+                    it.evaluationTimeoutMillis = 10_000L
+                }
+            } catch (t: Throwable) {
+                Napier.w("[ParsedScript] QuickJS no disponible (${t::class.simpleName}): sin solver ligero")
+                return null
             }
             try {
                 withContext(Dispatchers.Default) { quickJs.evaluate<Any?>("$script\n;undefined;") }
