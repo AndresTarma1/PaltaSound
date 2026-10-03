@@ -143,7 +143,7 @@ def merge(manifests):
     return version, release_date, list(by_url.values())
 
 
-def discover_installers(root, exclude=()):
+def discover_installers(root):
     """format -> list of installer files (files directly inside each target-format dir).
 
     The glob is anchored so that only files directly in the `<format>` directory are matched;
@@ -151,15 +151,11 @@ def discover_installers(root, exclude=()):
 
     Both the JVM layout (`msi/`, `exe/`, ...) and the GraalVM layout (`graalvm-msi/`,
     `graalvm-exe/`, ...) are matched, but a given CI build only produces one of them.
-
-    Paths containing any of the `exclude` substrings are skipped (see --exclude-manifest).
     """
     found = {}
     for fmt, (dirname, ext, _group, _yml) in FORMAT_GROUPS.items():
         for d in (dirname, f"graalvm-{dirname}"):
             for path in glob.glob(os.path.join(root, "**", d, f"*.{ext}"), recursive=True):
-                if any(e in path for e in exclude):
-                    continue
                 found.setdefault(fmt, []).append(path)
     return found
 
@@ -189,7 +185,7 @@ def find_file(root, name):
     return None
 
 
-def copy_referenced_files(root, outdir, manifests):
+def copy_referenced_files(root, outdir, manifests, registry):
     urls = []
     for _, _, entries in manifests:
         for entry in entries:
@@ -200,8 +196,34 @@ def copy_referenced_files(root, outdir, manifests):
         if src is None:
             print(f"warning: '{url}' referenced by a manifest but not found under {root}", file=sys.stderr)
             continue
-        shutil.copy2(src, os.path.join(outdir, url))
-        print(f"copied {os.path.basename(src)} ({os.path.getsize(src)} bytes)")
+        place_file(src, outdir, registry)
+
+
+def place_file(src, outdir, registry):
+    """Copia src a outdir, abortando si otro contenido distinto ya ocupa ese nombre.
+
+    Dos instaladores con el mismo basename (p.ej. el NSIS JVM y el NSIS GraalVM, que
+    comparten plantilla artifactName) colisionarian en dist/ y el release quedaria con
+    un binario cuyo sha no coincide con el manifest. Eso ya paso una vez en silencio;
+    ahora es un error duro en vez de un warning.
+    """
+    name = os.path.basename(src)
+    with open(src, "rb") as fh:
+        digest = hashlib.sha512(fh.read()).hexdigest()
+    if name in registry:
+        prev_src, prev_digest = registry[name]
+        if prev_digest != digest:
+            raise SystemExit(
+                f"error: filename collision with different contents: '{name}'\n"
+                f"  first:  {prev_src}\n"
+                f"  second: {src}\n"
+                f"Rename one of them before staging (same basename = same release asset)."
+            )
+        print(f"warning: '{name}' already shipped with identical contents, skipping {src}", file=sys.stderr)
+        return
+    shutil.copy2(src, os.path.join(outdir, name))
+    registry[name] = (src, digest)
+    print(f"copied {name} ({os.path.getsize(src)} bytes)")
 
 
 def main():
@@ -223,6 +245,42 @@ def main():
 
     os.makedirs(outdir, exist_ok=True)
 
+    # 0) Chequeo temprano de colisiones: todo lo que acabara en outdir (instaladores
+    # descubiertos + extra-copy) se compara por basename ANTES de generar nada. El
+    # manifest solo guarda el nombre, y `find_file` devolveria uno u otro segun el orden
+    # del walk: dos origenes distintos no pueden compartir basename con distinto
+    # contenido, porque el release quedaria con un binario cuyo sha no coincide.
+    # (El NSIS JVM y el NSIS GraalVM comparten plantilla artifactName: por eso el
+    # workflow renombra el nativo antes de llegar aqui.)
+    def file_sha(path):
+        digest = hashlib.sha512()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    extra_matches = []
+    for pattern in extra_copy:
+        matches = sorted(glob.glob(os.path.join(root, pattern), recursive=True))
+        if not matches:
+            print(f"warning: --extra-copy '{pattern}' matched nothing under {root}", file=sys.stderr)
+        extra_matches.extend(matches)
+    seen_sources = {}
+    for path in [p for paths in discover_installers(root).values() for p in paths] + extra_matches:
+        name = os.path.basename(path)
+        digest = file_sha(path)
+        if name in seen_sources:
+            prev_path, prev_digest = seen_sources[name]
+            if prev_path != path and prev_digest != digest:
+                raise SystemExit(
+                    f"error: filename collision with different contents: '{name}'\n"
+                    f"  first:  {prev_path}\n"
+                    f"  second: {path}\n"
+                    f"Rename one of them before staging (same basename = same release asset)."
+                )
+        else:
+            seen_sources[name] = (path, digest)
+
     # 1) Collect manifests electron-builder / the plugin already wrote, skipping the
     # excluded trees (their yml, if any, must not leak into the merged manifests).
     by_name = {}
@@ -231,11 +289,13 @@ def main():
             continue
         by_name.setdefault(os.path.basename(path), []).append(path)
 
-    # 2) Map installers to the manifest name that must describe them.
-    installers = discover_installers(root, exclude_manifest)
+    # 2) Map installers to the manifest name that must describe them. La exclusion se
+    # aplica aqui (y no en discover) para que el chequeo de arriba vea todos los
+    # origenes, incluidos los excluidos del manifest.
+    installers = discover_installers(root)
     group_manifests = {}  # yml name -> list of manifests (parsed or generated)
     for fmt, (_dirname, _ext, _group, yml_name) in FORMAT_GROUPS.items():
-        files = installers.get(fmt, [])
+        files = [p for p in installers.get(fmt, []) if not any(e in p for e in exclude_manifest)]
         if not files:
             continue
         manifests = [parse(p) for p in by_name.get(yml_name, [])]
@@ -267,6 +327,10 @@ def main():
         print("No installers or update manifests found under", root)
         return
 
+    # Registro basename -> (origen, sha512) de todo lo copiado a outdir, para detectar
+    # colisiones entre variantes (ver place_file).
+    registry = {}
+
     for yml_name in GROUP_ORDER:
         manifests = group_manifests.get(yml_name)
         if not manifests:
@@ -285,22 +349,15 @@ def main():
         sources = by_name.get(yml_name, [])
         print(f"wrote {yml_name} ({len(entries)} entr(ies); sources: {', '.join(sources) or 'generated'})")
         if do_copy:
-            copy_referenced_files(root, outdir, [(version, release_date, entries)])
+            copy_referenced_files(root, outdir, [(version, release_date, entries)], registry)
 
     # 3) Plain assets: ship in the release without any manifest entry (manual download).
-    copied = {os.path.basename(p) for p in glob.glob(os.path.join(outdir, "*"))}
-    for pattern in extra_copy:
-        matches = sorted(glob.glob(os.path.join(root, pattern), recursive=True))
-        if not matches:
-            print(f"warning: --extra-copy '{pattern}' matched nothing under {root}", file=sys.stderr)
-        for path in matches:
-            name = os.path.basename(path)
-            if name in copied:
-                print(f"warning: --extra-copy '{name}' already shipped, skipping", file=sys.stderr)
-                continue
-            shutil.copy2(path, os.path.join(outdir, name))
-            copied.add(name)
-            print(f"copied extra {name} ({os.path.getsize(path)} bytes)")
+    # (La lista ya se calculo arriba para el chequeo de colisiones; se reutiliza.)
+    for path in extra_matches:
+        if not os.path.isfile(path):
+            print(f"warning: --extra-copy match is not a file: {path}", file=sys.stderr)
+            continue
+        place_file(path, outdir, registry)
 
 
 if __name__ == "__main__":

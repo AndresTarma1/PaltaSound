@@ -18,6 +18,9 @@ name: Build & Release
 #     Se publica como descarga manual: el updater no distingue runtimes (ambos NSIS
 #     resuelven formato "nsis") y ofrecerlo en latest.yml actualizaria a la variante
 #     equivocada. La app instalada en nativo lo detecta y ofrece abrir la release.
+#     OJO: ambas variantes generan el MISMO basename (plantilla artifactName
+#     compartida), asi que el nativo se renombra a *-nsis-graalvm.exe antes de
+#     publicar; el script aborta si dos contenidos distintos compiten por un nombre.
 #   - Linux: distribución JVM (packageDistributionForCurrentOS) CON runtimes JS, que es
 #     lo que trae el flag por defecto. El native-image falla en runners de GitHub (memoria).
 
@@ -136,6 +139,24 @@ jobs:
         shell: bash
         run: |
           ./gradlew ${{ matrix.gradle_tasks_native }} --stacktrace
+
+      - name: Rename native NSIS to avoid basename collision
+        if: matrix.gradle_tasks_native != ''
+        shell: bash
+        run: |
+          # El NSIS JVM y el NSIS nativo salen con el MISMO basename (la plantilla
+          # artifactName es compartida: paltasound-<version>-win-x64-nsis.exe). Sin
+          # renombrar, uno pisa al otro en dist/ y el manifest queda con el sha del
+          # otro. El JVM conserva su nombre + blockmap (lo necesita el auto-update
+          # diferencial); el nativo, que es descarga manual, se sufija -graalvm.
+          # El nombre final evita a proposito el sufijo "-nsis." (con punto, que es lo
+          # que el updater usaria para seleccionarlo): aunque algun dia entrara en un
+          # manifest, el selector de formato no lo confundiria con el JVM.
+          set -eu
+          for f in desktopApp/build/compose/binaries/main/graalvm-nsis/*-nsis.exe; do
+            mv "$f" "${f%-nsis.exe}-nsis-graalvm.exe"
+          done
+          ls desktopApp/build/compose/binaries/main/graalvm-nsis/
 
       - name: Verify GraalVM runtime resources
         if: matrix.needs_yt_dlp
