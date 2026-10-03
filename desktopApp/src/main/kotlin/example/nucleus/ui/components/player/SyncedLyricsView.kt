@@ -7,8 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
@@ -19,17 +17,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -473,18 +467,11 @@ private fun LyricLineRow(
         letterSpacing = (-0.2).sp,
     )
 
-    // Sin caja en la activa: el realce lo dan la escala y la opacidad. Solo el
-    // hover conserva un fondo, para senalar el blanco del click.
-    val rowBg = if (isHovered && !isActive) {
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f)
-    } else {
-        Color.Transparent
-    }
-
+    // Sin cajas ni fondos: la fila es solo texto clicable. El realce lo dan la escala y
+    // la opacidad en la capa; ni siquiera el hover pinta fondo, para que la letra se
+    // lea como en Sonora: versos limpios sobre el fondo, sin contenedores.
     val baseModifier = Modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(12.dp))
-        .background(color = rowBg, shape = RoundedCornerShape(12.dp))
         .clickable(
             interactionSource = interactionSource,
             indication = null,
@@ -504,17 +491,9 @@ private fun LyricLineRow(
         }
         .padding(horizontal = 16.dp, vertical = 10.dp)
 
-    val rowModifier = if (isActive && animationStyle == LyricsAnimationStyle.GLOW) {
-        baseModifier.shadow(
-            elevation = 12.dp,
-            shape = RoundedCornerShape(12.dp),
-            clip = false,
-            ambientColor = sungColor.copy(alpha = 0.45f),
-            spotColor = sungColor.copy(alpha = 0.45f),
-        )
-    } else {
-        baseModifier
-    }
+    // Sin sombra ni relieve tampoco en GLOW: el brillo de una sombra elevada rompe la
+    // lectura plana de la referencia. La jerarquia la llevan escala y opacidad.
+    val rowModifier = baseModifier
 
     val horizontalArrangement = if (startAligned) Arrangement.Start else Arrangement.Center
 
@@ -601,87 +580,25 @@ private fun InstrumentalLineRow(
     modifier: Modifier = Modifier,
     startAligned: Boolean = true,
 ) {
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val infiniteTransition = rememberInfiniteTransition(label = "instrumental_wave")
-
-    val dot1Scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "dot1",
-    )
-    val dot2Scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, delayMillis = 200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "dot2",
-    )
-    val dot3Scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, delayMillis = 400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "dot3",
-    )
-
-    val tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (startAligned) Arrangement.Start else Arrangement.Center,
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = if (isActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f) else Color.Transparent,
-            modifier = Modifier.padding(end = 10.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.MusicNote,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier
-                    .padding(6.dp)
-                    .size(20.dp),
-            )
-        }
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val scales = listOf(dot1Scale, dot2Scale, dot3Scale)
-            scales.forEach { s ->
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .graphicsLayer {
-                            if (isActive && animationsEnabled) {
-                                scaleX = s
-                                scaleY = s
-                            }
-                        }
-                        .background(tint, CircleShape)
-                )
-            }
-        }
-
-        Spacer(Modifier.width(10.dp))
-        Text(
-            text = stringResource(Res.string.lyrics_instrumental),
-            style = MaterialTheme.typography.labelLarge,
-            color = tint,
-            // Peso fijo por lo mismo que en las lyrics: el bold es mas ancho y, al ser
-            // esta fila la que marca el pulso, cualquier salto de medida se nota mas.
-            fontWeight = FontWeight.Medium,
-        )
+    // La pausa instrumental es un verso mas, no un widget: mismo estilo de linea, sin
+    // caja, sin icono y sin puntos animados. Solo cambia el tinte con el estado.
+    val tint = if (isActive) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     }
+
+    Text(
+        text = "♪ " + stringResource(Res.string.lyrics_instrumental),
+        style = MaterialTheme.typography.headlineMedium.copy(
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = (-0.2).sp,
+        ),
+        color = tint,
+        textAlign = if (startAligned) TextAlign.Start else TextAlign.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    )
 }

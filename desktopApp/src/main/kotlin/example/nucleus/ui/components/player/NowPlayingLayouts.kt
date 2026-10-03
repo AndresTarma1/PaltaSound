@@ -379,6 +379,11 @@ fun NowPlayingLayout(
         // de Sonora: por debajo, el panel ocupa toda la pantalla y la portada sale del layout.
         val isCompact = maxWidth < 740.dp || maxHeight < 400.dp
 
+        // Fondo ambiental animado detras de todo: la base del tema con resplandores de la
+        // paleta a la deriva. No intercepta puntero y el panel es transparente, asi que el
+        // resplandor se ve tambien tras la letra y la cola.
+        NowPlayingAmbientBackground()
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -727,9 +732,12 @@ private fun SpaciousNowPlayingBody(
 
             // Chrome anclado abajo: pista, progreso y transporte. La carátula aquí solo
             // aparece cuando hay panel — con la vista de portada ya está arriba.
+            // Acotado y centrado: en ventanas alargadas la barra no debe ir de borde a borde.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .widthIn(max = 560.dp)
+                    .align(Alignment.CenterHorizontally)
                     .autoHideChrome(autoHide, sink = 18.dp)
                     .onHover { autoHide.chromeHover = it },
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -868,11 +876,13 @@ private fun SpaciousNowPlayingBody(
                     }
                 }
 
-                // Progreso + transporte (el mini player está oculto en Now Playing)
+                // Progreso + transporte (el mini player está oculto en Now Playing).
+                // Acotados al ancho de la columna de metadatos: la barra no debe estirarse
+                // mas que la portada que acompaña.
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .widthIn(max = 460.dp)
+                        .widthIn(max = 440.dp)
                         .padding(top = 8.dp)
                         .autoHideChrome(autoHide, sink = 18.dp)
                         .onHover { autoHide.chromeHover = it },
