@@ -39,9 +39,10 @@ fun NowPlayingAmbientBackground(modifier: Modifier = Modifier) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val dark = scheme.background.luminance() < 0.5f
     // En claro los orbes van mas apagados: el fondo ya es luminoso y el contraste lo
-    // da el texto, no el velo.
-    val glowAlpha = if (dark) 0.5f else 0.28f
-    val veilAlpha = if (dark) 0.32f else 0.38f
+    // da el texto, no el velo. Valores contenidos a proposito: esto es un lavado de
+    // fondo, no focos; el velo los apaga otro tanto por encima.
+    val glowAlpha = if (dark) 0.24f else 0.15f
+    val veilAlpha = if (dark) 0.42f else 0.48f
 
     // Tres fases desincronizadas para que el movimiento no se lea como un bucle.
     val phases = if (animationsEnabled) ambientPhases() else Triple(0.5f, 0.5f, 0.5f)
@@ -56,32 +57,33 @@ fun NowPlayingAmbientBackground(modifier: Modifier = Modifier) {
         Box(modifier = Modifier.fillMaxSize().background(scheme.background))
 
         // Violeta arriba-izquierda, magenta a la derecha, azul abajo-derecha: la misma
-        // composición de resplandores de la referencia.
+        // composición de resplandores de la referencia. Diametros contenidos para que el
+        // centro quede oscuro y el resplandor viva en los bordes.
         AmbientOrb(
             color = scheme.tertiary,
             alpha = glowAlpha,
-            diameterPx = unit * 1.1f,
+            diameterPx = unit * 0.95f,
             centerX = widthPx * (0.08f + (pa - 0.5f) * 0.12f),
             centerY = heightPx * (0.10f + (pb - 0.5f) * 0.10f),
         )
         AmbientOrb(
             color = scheme.primary,
             alpha = glowAlpha * 0.85f,
-            diameterPx = unit * 1.25f,
+            diameterPx = unit * 1.05f,
             centerX = widthPx * (0.88f + (pb - 0.5f) * 0.12f),
             centerY = heightPx * (0.32f + (pc - 0.5f) * 0.12f),
         )
         AmbientOrb(
             color = scheme.secondary,
             alpha = glowAlpha,
-            diameterPx = unit * 1.05f,
+            diameterPx = unit * 0.9f,
             centerX = widthPx * (0.82f + (pc - 0.5f) * 0.12f),
             centerY = heightPx * (0.92f + (pa - 0.5f) * 0.10f),
         )
         AmbientOrb(
             color = scheme.primary,
             alpha = glowAlpha * 0.45f,
-            diameterPx = unit * 0.9f,
+            diameterPx = unit * 0.75f,
             centerX = widthPx * (0.10f + (pc - 0.5f) * 0.10f),
             centerY = heightPx * (0.90f + (pb - 0.5f) * 0.08f),
         )
