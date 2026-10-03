@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -21,12 +22,19 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.utils.LocalAnimationsEnabled
+import example.nucleus.utils.LocalUserPreferences
 import kotlin.math.roundToInt
 
 /**
  * Fondo ambiental de Now Playing: la base del tema con resplandores de la paleta
  * (primario, terciario, secundario) a la deriva, como el fullscreen de Sonora.
+ *
+ * Solo se pinta cuando el fondo de la app NO es la portada difuminada: en ese modo el
+ * ambiente ya lo pone la carátula y estos orbes (que salen de la paleta del tema, no de
+ * la portada) lo taparían y desentonarían. Con fondo plano o degradado sí se dibuja,
+ * porque ahí no hay nada que concordar.
  *
  * No es un blur de la carátula sino orbes radiales que se mueven despacio: cuesta una
  * fracción del blur real y nunca toca layout. Con animaciones desactivadas queda fijo.
@@ -37,6 +45,12 @@ import kotlin.math.roundToInt
 fun NowPlayingAmbientBackground(modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     val animationsEnabled = LocalAnimationsEnabled.current
+    val backgroundStyle by LocalUserPreferences.current.appBackgroundStyle
+        .collectAsState(BackgroundStyle.SOLID_COLOR)
+
+    // El fondo difuminado de la app ya es el ambiente: no redibujar encima.
+    if (backgroundStyle == BackgroundStyle.BLURRED_COVER) return
+
     val dark = scheme.background.luminance() < 0.5f
     // En claro los orbes van mas apagados: el fondo ya es luminoso y el contraste lo
     // da el texto, no el velo. Valores contenidos a proposito: esto es un lavado de
