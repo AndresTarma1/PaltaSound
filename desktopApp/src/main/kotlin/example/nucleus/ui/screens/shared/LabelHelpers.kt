@@ -181,8 +181,10 @@ fun YouTubeRegion.displayName(): String = when (this) {
 @Composable
 fun updateCheckSubtitle(updateStatus: UpdateStatus, checkState: UpdateCheckState): String {
     val downloading = updateStatus as? UpdateStatus.Downloading
+    val manualOnly = updateStatus as? UpdateStatus.ManualOnly
     return when {
         updateStatus is UpdateStatus.Ready -> stringResource(Res.string.check_updates_ready)
+        manualOnly != null -> stringResource(Res.string.check_updates_manual_only, manualOnly.info.latestVersion)
         downloading != null -> {
             val pct = downloading.progress
             if (pct >= 0f) {

@@ -13,11 +13,13 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
+import example.nucleus.platform.NativeDesktop
 import example.nucleus.ui.screens.shared.updateCheckSubtitle
 import example.nucleus.viewmodels.AppViewModel
 import example.nucleus.viewmodels.UpdateCheckState
 import example.nucleus.viewmodels.UpdateStatus
 import org.jetbrains.compose.resources.stringResource
+import java.net.URI
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -41,6 +43,7 @@ fun SupportSettingsGroup() {
     ) {
         val downloading = updateStatus as? UpdateStatus.Downloading
         val ready = updateStatus is UpdateStatus.Ready
+        val manualOnly = updateStatus as? UpdateStatus.ManualOnly
         SettingsMenuLink(
             icon = { Icon(Icons.Rounded.SystemUpdate, null) },
             shapes = ListItemDefaults.segmentedShapes(index = 0, count = 3),
@@ -56,6 +59,21 @@ fun SupportSettingsGroup() {
                             Text(stringResource(Res.string.btn_install_update))
                         }
                     }
+                    // Variante nativa GraalVM: el instalador no esta en latest.yml a proposito
+                    // (el selector no distingue runtimes), asi que se abre la pagina de release
+                    // para descarga manual en vez de ofrecer una auto-actualizacion que
+                    // cambiaria de variante.
+                    manualOnly != null -> {
+                        val url = manualOnly.info.releaseUrl
+                        FilledTonalButton(
+                            onClick = {
+                                if (url != null) NativeDesktop.browse(URI(url))
+                            },
+                            enabled = url != null,
+                        ) {
+                            Text(stringResource(Res.string.btn_open_release))
+                        }
+                    }
                     downloading != null || updateCheckState is UpdateCheckState.Checking ->
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     else -> TextButton(onClick = { appViewModel.checkForUpdates(manual = true) }) {
@@ -65,6 +83,7 @@ fun SupportSettingsGroup() {
             },
             onClick = {
                 if (ready) appViewModel.checkForUpdates(manual = true)
+                else if (manualOnly != null) manualOnly.info.releaseUrl?.let { NativeDesktop.browse(URI(it)) }
                 else if (downloading == null && updateCheckState !is UpdateCheckState.Checking)
                     appViewModel.checkForUpdates(manual = true)
             }

@@ -15,6 +15,7 @@ This script normalizes them into ONE manifest per OS:
 
 Usage:
     merge-update-yml.py <input_root> <output_dir> [--copy]
+        [--exclude-manifest SUBSTR] [--extra-copy GLOB]
 
 - Input root: the `desktopApp/build/compose/binaries` tree.
 - Output dir: where the `<channel><osSuffix>.yml` files are written (one per distinct name).
@@ -24,6 +25,16 @@ With `--copy`, the files referenced by each manifest's `files[].url` are also co
 YAML must be uploaded as a GitHub release asset with that exact name. Using the YAML as the source
 of truth avoids sweeping in non-installer files (launcher .exe, java.exe, bundled yt-dlp, ...) that
 live inside the app-image directories.
+
+`--exclude-manifest SUBSTR` (repeatable): installer paths AND discovered `latest*.yml` files
+containing SUBSTR are ignored when building manifests. Use it for artifacts that must ship in the
+release but must NOT be auto-selected by the updater — e.g. a second Windows installer whose
+format the updater cannot tell apart from the main one (both resolve to "nsis", so the file
+selector would offer the wrong variant to half the installs).
+
+`--extra-copy GLOB` (repeatable, relative to input root, `**` allowed): matching files are copied
+verbatim into [output_dir] as plain release assets, without any manifest entry. Pair it with
+`--exclude-manifest` for the manual-download variant.
 """
 
 import base64
@@ -132,7 +143,7 @@ def merge(manifests):
     return version, release_date, list(by_url.values())
 
 
-def discover_installers(root):
+def discover_installers(root, exclude=()):
     """format -> list of installer files (files directly inside each target-format dir).
 
     The glob is anchored so that only files directly in the `<format>` directory are matched;
@@ -140,11 +151,15 @@ def discover_installers(root):
 
     Both the JVM layout (`msi/`, `exe/`, ...) and the GraalVM layout (`graalvm-msi/`,
     `graalvm-exe/`, ...) are matched, but a given CI build only produces one of them.
+
+    Paths containing any of the `exclude` substrings are skipped (see --exclude-manifest).
     """
     found = {}
     for fmt, (dirname, ext, _group, _yml) in FORMAT_GROUPS.items():
         for d in (dirname, f"graalvm-{dirname}"):
             for path in glob.glob(os.path.join(root, "**", d, f"*.{ext}"), recursive=True):
+                if any(e in path for e in exclude):
+                    continue
                 found.setdefault(fmt, []).append(path)
     return found
 
@@ -191,18 +206,33 @@ def copy_referenced_files(root, outdir, manifests):
 
 def main():
     if len(sys.argv) < 3:
-        raise SystemExit("usage: merge-update-yml.py <input_root> <output_dir> [--copy]")
+        raise SystemExit("usage: merge-update-yml.py <input_root> <output_dir> [--copy] [--exclude-manifest SUBSTR] [--extra-copy GLOB]")
     root, outdir = sys.argv[1], sys.argv[2]
     do_copy = "--copy" in sys.argv
+
+    def flag_values(name):
+        vals = []
+        args = sys.argv[3:]
+        for i, a in enumerate(args):
+            if a == name and i + 1 < len(args):
+                vals.append(args[i + 1])
+        return vals
+
+    exclude_manifest = flag_values("--exclude-manifest")
+    extra_copy = flag_values("--extra-copy")
+
     os.makedirs(outdir, exist_ok=True)
 
-    # 1) Collect manifests electron-builder / the plugin already wrote.
+    # 1) Collect manifests electron-builder / the plugin already wrote, skipping the
+    # excluded trees (their yml, if any, must not leak into the merged manifests).
     by_name = {}
     for path in glob.glob(os.path.join(root, "**", "latest*.yml"), recursive=True):
+        if any(e in path for e in exclude_manifest):
+            continue
         by_name.setdefault(os.path.basename(path), []).append(path)
 
     # 2) Map installers to the manifest name that must describe them.
-    installers = discover_installers(root)
+    installers = discover_installers(root, exclude_manifest)
     group_manifests = {}  # yml name -> list of manifests (parsed or generated)
     for fmt, (_dirname, _ext, _group, yml_name) in FORMAT_GROUPS.items():
         files = installers.get(fmt, [])
@@ -256,6 +286,21 @@ def main():
         print(f"wrote {yml_name} ({len(entries)} entr(ies); sources: {', '.join(sources) or 'generated'})")
         if do_copy:
             copy_referenced_files(root, outdir, [(version, release_date, entries)])
+
+    # 3) Plain assets: ship in the release without any manifest entry (manual download).
+    copied = {os.path.basename(p) for p in glob.glob(os.path.join(outdir, "*"))}
+    for pattern in extra_copy:
+        matches = sorted(glob.glob(os.path.join(root, pattern), recursive=True))
+        if not matches:
+            print(f"warning: --extra-copy '{pattern}' matched nothing under {root}", file=sys.stderr)
+        for path in matches:
+            name = os.path.basename(path)
+            if name in copied:
+                print(f"warning: --extra-copy '{name}' already shipped, skipping", file=sys.stderr)
+                continue
+            shutil.copy2(path, os.path.join(outdir, name))
+            copied.add(name)
+            print(f"copied extra {name} ({os.path.getsize(path)} bytes)")
 
 
 if __name__ == "__main__":

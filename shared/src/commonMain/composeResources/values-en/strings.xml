@@ -182,6 +182,8 @@
     <string name="check_updates_checking">Checking…</string>
     <string name="check_updates_up_to_date">You have the latest version</string>
     <string name="check_updates_failed">Couldn\'t check. Check your connection.</string>
+    <string name="check_updates_manual_only">Version %1$s available · manual install</string>
+    <string name="btn_open_release">Open release</string>
     <string name="btn_check">Check</string>
     <string name="report_bug">Report a bug</string>
     <string name="report_bug_subtitle">Opens a GitHub issue with the app version and OS</string>

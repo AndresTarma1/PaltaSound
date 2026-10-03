@@ -190,6 +190,8 @@
     <string name="check_updates_checking">Buscando…</string>
     <string name="check_updates_up_to_date">Ya tienes la última versión</string>
     <string name="check_updates_failed">No se pudo comprobar. Revisa tu conexión.</string>
+    <string name="check_updates_manual_only">Versión %1$s disponible · instalación manual</string>
+    <string name="btn_open_release">Abrir release</string>
     <string name="btn_check">Buscar</string>
     <string name="report_bug">Reportar un error</string>
     <string name="report_bug_subtitle">Abre una incidencia en GitHub con la versión y el sistema operativo</string>

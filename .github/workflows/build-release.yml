@@ -10,12 +10,16 @@ name: Build & Release
 # así que tag y versión tienen que coincidir exactamente (el job `release` lo valida).
 #
 # Los instaladores se compilan en 2 formas:
-#   - Windows: binario GraalVM nativo (sin JVM) con packageGraalvmNsis y -PjsEngines=false.
+#   - Windows JVM (NSIS, CON runtimes JS: GraalJS + QuickJS) con packageDistributionForCurrentOS.
+#     Es la variante que se auto-actualiza: latest.yml solo la lista a ella.
+#   - Windows GraalVM nativo (NSIS, SIN runtimes JS) con packageGraalvmNsis -PjsEngines=false.
 #     Los runtimes JS (GraalJS/QuickJS) se excluyen porque el runtime Truffle exige
 #     module-path y rompe native-image; en nativo el cipher web queda degradado.
+#     Se publica como descarga manual: el updater no distingue runtimes (ambos NSIS
+#     resuelven formato "nsis") y ofrecerlo en latest.yml actualizaria a la variante
+#     equivocada. La app instalada en nativo lo detecta y ofrece abrir la release.
 #   - Linux: distribución JVM (packageDistributionForCurrentOS) CON runtimes JS, que es
-#     lo que trae el flag por defecto. Linux queda en JVM también porque el native-image
-#     falla en runners de GitHub (memoria).
+#     lo que trae el flag por defecto. El native-image falla en runners de GitHub (memoria).
 
 on:
   push:
@@ -43,8 +47,12 @@ jobs:
             # yt-dlp solo se empaqueta en Windows (en Linux se usa el del sistema).
             needs_yt_dlp: true
             python_cmd: python
-            # GraalVM nativo sin motores JS (ver shared/build.gradle.kts, flag jsEngines).
-            gradle_tasks: ":desktopApp:packageGraalvmNsis -PjsEngines=false"
+            # JVM con motores JS (variante auto-actualizable).
+            gradle_tasks: ":desktopApp:packageDistributionForCurrentOS"
+            # GraalVM nativo sin motores JS (descarga manual; ver cabecera).
+            gradle_tasks_native: ":desktopApp:packageGraalvmNsis -PjsEngines=false"
+            # latest.yml solo lista el NSIS JVM; el nativo se copia como asset suelto.
+            merge_args: "--exclude-manifest graalvm-nsis --extra-copy **/graalvm-nsis/*.exe"
             rustypipe_url: "https://codeberg.org/ThetaDev/rustypipe-botguard/releases/download/v0.1.2/rustypipe-botguard-v0.1.2-x86_64-pc-windows-msvc.zip"
             rustypipe_bin: "mpv-resources/windows/rustypipe-botguard.exe"
           - os: ubuntu-latest
@@ -52,6 +60,8 @@ jobs:
             needs_yt_dlp: false
             python_cmd: python3
             gradle_tasks: ":desktopApp:packageDistributionForCurrentOS"
+            gradle_tasks_native: ""
+            merge_args: ""
             rustypipe_url: "https://codeberg.org/ThetaDev/rustypipe-botguard/releases/download/v0.1.2/rustypipe-botguard-v0.1.2-x86_64-unknown-linux-gnu.tar.xz"
             rustypipe_bin: "mpv-resources/linux/rustypipe-botguard"
     steps:
@@ -121,6 +131,12 @@ jobs:
         run: |
           ./gradlew ${{ matrix.gradle_tasks }} --stacktrace
 
+      - name: Build GraalVM native installer (windows)
+        if: matrix.gradle_tasks_native != ''
+        shell: bash
+        run: |
+          ./gradlew ${{ matrix.gradle_tasks_native }} --stacktrace
+
       - name: Verify GraalVM runtime resources
         if: matrix.needs_yt_dlp
         shell: pwsh
@@ -163,8 +179,27 @@ jobs:
           # en Linux solo existe latest-linux.yml) y copia a dist/ exactamente los archivos
           # que referencia cada manifest (instaladores + blockmaps), evitando arrastrar
           # binarios del app-image (launcher .exe, java.exe, yt-dlp empaquetado, ...).
-          ${{ matrix.python_cmd }} .github/scripts/merge-update-yml.py desktopApp/build/compose/binaries dist --copy
+          # En Windows además se publica el NSIS nativo como descarga manual: fuera del
+          # manifest (el updater no distingue variantes) pero dentro de dist/.
+          ${{ matrix.python_cmd }} .github/scripts/merge-update-yml.py desktopApp/build/compose/binaries dist --copy ${{ matrix.merge_args }}
           ls -la dist/
+
+      - name: Verify dual Windows installers
+        if: matrix.dist_name == 'windows'
+        shell: bash
+        run: |
+          set -eu
+          # Los dos NSIS deben tener nombres distintos o uno pisaria al otro en el release.
+          names=$(ls dist/*.exe)
+          echo "$names"
+          [ "$(echo "$names" | wc -l)" -eq 2 ] || { echo "::error::se esperaban 2 .exe en dist/"; exit 1; }
+          # latest.yml solo puede referenciar el JVM: si menciona al nativo, el updater
+          # ofreceria la variante equivocada.
+          if grep -qi graalvm dist/latest.yml; then
+            echo "::error::latest.yml no debe referenciar el instalador nativo"
+            exit 1
+          fi
+          grep -q '\.exe' dist/latest.yml || { echo "::error::latest.yml sin entrada .exe"; exit 1; }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

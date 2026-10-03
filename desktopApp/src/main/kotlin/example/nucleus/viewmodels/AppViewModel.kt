@@ -7,6 +7,7 @@ import dev.nucleusframework.updater.NucleusUpdater
 import dev.nucleusframework.updater.UpdateInfo
 import dev.nucleusframework.updater.UpdateResult
 import dev.nucleusframework.updater.provider.GitHubProvider
+import dev.nucleusframework.core.runtime.ExecutableRuntime
 import example.nucleus.data.repository.CrashReportRepository
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.Dispatchers
@@ -127,7 +128,15 @@ class AppViewModel : ViewModel() {
                 is UpdateResult.Available -> {
                     val info = toAppUpdateInfo(result.info)
                     if (manual) _checkState.value = UpdateCheckState.Idle
-                    startDownload(result.info, info)
+                    // Binario nativo GraalVM: latest.yml solo lista el instalador JVM, y el
+                    // selector no distingue runtimes (ambos son formato "nsis"). Descargarlo
+                    // migraria al usuario de variante sin avisar, asi que no se descarga:
+                    // se informa con la version remota real y se ofrece la pagina de release.
+                    if (ExecutableRuntime.isGraalVmNativeImage) {
+                        _status.value = UpdateStatus.ManualOnly(info)
+                    } else {
+                        startDownload(result.info, info)
+                    }
                 }
                 null -> {
                     if (manual) _checkState.value = UpdateCheckState.Failed
