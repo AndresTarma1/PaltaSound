@@ -12,7 +12,6 @@ Todas las versiones de PaltaSound. Formato basado en [Keep a Changelog](https://
 - **Reproducción de video en Now Playing** con `libmpv` SW render (`vo=libmpv`, `bgr0`, `MpvRenderContext` + `MpvVideoRenderer` `~30fps`, `VideoSurface` OPAQUE). Toggle video/caratula en Now Playing y overlay a pantalla completa con cola empujando (no superpone), miniPlayer transparente auto-hide (mouse move, 2.6s), doble clic y `F11`/`Esc` para fullscreen, rueda = volumen (`VideoFullscreenOverlay.kt:284`, `App.kt:380`).
 - **Panel de ajustes de video en Now Playing** (gear en `NowPlayingTopBar` y overlay) con video on/off, calidad, ajuste `FIT`/`CROP` y auto-fullscreen; quitados del Settings global (`NowPlayingSection.kt:32`).
 - **PoTokens web vía sidecar `rustypipe-botguard`** (`RustyPipeBotGuardSidecar.kt:26` API v1, snapshot en tmp, `PoTokenManager.kt:69` `WEB_REMIX` + `WEB` con `pot=`) para clientes web (`FallbackClients.kt:15`). Bundling para GraalVM y JVM (`desktopApp/build.gradle.kts:222`, `mpv-resources/windows/rustypipe-botguard.exe`).
-- **Video+audio juntos primero** (`FormatSelector.kt:52` `findMuxedFormat` progresivo, `YTPlayerutils.kt:124` compara alturas y solo usa muxed si no degrada resolución; `YtDlpResolver.kt:54` fallback).
 - **Recursos de string** `video_settings`, `video_hint`, `video_fullscreen_enter/exit` hardcodeados → `Res.string` (`values/strings.xml:746`, `VideoFullscreenOverlay.kt:277`).
 
 ### Corregido
