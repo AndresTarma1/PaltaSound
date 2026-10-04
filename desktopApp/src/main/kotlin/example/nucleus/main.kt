@@ -90,7 +90,12 @@ fun main() = nucleusApplication(backend = NucleusBackend.Tao) {
     val lifecycleManager = koin.get<AppLifecycleManager>()
 
     // Inicializar servicios nativos en background (mpv, media controls, Listen Together).
-    AppStartup.startDeferred(playerViewModel)
+    // En training AOT se omiten a proposito: cada subsistema carga cientos de clases que
+    // no cabrian en la region `ro` de la cache ("Unable to allocate from 'ro' region") y
+    // el arranque en frio no los necesita perfilados (se calientan al primer uso real).
+    if (!isAotTraining) {
+        AppStartup.startDeferred(playerViewModel)
+    }
 
     // Restaurar estado de ventana
     val saved = runBlocking {

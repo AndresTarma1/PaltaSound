@@ -41,6 +41,7 @@ import com.metrolist.innertube.models.YouTubeLocale
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.application.NucleusDecoratedWindowScope
+import dev.nucleusframework.aot.runtime.AotRuntime
 import dev.nucleusframework.autolaunch.AutoLaunch
 import dev.nucleusframework.autolaunch.AutoLaunchResult
 import dev.nucleusframework.window.NucleusDecoratedWindowTheme
@@ -145,9 +146,13 @@ fun NucleusApplicationScope.App(
 
     // Precalienta el pipeline WEB (solucionador EJS + PoToken sidecar) en background para que
     // la primera reproducción web no pague el cold-start (~20-25s de prepare). Nunca bloquea la UI.
+    // En training AOT se omite: GraalJS/Truffle cargan una enormidad de clases, usan red y
+    // lanzan procesos, las tres cosas que un training no quiere (tamaño, determinismo, efectos).
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            example.nucleus.utils.cipher.PlayerPipelineWarmup.warmup()
+        if (!AotRuntime.isTraining()) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                example.nucleus.utils.cipher.PlayerPipelineWarmup.warmup()
+            }
         }
     }
 
@@ -159,9 +164,11 @@ fun NucleusApplicationScope.App(
 
     LaunchedEffect(overlayEnabled, overlayCode, overlayMods) {
         // jnativehook (hook nativo global) solo se registra cuando el overlay está activado:
-        // si está desactivado, no cargamos su DLL ni el hook del sistema.
-        if (overlayEnabled) hotkeyManager.start() else hotkeyManager.stop()
-        hotkeyManager.setEnabled(overlayEnabled)
+        // si está desactivado, no cargamos su DLL ni el hook del sistema. En training tampoco:
+        // un hook global de teclado en CI no aporta nada al perfilado y mete clases nativas.
+        val hotkeysLive = overlayEnabled && !AotRuntime.isTraining()
+        if (hotkeysLive) hotkeyManager.start() else hotkeyManager.stop()
+        hotkeyManager.setEnabled(hotkeysLive)
         hotkeyManager.updateCombo(HotkeyCombo.fromPrefs(overlayCode, overlayMods))
     }
 
@@ -301,10 +308,13 @@ fun NucleusApplicationScope.App(
                         minimumSize = DpSize(900.dp, 600.dp),
                     ) {
 
-                        // Estado de actualizaciones
+                        // Estado de actualizaciones. En training no se comprueba: es red (no determinista
+                        // para la cache) y el resultado no se usa para nada en un training.
                         val updateStatus by appViewModel.updateStatus.collectAsState()
                         val showInstallPrompt by appViewModel.showInstallPrompt.collectAsState()
-                        LaunchedEffect(Unit) { appViewModel.checkForUpdates() }
+                        LaunchedEffect(Unit) {
+                            if (!AotRuntime.isTraining()) appViewModel.checkForUpdates()
+                        }
 
                         WindowsTaskbarIntegration(
                             isVisible = isVisible,
