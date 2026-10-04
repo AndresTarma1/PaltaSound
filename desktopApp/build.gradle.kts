@@ -111,6 +111,17 @@ dependencies {
     implementation(compose.desktop.currentOs)
 }
 
+// Jewel trae el fork de coroutines de JetBrains (`org.jetbrains.intellij.deps.kotlinx`,
+// via icons-api de la plataforma IntelliJ) con OTRO groupId, asi que Gradle no lo ve como
+// conflicto y AMBOS jars viajan en el app-image: el viejo (1.10.2-intellij-1, sin
+// `runBlockingK`) ordena primero en el classpath de jpackage y la app muere al arrancar
+// con NoSuchMethodError. Se excluye el fork: la API la cubre el oficial 1.11.0, mas nuevo.
+// Si reaparece otro modulo del fork, mirar el arbol (`:desktopApp:dependencies
+// --configuration runtimeClasspath`) y ampliar la exclusion.
+configurations.all {
+    exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
+}
+
 
 nucleus.application {
     mainClass = "example.nucleus.MainKt"
@@ -152,7 +163,11 @@ nucleus.application {
 
 
     nativeDistributions {
-        enableAotCache = true
+        // Cache AOT de Leyden para arranque rapido en JVM. Con `-PaotCache=false` se omite
+        // (no hay training ni app.aot): util para iterar el instalador en local sin pagar el
+        // training, y como via de escape si el training graba mas clases de las que caben en
+        // la region `ro` ("Unable to allocate from 'ro' region"). Por defecto ON para release.
+        enableAotCache = findProperty("aotCache") != "false"
         appName = "PaltaSound"
         packageName = "PaltaSound"
         packageVersion = "0.8.2"
