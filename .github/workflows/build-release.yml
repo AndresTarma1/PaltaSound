@@ -220,15 +220,20 @@ jobs:
           # latest.yml solo puede referenciar al NATIVO: es la variante que se
           # auto-actualiza. Si mencionara al JVM, el updater del nativo ofreceria la
           # variante equivocada.
-          if ! grep -qi graalvm dist/latest.yml; then
-            echo "::error::latest.yml debe referenciar el instalador nativo"
-            exit 1
-          fi
           if grep -qi 'nsis-jvm' dist/latest.yml; then
             echo "::error::latest.yml no debe referenciar el instalador JVM"
             exit 1
           fi
-          grep -q '\.exe' dist/latest.yml || { echo "::error::latest.yml sin entrada .exe"; exit 1; }
+          # El .exe que referencia el manifest tiene que existir en dist/ y no ser el JVM.
+          # (No se busca por nombre: al ser el nativo el que va en el manifest conserva el
+          # basename canonico y no lleva ningun sufijo que lo delate.)
+          url=$(grep -m1 '^  - url: ' dist/latest.yml | sed 's/^  - url: //' || true)
+          echo "latest.yml -> $url"
+          [ -n "$url" ] || { echo "::error::latest.yml sin entrada .exe"; exit 1; }
+          [ -f "dist/$url" ] || { echo "::error::latest.yml referencia '$url' pero no esta en dist/"; exit 1; }
+          case "$url" in
+            *-nsis-jvm.exe) echo "::error::latest.yml referencia el instalador JVM"; exit 1 ;;
+          esac
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
