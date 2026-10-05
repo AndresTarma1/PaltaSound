@@ -65,7 +65,7 @@ data class JvmConfig(
         }
         if (gcLogging) args.add("-Xlog:gc")
         args.add("-XX:MaxMetaspaceSize=192m")
-        args.add("-XX:CompressedClassSpaceSize=64m")
+        args.add("-XX:CompressedClassSpaceSize=96m")
         args.add("-XX:ReservedCodeCacheSize=128m")
         args.add("-XX:CICompilerCount=2")
         args.add("-XX:ActiveProcessorCount=4")

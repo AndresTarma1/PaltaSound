@@ -10,17 +10,19 @@ name: Build & Release
 # así que tag y versión tienen que coincidir exactamente (el job `release` lo valida).
 #
 # Los instaladores se compilan en 2 formas:
-#   - Windows JVM (NSIS, CON runtimes JS: GraalJS + QuickJS) con packageDistributionForCurrentOS.
-#     Es la variante que se auto-actualiza: latest.yml solo la lista a ella.
 #   - Windows GraalVM nativo (NSIS, SIN runtimes JS) con packageGraalvmNsis -PjsEngines=false.
 #     Los runtimes JS (GraalJS/QuickJS) se excluyen porque el runtime Truffle exige
 #     module-path y rompe native-image; en nativo el cipher web queda degradado.
-#     Se publica como descarga manual: el updater no distingue runtimes (ambos NSIS
-#     resuelven formato "nsis") y ofrecerlo en latest.yml actualizaria a la variante
-#     equivocada. La app instalada en nativo lo detecta y ofrece abrir la release.
+#     Es la variante que se auto-actualiza: latest.yml solo lista a ella.
 #     OJO: ambas variantes generan el MISMO basename (plantilla artifactName
-#     compartida), asi que el nativo se renombra a *-nsis-graalvm.exe antes de
-#     publicar; el script aborta si dos contenidos distintos compiten por un nombre.
+#     compartida), asi que el JVM se renombra a *-nsis-jvm.exe antes de publicar
+#     (el script aborta si dos contenidos distintos compiten por un nombre). Al ser el
+#     nativo el que entra en el manifest, conserva su nombre y su blockmap original.
+#   - Windows JVM (NSIS, CON runtimes JS: GraalJS + QuickJS) con packageDistributionForCurrentOS.
+#     Se publica como descarga manual: el updater no distingue runtimes (ambos NSIS
+#     resuelven formato "nsis"), asi que un latest.yml con el JVM haria que el nativo
+#     migrase de variante al actualizarse. La app instalada en JVM lo detecta y ofrece
+#     abrir la release.
 #   - Linux: distribución JVM (packageDistributionForCurrentOS) CON runtimes JS, que es
 #     lo que trae el flag por defecto. El native-image falla en runners de GitHub (memoria).
 
@@ -50,12 +52,12 @@ jobs:
             # yt-dlp solo se empaqueta en Windows (en Linux se usa el del sistema).
             needs_yt_dlp: true
             python_cmd: python
-            # JVM con motores JS (variante auto-actualizable).
+            # JVM con motores JS (descarga manual; ver cabecera).
             gradle_tasks: ":desktopApp:packageDistributionForCurrentOS"
-            # GraalVM nativo sin motores JS (descarga manual; ver cabecera).
+            # GraalVM nativo sin motores JS (variante auto-actualizable).
             gradle_tasks_native: ":desktopApp:packageGraalvmNsis -PjsEngines=false"
-            # latest.yml solo lista el NSIS JVM; el nativo se copia como asset suelto.
-            merge_args: "--exclude-manifest graalvm-nsis --extra-copy **/graalvm-nsis/*.exe"
+            # latest.yml solo lista el NSIS nativo; el JVM se copia como asset suelto.
+            merge_args: "--exclude-manifest nsis-jvm --extra-copy **/nsis/*.exe"
             rustypipe_url: "https://codeberg.org/ThetaDev/rustypipe-botguard/releases/download/v0.1.2/rustypipe-botguard-v0.1.2-x86_64-pc-windows-msvc.zip"
             rustypipe_bin: "mpv-resources/windows/rustypipe-botguard.exe"
           - os: ubuntu-latest
@@ -140,23 +142,24 @@ jobs:
         run: |
           ./gradlew ${{ matrix.gradle_tasks_native }} --stacktrace
 
-      - name: Rename native NSIS to avoid basename collision
+      - name: Rename JVM NSIS to avoid basename collision
         if: matrix.gradle_tasks_native != ''
         shell: bash
         run: |
           # El NSIS JVM y el NSIS nativo salen con el MISMO basename (la plantilla
           # artifactName es compartida: paltasound-<version>-win-x64-nsis.exe). Sin
           # renombrar, uno pisa al otro en dist/ y el manifest queda con el sha del
-          # otro. El JVM conserva su nombre + blockmap (lo necesita el auto-update
-          # diferencial); el nativo, que es descarga manual, se sufija -graalvm.
-          # El nombre final evita a proposito el sufijo "-nsis." (con punto, que es lo
-          # que el updater usaria para seleccionarlo): aunque algun dia entrara en un
-          # manifest, el selector de formato no lo confundiria con el JVM.
+          # otro. Ahora el NATIVO es el que entra en latest.yml (auto-update), asi que
+          # conserva su nombre y su blockmap intactos para la descarga diferencial, y
+          # el JVM —que pasa a ser descarga manual— se sufija -jvm.
           set -eu
-          for f in desktopApp/build/compose/binaries/main/graalvm-nsis/*-nsis.exe; do
-            mv "$f" "${f%-nsis.exe}-nsis-graalvm.exe"
+          for f in desktopApp/build/compose/binaries/main/nsis/*-nsis.exe; do
+            new="${f%-nsis.exe}-nsis-jvm.exe"
+            mv "$f" "$new"
+            # El blockmap accompany al instalador con su mismo nombre + ".blockmap".
+            [ ! -f "$f.blockmap" ] || mv "$f.blockmap" "$new.blockmap"
           done
-          ls desktopApp/build/compose/binaries/main/graalvm-nsis/
+          ls desktopApp/build/compose/binaries/main/nsis/
 
       - name: Verify GraalVM runtime resources
         if: matrix.needs_yt_dlp
@@ -200,8 +203,8 @@ jobs:
           # en Linux solo existe latest-linux.yml) y copia a dist/ exactamente los archivos
           # que referencia cada manifest (instaladores + blockmaps), evitando arrastrar
           # binarios del app-image (launcher .exe, java.exe, yt-dlp empaquetado, ...).
-          # En Windows además se publica el NSIS nativo como descarga manual: fuera del
-          # manifest (el updater no distingue variantes) pero dentro de dist/.
+          # En Windows además se publica el NSIS JVM como descarga manual: fuera del
+          # manifest (es la variante que no se auto-actualiza) pero dentro de dist/.
           ${{ matrix.python_cmd }} .github/scripts/merge-update-yml.py desktopApp/build/compose/binaries dist --copy ${{ matrix.merge_args }}
           ls -la dist/
 
@@ -214,10 +217,15 @@ jobs:
           names=$(ls dist/*.exe)
           echo "$names"
           [ "$(echo "$names" | wc -l)" -eq 2 ] || { echo "::error::se esperaban 2 .exe en dist/"; exit 1; }
-          # latest.yml solo puede referenciar el JVM: si menciona al nativo, el updater
-          # ofreceria la variante equivocada.
-          if grep -qi graalvm dist/latest.yml; then
-            echo "::error::latest.yml no debe referenciar el instalador nativo"
+          # latest.yml solo puede referenciar al NATIVO: es la variante que se
+          # auto-actualiza. Si mencionara al JVM, el updater del nativo ofreceria la
+          # variante equivocada.
+          if ! grep -qi graalvm dist/latest.yml; then
+            echo "::error::latest.yml debe referenciar el instalador nativo"
+            exit 1
+          fi
+          if grep -qi 'nsis-jvm' dist/latest.yml; then
+            echo "::error::latest.yml no debe referenciar el instalador JVM"
             exit 1
           fi
           grep -q '\.exe' dist/latest.yml || { echo "::error::latest.yml sin entrada .exe"; exit 1; }

@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlin.serialization)
-    id("dev.nucleusframework") version "2.5.4"
+    id("dev.nucleusframework") version "2.5.18"
 
 }
 
@@ -18,7 +18,7 @@ kotlin {
 
 dependencies {
     implementation(project(":shared"))
-    val nucleusVersion = "2.5.4"
+    val nucleusVersion = "2.5.18"
 
 
 
@@ -145,7 +145,13 @@ nucleus.application {
         "-XX:MaxHeapFreeRatio=30",
         // No-heap acotado (hoy sin tope; Compose+Ktor+Coil cargan muchas clases).
         "-XX:MaxMetaspaceSize=192m",
-        "-XX:CompressedClassSpaceSize=64m",
+        // JDK-8376125: el presupuesto de las regiones rw/ro del AOT sale de aqui. Con 64m
+        // (67.108.864 B) el reparto del JDK se quedaba 2-64 KB corto y el writer moria con
+        // "Unable to allocate from 'ro' region" (nosotros en ro, el bug en rw). El total medido
+        // fue 67.043.328 B en todas las pruebas, asi que 96m da holgura de sobra. Subirlo por
+        // `aotCache { extraTrainingJvmArgs }` NO sirve: ese flag no llega al proceso que
+        // escribe la cache, tiene que ir en los jvmArgs de la app.
+        "-XX:CompressedClassSpaceSize=96m",
         "-XX:ReservedCodeCacheSize=128m",
         "-XX:CICompilerCount=2",
         // Limita los "cores vistos" por la JVM: reduce ForkJoinPool/Dispatchers.Default (32->4),

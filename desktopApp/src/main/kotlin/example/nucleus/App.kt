@@ -181,7 +181,9 @@ fun NucleusApplicationScope.App(
 
     val isLoggedIn by remember { AccountManager.loginState }.collectAsState(false)
     val accountInfo by produceState<AccountInfo?>(initialValue = null, isLoggedIn) {
-        value = if (isLoggedIn) YouTube.accountInfo().getOrNull() else null
+        // En training no se toca red: la cuenta (y sus serializadores/modelos de API) es la
+        // mayor fuente de no determinismo entre sesiones de training.
+        value = if (isLoggedIn && !AotRuntime.isTraining()) YouTube.accountInfo().getOrNull() else null
     }
 
     fun handleExit() {

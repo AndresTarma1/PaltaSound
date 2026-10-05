@@ -19,7 +19,7 @@ object AppRestarter {
         "-XX:MinHeapFreeRatio=10",
         "-XX:MaxHeapFreeRatio=30",
         "-XX:MaxMetaspaceSize=192m",
-        "-XX:CompressedClassSpaceSize=64m",
+        "-XX:CompressedClassSpaceSize=96m",
         "-XX:ReservedCodeCacheSize=128m",
         "-XX:CICompilerCount=2",
         "-XX:ActiveProcessorCount=4",

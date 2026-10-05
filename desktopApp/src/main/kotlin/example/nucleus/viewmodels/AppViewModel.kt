@@ -128,14 +128,15 @@ class AppViewModel : ViewModel() {
                 is UpdateResult.Available -> {
                     val info = toAppUpdateInfo(result.info)
                     if (manual) _checkState.value = UpdateCheckState.Idle
-                    // Binario nativo GraalVM: latest.yml solo lista el instalador JVM, y el
-                    // selector no distingue runtimes (ambos son formato "nsis"). Descargarlo
-                    // migraria al usuario de variante sin avisar, asi que no se descarga:
-                    // se informa con la version remota real y se ofrece la pagina de release.
+                    // latest.yml lista el instalador NATIVO (GraalVM), que es la variante que se
+                    // auto-actualiza. El JVM se publica como asset suelto del release, asi que
+                    // desde el binario JVM no se descarga nada (el selector no distingue runtimes:
+                    // ambos resuelven formato "nsis"): se informa de la version remota real y se
+                    // ofrece la pagina de release.
                     if (ExecutableRuntime.isGraalVmNativeImage) {
-                        _status.value = UpdateStatus.ManualOnly(info)
-                    } else {
                         startDownload(result.info, info)
+                    } else {
+                        _status.value = UpdateStatus.ManualOnly(info)
                     }
                 }
                 null -> {
