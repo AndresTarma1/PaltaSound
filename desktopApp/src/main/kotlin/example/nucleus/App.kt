@@ -95,18 +95,22 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
-import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
-import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
-import org.jetbrains.jewel.intui.window.decoratedWindow
-import org.jetbrains.jewel.ui.ComponentStyling
-import org.jetbrains.jewel.window.newFullscreenControls
 import org.koin.compose.koinInject
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 import example.nucleus.ui.themes.LocalChromeSurface
 import example.nucleus.ui.themes.LocalLayoutMode
+
+/**
+ * Jewel se usaba aquí solo por su tema (`IntUiTheme`), pero Jewel engancha su infraestructura al
+ * image heap de native-image mediante `sun.misc.Unsafe`, y en la variante GraalVM eso provocaba
+ * un segfault al arrancar (EXCEPTION_ACCESS_VIOLATION leyendo en heapBase+8, con R8 apuntando al
+ * hub de UnsafeAccessing). JewelTheme sigue nuriendo la paleta, así que se mantiene solo el color.
+ */
+@Composable
+private fun JewelFreeWindowTheme(content: @Composable () -> Unit) {
+    content()
+}
 
 @Composable
 fun NucleusApplicationScope.App(
@@ -257,11 +261,7 @@ fun NucleusApplicationScope.App(
 
     AppTheme(artworkColors = artworkColors, userPreferences = userPreferences) {
 
-        IntUiTheme(
-            theme = if (isDark) JewelTheme.darkThemeDefinition() else JewelTheme.lightThemeDefinition(),
-            styling = ComponentStyling.decoratedWindow(),
-            swingCompatMode = true
-        ) {
+        JewelFreeWindowTheme {
             val playlistsViewModel: LibraryPlaylistsViewModel = koinInject()
             CompositionLocalProvider(
                 LocalArtworkColors provides artworkColors,
@@ -304,7 +304,6 @@ fun NucleusApplicationScope.App(
                         onCloseRequest = { if (minimizeToTray) isVisible = false else handleExit() },
                         state = windowState,
                         visible = isVisible,
-                        transparent = true,
                         title = stringResource(Res.string.app_name),
                         icon = painterResource(Res.drawable.PaltaSound),
                         minimumSize = DpSize(900.dp, 600.dp),
