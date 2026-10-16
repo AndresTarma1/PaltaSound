@@ -364,7 +364,7 @@ fun MiniPlayer(
  * comprimen y los botones de la derecha se salen de la barra, que es lo que pasaba al
  * reducir la ventana.
  */
-private val MiniPlayerWideMinWidth = 700.dp
+private val MiniPlayerWideMinWidth = 800.dp
 
 /**
  * Barra de reproducción compacta para ventanas estrechas, siguiendo el criterio de

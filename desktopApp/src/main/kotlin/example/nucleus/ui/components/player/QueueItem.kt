@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistRemove
 import androidx.compose.material.icons.rounded.DragIndicator
@@ -74,22 +75,14 @@ fun QueueItem(
 
     val containerBg = when {
         isDragging -> colorScheme.surfaceContainerHighest.copy(alpha = 0.95f)
-        isCurrent -> colorScheme.primaryContainer.copy(alpha = 0.28f)
         isHovered -> colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
         else -> Color.Transparent
     }
 
-    val itemBorder = when {
-        isDragging -> BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.5f))
-        isCurrent -> BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.35f))
-        isHovered -> BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.25f))
-        else -> null
-    }
 
     Surface(
         color = containerBg,
         shape = itemShape,
-        border = itemBorder,
         modifier = modifier
             .fillMaxWidth()
             .clip(itemShape)
@@ -107,17 +100,6 @@ fun QueueItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Franja de acento de reproducción activa
-            if (isCurrent) {
-                Box(
-                    modifier = Modifier
-                        .width(3.5.dp)
-                        .height(26.dp)
-                        .clip(CircleShape)
-                        .background(colorScheme.primary),
-                )
-            }
-
             // Indicador de arrastre: espacio reservado, solo visible en hover o arrastrando
             if (!queueLocked) {
                 Box(
@@ -245,13 +227,9 @@ fun QueueItem(
                         IconButton(
                             onClick = onRemove,
                             modifier = Modifier.size(28.dp),
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = colorScheme.errorContainer.copy(alpha = 0.35f),
-                                contentColor = colorScheme.error,
-                            ),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.PlaylistRemove,
+                                imageVector = Icons.Default.Close,
                                 contentDescription = stringResource(Res.string.remove_from_queue),
                                 modifier = Modifier.size(16.dp),
                             )

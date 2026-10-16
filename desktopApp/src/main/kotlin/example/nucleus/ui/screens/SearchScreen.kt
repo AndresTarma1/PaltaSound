@@ -312,7 +312,7 @@ fun SearchSection(
                             title = stringResource(Res.string.recent_searches),
                             actionLabel = stringResource(Res.string.clear_all),
                             onAction = onClearHistory,
-                            modifier = Modifier.padding(end = 12.dp),
+                            modifier = Modifier.padding(bottom = 12.dp,end = 12.dp),
                         )
                     }
 

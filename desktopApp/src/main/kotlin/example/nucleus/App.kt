@@ -274,7 +274,7 @@ fun NucleusApplicationScope.App(
                 LocalAnimationsEnabled provides animationsEnabled,
             ) {
                 // Widget de medios dentro de la barra de tareas de Windows (antes de la bandeja).
-                // Se compone en su propia ventana pero hereda estos CompositionLocals y el tema.
+                // Se compone en su propia ventana, pero hereda estos CompositionLocals y el tema.
                 // Opcional: se activa desde Ajustes → Aplicación.
                 val taskbarWidgetEnabled by remember(userPreferences) { userPreferences.taskbarWidgetEnabled }
                     .collectAsState(true)

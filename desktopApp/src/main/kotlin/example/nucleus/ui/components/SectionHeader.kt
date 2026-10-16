@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,15 +76,18 @@ fun SectionHeaderRow(
 
         if (actionLabel != null && onAction != null) {
             Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = actionLabel,
-                style = MaterialTheme.typography.labelLargeEmphasized,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                modifier = Modifier
-                    .clickable(onClick = onAction)
-                    .pointerHoverIcon(PointerIcon.Hand),
-            )
+
+            TextButton(
+                onClick = onAction,
+            ){
+                Text(
+                    text = actionLabel,
+                    style = MaterialTheme.typography.labelLargeEmphasized,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
 
         trailing?.invoke(this)

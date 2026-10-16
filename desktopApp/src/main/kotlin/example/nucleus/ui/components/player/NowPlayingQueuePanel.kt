@@ -183,9 +183,6 @@ fun NowPlayingQueuePanel(
                 ) {
                     itemsIndexed(
                         items = state.queue,
-                        // Clave estable por ocurrencia (índice base en queueSession.order):
-                        // las keys positionales cambiaban al reordenar y el drag se cortaba
-                        // tras mover 1 posición; las keys solo por id chocan con duplicados.
                         key = { index, song ->
                             "q${state.queueSession.order.getOrElse(index) { index }}:${song.id}"
                         },
