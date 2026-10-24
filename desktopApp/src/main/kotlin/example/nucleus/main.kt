@@ -13,7 +13,8 @@ import com.arkivanov.decompose.DecomposeSettings
 import com.arkivanov.decompose.DefaultComponentContext
 import com.arkivanov.decompose.ExperimentalDecomposeApi
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
-import dev.nucleusframework.application.NucleusBackend
+import dev.nucleusframework.aot.runtime.AotRuntime
+import dev.nucleusframework.aot.runtime.AotRuntimeMode
 import dev.nucleusframework.application.aotTraining
 import dev.nucleusframework.application.nucleusApplication
 import example.nucleus.bootstrap.AppEnvironment
@@ -38,8 +39,26 @@ import kotlinx.coroutines.runBlocking
 import org.koin.core.context.GlobalContext.startKoin
 
 
+/**
+ * Arranque en DOS fases, y la separacion es deliberada.
+ *
+ * El bug: antes todo esto vivia dentro del lambda de `nucleusApplication { }`, que es un
+ * scope @Composable. `ProvideNucleusSystemTheme` se realimenta de `darkmode-detector`, asi que al
+ * cambiar el tema del SO **recompone** ese contenido y el lambda se vuelve a ejecutar entero. Con
+ * `startKoin` dentro, la segunda pasada reventaba con
+ *
+ *   KoinApplicationAlreadyStartedException: A Koin Application has already been started
+ *   at example.nucleus.ComposableSingletons$MainKt.lambda...(main.kt:54)
+ *   ... <- ProvideNucleusSystemTheme.recompose
+ *
+ * O sea: ningun efecto de lado puede vivir en un scope recomponible. Aqui abajo solo queda
+ * composicion de verdad (remember, windowState, aotTraining y el arbol de la UI); todo lo que
+ * muta el mundo ocurre antes, una sola vez, en el cuerpo de `main`.
+ */
 @OptIn(ExperimentalDecomposeApi::class)
-fun main() = nucleusApplication(backend = NucleusBackend.Tao) {
+fun main() {
+    // ─────────── Fase 1: arranque, una sola vez, FUERA de composicion ───────────
+
     // Windows solo muestra el panel de medios del sistema si el proceso tiene un AppUserModelID explícito.
     // Debe llamarse antes de crear cualquier ventana.
     AppUserModelId.register()
@@ -93,7 +112,9 @@ fun main() = nucleusApplication(backend = NucleusBackend.Tao) {
     // En training AOT se omiten a proposito: cada subsistema carga cientos de clases que
     // no cabrian en la region `ro` de la cache ("Unable to allocate from 'ro' region") y
     // el arranque en frio no los necesita perfilados (se calientan al primer uso real).
-    if (!isAotTraining) {
+    // `isAotTraining` del NucleusApplicationScope es exactamente esto, pero el scope solo existe
+    // dentro de la fase 2, asi que se consulta directamente.
+    if (AotRuntime.mode() != AotRuntimeMode.TRAINING) {
         AppStartup.startDeferred(playerViewModel)
     }
 
@@ -106,27 +127,34 @@ fun main() = nucleusApplication(backend = NucleusBackend.Tao) {
         )
     }
 
-    setSingletonImageLoaderFactory { context -> CoilSetup.createImageLoader(context) }
-    val windowState = rememberWindowState(
-        width = saved.first.coerceAtLeast(900).dp,
-        height = saved.second.coerceAtLeast(600).dp,
-        position = WindowPosition(Alignment.Center),
-        placement = if (saved.third) WindowPlacement.Maximized else WindowPlacement.Floating,
-    )
-    val lifecycle = remember { LifecycleRegistry() }
-    val rootComponent = remember {
-        RootComponent(DefaultComponentContext(lifecycle))
+    // ─────────── Fase 2: composicion. Solo remember y UI. ───────────
+    nucleusApplication {
+
+        // Coil exige composicion para registrar el ImageLoader (su lambda es @Composable), asi
+        // que esta es de las pocas cosas que no se puede subir a la fase 1. Es idempotente.
+        setSingletonImageLoaderFactory { context -> CoilSetup.createImageLoader(context) }
+
+        val windowState = rememberWindowState(
+            width = saved.first.coerceAtLeast(900).dp,
+            height = saved.second.coerceAtLeast(600).dp,
+            position = WindowPosition(Alignment.Center),
+            placement = if (saved.third) WindowPlacement.Maximized else WindowPlacement.Floating,
+        )
+        val lifecycle = remember { LifecycleRegistry() }
+        val rootComponent = remember {
+            RootComponent(DefaultComponentContext(lifecycle))
+        }
+
+        aotTraining()
+
+        App(
+            rootComponent = rootComponent,
+            appViewModel = appViewModel,
+            playerViewModel = playerViewModel,
+            downloadViewModel = downloadViewModel,
+            userPreferences = userPreferencesRepository,
+            windowState = windowState,
+            onExit = { lifecycleManager.cleanUpAndExit() },
+        )
     }
-
-    aotTraining()
-
-    App(
-        rootComponent = rootComponent,
-        appViewModel = appViewModel,
-        playerViewModel = playerViewModel,
-        downloadViewModel = downloadViewModel,
-        userPreferences = userPreferencesRepository,
-        windowState = windowState,
-        onExit = { lifecycleManager.cleanUpAndExit() },
-    )
 }

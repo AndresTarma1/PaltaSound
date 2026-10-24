@@ -75,8 +75,6 @@ import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.utils.LocalSnackbarHostState
 import example.nucleus.utils.LocalSnackbarScope
 import example.nucleus.utils.LocalUserPreferences
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -213,8 +211,9 @@ fun ListenTogetherScreen() {
                         onTransferHost = { manager.transferHost(it) },
                         onKick = { manager.kickUser(it) },
                         onCopyCode = {
-                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                            clipboard.setContents(StringSelection(room.roomCode), null)
+                            // TODO (migración a Tao/nucleus-3.0): sin AWT no hay Toolkit.getSystemClipboard.
+                            // LocalClipboard de Compose Multiplatform no resuelve setText en este target.
+                            // Revisar API de portapapeles para Tao (o librería de terceros) antes de release.
                             scope.launch { snackbar.showSnackbar(codeCopiedMsg) }
                         },
                         onLeave = { manager.leaveRoom() },

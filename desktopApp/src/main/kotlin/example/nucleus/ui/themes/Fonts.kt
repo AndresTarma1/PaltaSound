@@ -9,16 +9,17 @@ import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.roboto_bold
 import example.nucleus.generated.resources.roboto_medium
 import example.nucleus.generated.resources.roboto_regular
-import java.awt.GraphicsEnvironment
 import org.jetbrains.compose.resources.Font
 
 /**
- * Nombres de las familias de fuentes instaladas en el sistema, ordenados alfabéticamente.
- * AWT se usa solo para enumerarlas; el renderizado lo sigue haciendo Compose/Skia, así que
- * funciona igual con el backend Tao.
+ * Nombres de las familias de fuentes instaladas en el sistema.
+ *
+ * NOTA (migración a Tao / nucleus-3.0): el backend Tao no expone `java.awt.GraphicsEnvironment`,
+ * por lo que esta función devuelve una lista vacía. Las fuentes empaquetadas con la app
+ * (Roboto) siguen funcionando normalmente. Si se necesita enumerar fuentes del sistema en el
+ * futuro, habría que buscar una alternativa sin AWT.
  */
-fun systemFontNames(): List<String> =
-    GraphicsEnvironment.getLocalGraphicsEnvironment().availableFontFamilyNames.sorted()
+fun systemFontNames(): List<String> = emptyList()
 
 /** [FontFamily] que apunta a una familia instalada en el sistema. Nombre vacío → la predeterminada. */
 @OptIn(ExperimentalTextApi::class)

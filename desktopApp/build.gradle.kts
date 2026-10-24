@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlin.serialization)
-    id("dev.nucleusframework") version "2.5.18"
+    id("dev.nucleusframework") version "3.0.0-dev-202610230652"
 
 }
 
@@ -18,7 +18,7 @@ kotlin {
 
 dependencies {
     implementation(project(":shared"))
-    val nucleusVersion = "2.5.18"
+    val nucleusVersion = "3.0.0-dev-202610230652"
 
 
 
