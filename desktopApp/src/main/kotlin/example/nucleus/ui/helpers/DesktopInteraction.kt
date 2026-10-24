@@ -101,6 +101,11 @@ fun Modifier.desktopInteractiveSurface(
     shape: Shape,
     enabled: Boolean = true,
     showHandCursor: Boolean = true,
+    /**
+     * Feedback de escala (hover 1.015, press 0.97). Con `false` se conservan el state layer y el
+     * cursor de mano, pero la superficie no "se infla" al pasar el ratón.
+     */
+    scaleOnHover: Boolean = true,
     stateLayerColor: Color? = null,
     interactionSource: MutableInteractionSource? = null,
 ): Modifier = composed {
@@ -115,14 +120,20 @@ fun Modifier.desktopInteractiveSurface(
         animationSpec = if (animationsEnabled) expressiveFadeTween() else androidx.compose.animation.core.snap(),
         label = "desktopStateLayer",
     )
-    val scale by animateDesktopPressScale(pressed = pressed, hovered = hovered, enabled = enabled)
+    val scale by animateDesktopPressScale(pressed = pressed, hovered = hovered, enabled = enabled && scaleOnHover)
     val layerColor = stateLayerColor ?: MaterialTheme.colorScheme.onSurface
 
     this
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
+        .then(
+            if (scaleOnHover) {
+                Modifier.graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+            } else {
+                Modifier
+            },
+        )
         .clip(shape)
         .hoverable(interactionSource = source, enabled = enabled)
         .background(layerColor.copy(alpha = alpha))

@@ -603,7 +603,9 @@ fun YoutubeListItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-//            .desktopInteractiveSurface(shape = rowShape, showHandCursor = true)
+            // State layer de hover + cursor de mano, sin el feedback de escala: la fila se
+            // "inflaba" al pasar el ratón y era lo único que sobraba.
+            .desktopInteractiveSurface(shape = rowShape, showHandCursor = true, scaleOnHover = false)
             .clickable { onClick(item) }
             .contextMenuArea(
                 enabled = item is SongItem || isEpisodeItem || isCollectionItem,
