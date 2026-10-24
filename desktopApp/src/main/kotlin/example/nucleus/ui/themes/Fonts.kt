@@ -10,16 +10,24 @@ import example.nucleus.generated.resources.roboto_bold
 import example.nucleus.generated.resources.roboto_medium
 import example.nucleus.generated.resources.roboto_regular
 import org.jetbrains.compose.resources.Font
+import org.jetbrains.skia.FontMgr
 
 /**
  * Nombres de las familias de fuentes instaladas en el sistema.
  *
- * NOTA (migración a Tao / nucleus-3.0): el backend Tao no expone `java.awt.GraphicsEnvironment`,
- * por lo que esta función devuelve una lista vacía. Las fuentes empaquetadas con la app
- * (Roboto) siguen funcionando normalmente. Si se necesita enumerar fuentes del sistema en el
- * futuro, habría que buscar una alternativa sin AWT.
+ * En Tao no hay AWT (`GraphicsEnvironment`), así que se usa Skia (`FontMgr`) que está
+ * disponible a través de Compose Multiplatform / Skiko sin depender de AWT.
+ * Si Skia no está disponible o falla, se devuelve lista vacía.
  */
-fun systemFontNames(): List<String> = emptyList()
+fun systemFontNames(): List<String> = try {
+    val fontMgr = FontMgr.default
+    (0 until fontMgr.familiesCount)
+        .map { fontMgr.getFamilyName(it) }
+        .distinct()
+        .sorted()
+} catch (_: Throwable) {
+    emptyList()
+}
 
 /** [FontFamily] que apunta a una familia instalada en el sistema. Nombre vacío → la predeterminada. */
 @OptIn(ExperimentalTextApi::class)
