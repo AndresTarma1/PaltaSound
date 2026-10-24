@@ -75,8 +75,8 @@ import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.utils.LocalSnackbarHostState
 import example.nucleus.utils.LocalSnackbarScope
 import example.nucleus.utils.LocalUserPreferences
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -106,6 +106,8 @@ fun ListenTogetherScreen() {
 
     val prefs = LocalUserPreferences.current
     val savedName by prefs.listenTogetherUsername.collectAsState("")
+    @Suppress("DEPRECATION")
+    val clipboardManager = LocalClipboardManager.current
     var username by remember { mutableStateOf("") }
     var joinCode by remember { mutableStateOf("") }
     LaunchedEffect(savedName) { if (username.isBlank() && savedName.isNotBlank()) username = savedName }
@@ -213,8 +215,7 @@ fun ListenTogetherScreen() {
                         onTransferHost = { manager.transferHost(it) },
                         onKick = { manager.kickUser(it) },
                         onCopyCode = {
-                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                            clipboard.setContents(StringSelection(room.roomCode), null)
+                            clipboardManager.setText(AnnotatedString(room.roomCode))
                             scope.launch { snackbar.showSnackbar(codeCopiedMsg) }
                         },
                         onLeave = { manager.leaveRoom() },
@@ -565,3 +566,4 @@ private fun RoomContent(
         Text(stringResource(Res.string.lt_leave_btn), style = MaterialTheme.typography.ctaLabel)
     }
 }
+

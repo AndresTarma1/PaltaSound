@@ -26,7 +26,6 @@ object AppEnvironment {
 
         System.setProperty("org.sqlite.tmpdir", tmpDir.absolutePath)
         System.setProperty("java.io.tmpdir", tmpDir.absolutePath)
-        System.setProperty("compose.swing.render.on.graphics", "true")
 
     }
 

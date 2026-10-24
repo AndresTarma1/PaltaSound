@@ -4,6 +4,10 @@ import com.github.kwhat.jnativehook.GlobalScreen
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -52,8 +56,8 @@ data class HotkeyCombo(
  * foco. También ofrece un modo de "captura" único para que la pantalla de configuración pueda
  * registrar una nueva combinación del usuario.
  *
- * Las devoluciones de llamada se despachan al hilo de eventos AWT para que puedan manipular
- * estado de UI/Compose de forma segura.
+ * Las devoluciones de llamada se despachan en el hilo principal de Compose (Dispatchers.Main)
+ * para que puedan manipular estado de UI/Compose de forma segura.
  */
 class GlobalHotkeyManager(
     private val onTrigger: () -> Unit,
@@ -129,5 +133,5 @@ class GlobalHotkeyManager(
     private fun isModifierKey(code: Int): Boolean = code == NativeKeyEvent.VC_CONTROL ||
         code == NativeKeyEvent.VC_SHIFT || code == NativeKeyEvent.VC_ALT || code == NativeKeyEvent.VC_META
 
-    private fun dispatch(block: () -> Unit) = java.awt.EventQueue.invokeLater(block)
+    private fun dispatch(block: () -> Unit) = GlobalScope.launch(Dispatchers.Main) { block() }
 }

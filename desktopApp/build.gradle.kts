@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlin.serialization)
-    id("dev.nucleusframework") version "2.5.18"
+    id("dev.nucleusframework") version "3.0.0-dev-202610230652"
 
 }
 
@@ -18,7 +18,7 @@ kotlin {
 
 dependencies {
     implementation(project(":shared"))
-    val nucleusVersion = "2.5.18"
+    val nucleusVersion = "3.0.0-dev-202610230652"
 
 
 
@@ -93,7 +93,6 @@ dependencies {
     implementation(compose.desktop.currentOs) {
         exclude(group = "org.jetbrains.compose.material")
     }
-    implementation(libs.kotlinx.coroutinesSwing)
     implementation(libs.jnativehook)
 
     implementation(libs.jna)
@@ -101,7 +100,6 @@ dependencies {
 
     implementation(libs.jewel.ui.standalone)
     implementation(libs.jewel.ui.decorated.window)
-    implementation(libs.jbr)
 
     // Widgets Compose dentro de la barra de tareas de Windows (solo desktop/JVM)
     implementation("uk.kulikov:compose-windows-taskbar:0.1.0")
@@ -218,8 +216,6 @@ nucleus.application {
     graalvm {
         isEnabled = true
         imageName = "paltasound"
-        // GUI desktop: AWT no-headless explícito para native-image.
-        buildArgs.add("-Djava.awt.headless=false")
         // SLF4J termina en el image heap durante el build (doc de Nucleus: paquete completo).
         buildArgs.add("--initialize-at-build-time=org.slf4j")
         // Iconos del thumbbar: incluir los .ico como recursos del image heap para que

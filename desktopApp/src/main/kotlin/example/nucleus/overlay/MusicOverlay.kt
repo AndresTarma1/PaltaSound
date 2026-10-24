@@ -57,6 +57,7 @@ import example.nucleus.listentogether.UserInfo
 import example.nucleus.player.PlaybackState
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.AppTheme
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.utils.LocalUserPreferences
@@ -117,14 +118,9 @@ fun MusicOverlayWindow(
         if (savedPosX != OVERLAY_POS_UNSET && savedPosY != OVERLAY_POS_UNSET) {
             WindowPosition(savedPosX.dp, savedPosY.dp)
         } else {
-            runCatching {
-                val ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
-                val bounds = ge.maximumWindowBounds
-                val scale = ge.defaultScreenDevice.defaultConfiguration.defaultTransform.scaleX.takeIf { it > 0 } ?: 1.0
-                val rightLogical = (bounds.x + bounds.width) / scale
-                val bottomLogical = (bounds.y + bounds.height) / scale
-                WindowPosition((rightLogical - OVERLAY_W - 16).dp, (bottomLogical - OVERLAY_H - 16).dp)
-            }.getOrDefault(WindowPosition(Alignment.BottomEnd))
+            // Sin AWT (backend Tao): no hay GraphicsEnvironment disponible.
+            // Posicionamos en la esquina inferior derecha por defecto; el usuario puede arrastrar.
+            WindowPosition(Alignment.BottomEnd)
         }
     }
 
@@ -171,7 +167,7 @@ fun MusicOverlayWindow(
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize().padding(12.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = AppShapes.xLarge,
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     tonalElevation = 0.dp,
                     shadowElevation = 16.dp,
@@ -431,7 +427,7 @@ private fun SearchTab(playerViewModel: PlayerViewModel) {
             placeholder = { Text(stringResource(Res.string.overlay_search_hint)) },
             leadingIcon = { Icon(Icons.Rounded.Search, null) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = AppShapes.medium,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { runSearch() }),
         )
@@ -590,7 +586,7 @@ private fun TogetherTab() {
             onValueChange = { username = it },
             label = { Text(stringResource(Res.string.lt_username_label)) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = AppShapes.medium,
             modifier = Modifier.fillMaxWidth(),
         )
         Button(
@@ -611,7 +607,7 @@ private fun TogetherTab() {
             onValueChange = { joinCode = it.uppercase() },
             label = { Text(stringResource(Res.string.lt_join_code_label)) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = AppShapes.medium,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth(),
         )

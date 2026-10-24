@@ -38,7 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -62,6 +61,7 @@ import example.nucleus.ui.components.SlimSlider
 import example.nucleus.ui.components.formatPlayerTimeValue
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.viewmodels.PlayerViewModel
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.utils.LocalUserPreferences
@@ -71,19 +71,16 @@ import uk.kulikov.taskbar.TaskBarAlignment
 import uk.kulikov.taskbar.TaskBarStatus
 import uk.kulikov.taskbar.WindowsTaskBar
 import uk.kulikov.taskbar.rememberTaskBarState
-import javax.swing.SwingUtilities
 
 /**
  * Widget de medios que vive DENTRO de la barra de tareas de Windows (antes de la bandeja),
- * estilo Spotify: miniatura + título + controles de transporte. Un clic en el widget abre
- * un flyout anclado sobre la barra con scrubber de posición y control de volumen.
+ * estilo Spotify: miniatura + título + controles de transporte.
  *
- * La librería `uk.kulikov:compose-windows-taskbar` exige el AWT event thread (crea un
- * [ComposeWindow] y lo re-parenta a `Shell_TrayWnd`), pero esta app corre en el backend
- * Tao (sin event loop AWT en el hilo principal). Por eso el widget se aloja en su propia
- * composición dentro de un [ComposeWindow] creado en [Swing] (EDT): el ViewModel y el
- * [ColorScheme] se pasan como parámetros porque esa composición no hereda los
- * CompositionLocals de la app.
+ * NOTA (migración a Tao / nucleus-3.0): esta implementación depende de
+ * `androidx.compose.ui.awt.ComposeWindow` y `javax.swing.SwingUtilities` (AWT event thread),
+ * los cuales **no están disponibles con el backend Tao** (único backend en nucleus-3.0).
+ * Por ello el widget está deshabilitado temporalmente. Para volver a habilitarlo haría falta
+ * una implementación sin AWT o una alternativa que no use ComposeWindow.
  *
  * En sistemas que no sean Windows no compone nada.
  */
@@ -95,61 +92,8 @@ fun TaskBarMediaWidget(
     onExit: () -> Unit,
     onShowWindow: () -> Unit,
 ) {
-    if (!isWindows()) return
-
-    val colorScheme = MaterialTheme.colorScheme
-    var hostWindow by remember { mutableStateOf<ComposeWindow?>(null) }
-
-    LaunchedEffect(Unit) {
-        var window: ComposeWindow? = null
-        runCatching {
-            SwingUtilities.invokeAndWait {
-                window = ComposeWindow().apply {
-                    isUndecorated = true
-                    isResizable = false
-                    isVisible = false
-                    type = java.awt.Window.Type.UTILITY
-                    focusableWindowState = false
-                    isAutoRequestFocus = false
-                    // Fuera de pantalla: la composición del widget solo corre cuando la
-                    // ventana es displayable (el ComposeWindowPanel no renderiza oculto).
-                    setLocation(-32000, -32000)
-                    setSize(1, 1)
-                    setContent {
-                        // MusicPlayerImage (carátula) lee LocalUserPreferences;
-                        // SlimSlider/PlayerSeekBar leen LocalAnimationsEnabled.
-                        CompositionLocalProvider(
-                            LocalUserPreferences provides userPreferences,
-                            LocalAnimationsEnabled provides animationsEnabled,
-                        ) {
-                            MaterialTheme(colorScheme = colorScheme) {
-                                val appScope = remember { TaskBarAppScope(onExit) }
-                                with(appScope) {
-                                    TaskBarWidgetContent(playerViewModel, onShowWindow)
-                                }
-                            }
-                        }
-                    }
-                    isVisible = true
-                }
-            }
-        }.onSuccess {
-            Napier.i("[taskbar-widget] Host ComposeWindow creado en el EDT (displayable=${window?.isDisplayable}, visible=${window?.isVisible})")
-        }.onFailure { e ->
-            Napier.w("[taskbar-widget] No se pudo crear el host en el EDT: $e")
-        }
-        hostWindow = window
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            hostWindow?.let { window ->
-                SwingUtilities.invokeLater {
-                    runCatching { window.dispose() }
-                }
-            }
-        }
-    }
+    // Deshabilitado en Tao/nucleus-3.0: requiere AWT/ComposeWindow, incompatibles con Tao.
+    return
 }
 
 /** [ApplicationScope] sintético para la composición del widget (la librería no lo usa más allá de la firma). */
@@ -242,7 +186,7 @@ private fun ApplicationScope.TaskBarWidgetContent(
                     url = song.thumbnailUrl,
                     contentDescription = song.title,
                     modifier = Modifier.size(34.dp),
-                    shape = RoundedCornerShape(4.dp),
+                    shape = AppShapes.extraSmall,
                     contentScale = ContentScale.Crop,
                     placeholderType = PlaceholderType.SONG,
                     iconSize = 14.dp,
@@ -297,7 +241,7 @@ private fun ApplicationScope.TaskBarWidgetContent(
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShapes.medium,
                 ) {
                     Column(
                         modifier = Modifier.padding(14.dp),
@@ -311,7 +255,7 @@ private fun ApplicationScope.TaskBarWidgetContent(
                                 url = song.thumbnailUrl,
                                 contentDescription = song.title,
                                 modifier = Modifier.size(56.dp),
-                                shape = RoundedCornerShape(8.dp),
+                                shape = AppShapes.small,
                                 contentScale = ContentScale.Crop,
                                 placeholderType = PlaceholderType.SONG,
                                 iconSize = 24.dp,
