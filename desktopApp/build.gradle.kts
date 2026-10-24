@@ -232,7 +232,7 @@ nucleus.application {
     tasks.register<Copy>("copyWindowsRuntimeResourcesGraalvm") {
         description = "Copiamos el runtime de windows necesario para un perfecto funcionamiento en GraalVM"
         from(windowsRuntimeResources) {
-            include("libmpv-2.dll", "smtc_bridge.dll", "yt-dlp.exe", "rustypipe-botguard.exe")
+            include("libmpv-2.dll", "yt-dlp.exe", "rustypipe-botguard.exe")
         }
         into(graalvmOutputDir)
     }
@@ -244,16 +244,6 @@ nucleus.application {
     }
     tasks.matching { it.name == "packageGraalvmMsi" || it.name == "packageGraalvmNsis" }.configureEach {
         dependsOn("copyWindowsRuntimeResourcesGraalvm")
-    }
-
-    val jvmOutputDir = layout.buildDirectory.dir("compose/binaries/main/app/PaltaSound")
-    val smtcBridgeDll = rootProject.file("mpv-resources/windows/smtc_bridge.dll")
-    tasks.register<Copy>("copySmtcBridgeJvm") {
-        from(smtcBridgeDll)
-        into(jvmOutputDir)
-    }
-    tasks.matching { it.name == "packageDistributionForCurrentOS" }.configureEach {
-        finalizedBy("copySmtcBridgeJvm")
     }
 
 }

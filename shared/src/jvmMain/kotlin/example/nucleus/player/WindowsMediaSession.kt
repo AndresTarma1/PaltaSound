@@ -1,16 +1,11 @@
 package example.nucleus.player
 
-import com.sun.jna.Library
-import com.sun.jna.Native
-import com.sun.jna.WString
-import com.sun.jna.win32.StdCallLibrary
 import dev.nucleusframework.media.control.MediaControlEvent
 import dev.nucleusframework.media.control.MediaControlService
 import dev.nucleusframework.media.control.MediaMetadata
 import dev.nucleusframework.media.control.MediaPlaybackState
 import dev.nucleusframework.media.control.MediaPlaybackStatus
 import io.github.aakira.napier.Napier
-import java.io.File
 import java.util.logging.Logger
 
 /**
@@ -21,10 +16,10 @@ import java.util.logging.Logger
  *  - Linux:   MPRIS (D-Bus; `playerctl`, indicadores de escritorio)
  *  - macOS:   Now Playing / MPRemoteCommandCenter
  *
- * Sustituye a la implementación custom C++/WinRT (`smtc_bridge.dll`) que solo cubría Windows SMTC.
- * Se conserva `smtc_bridge.dll` únicamente para `smtc_fix_shortcut_aumid`: pone el AppUserModelID
- * del acceso directo del menú Inicio para que el panel de medios muestre "PaltaSound" y no
- * "Aplicación Desconocida" (no es parte de MediaControlService).
+ * El AppUserModelID lo gestiona Nucleus: `MediaControlService.configure()` aplica
+ * `NucleusApp.aumid` al proceso (`SetCurrentProcessExplicitAppUserModelID`) y escribe
+ * `System.AppUserModel.ID` en el acceso directo del menú Inicio, para que el panel de
+ * medios muestre "PaltaSound" y no "Aplicación Desconocida".
  */
 class WindowsMediaSession {
 
@@ -40,35 +35,6 @@ class WindowsMediaSession {
     private var onSeek: ((Long) -> Unit)? = null
 
     private var positionProvider: (() -> Long)? = null
-
-    // ── JNA binding a smtc_bridge.dll (solo el fix del acceso directo) ──────
-    private interface SmtcBridge : StdCallLibrary {
-        fun smtc_fix_shortcut_aumid(aumid: WString?): Int
-
-        companion object {
-            fun resolve(): SmtcBridge? = runCatching {
-                Native.load(findLibrary().absolutePath, SmtcBridge::class.java)
-            }.onFailure { Napier.w("[mediasession] smtc_bridge.dll: ${it.message}") }.getOrNull()
-
-            private fun findLibrary(): File {
-                val userDir = File(System.getProperty("user.dir"))
-                val rootDir = userDir.parentFile
-                val possibleDirs = listOf(
-                    userDir,
-                    File(userDir, "resources"),
-                    File(userDir, "app/resources"),
-                    File(userDir, "app/app/resources"),
-                    File(userDir, "mpv-resources/windows"),
-                    File(userDir, "mpv-resources"),
-                    File(rootDir, "mpv-resources/windows"),
-                    File(rootDir, "mpv-resources"),
-                    File(rootDir, "resources"),
-                ) + listOfNotNull(System.getProperty("smtc.resources")).flatMap { listOf(File(it), File(it, "windows")) }
-                return possibleDirs.map { File(it, "smtc_bridge.dll") }.firstOrNull { it.exists() }
-                    ?: error("smtc_bridge.dll no encontrada")
-            }
-        }
-    }
 
     fun initError(): String? =
         if (MediaControlService.isAvailable()) null else "nucleus.media-control no disponible"
@@ -99,7 +65,7 @@ class WindowsMediaSession {
         this.onSeek = handler
     }
 
-    /** Configura el backend nativo, repara el acceso directo y registra el listener de eventos. */
+    /** Configura el backend nativo y registra el listener de eventos. */
     fun initialize() {
         if (configured) return
         configured = true
@@ -108,8 +74,6 @@ class WindowsMediaSession {
             return
         }
         MediaControlService.configure()
-        // Asegura el nombre "PaltaSound" en el panel de medios: AppUserModelID del acceso directo.
-        runCatching { SmtcBridge.resolve()?.smtc_fix_shortcut_aumid(WString("Tarma.MusicPlayer")) }
         Napier.i("[mediasession] media-control inicializado (${platformLabel()})")
         attachCallbacks()
     }

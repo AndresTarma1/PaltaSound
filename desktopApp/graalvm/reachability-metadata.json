@@ -503,9 +503,6 @@
             "type": "example.nucleus.windows.WindowsThumbBar$wndProc$1"
         },
         {
-            "type": "example.nucleus.player.WindowsMediaSession$SmtcBridge"
-        },
-        {
             "type": "example.nucleus.player.WindowsMediaSession$VoidCb",
             "methods": [
                 {
