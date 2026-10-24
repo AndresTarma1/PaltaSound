@@ -6,7 +6,7 @@ import io.github.aakira.napier.Napier
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
-import java.util.concurrent.ConcurrentHashMap
+import java.util.Collections
 
 /**
  * Materializa carátulas en disco para SMTC/MPRIS.
@@ -22,8 +22,16 @@ object MediaSessionCoverCache {
         File(AppDirs.imageCacheDir, "media-session-covers").also { it.mkdirs() }
     }
 
-    /** songId → last remote URL used to fill the cache file (avoid redownload same). */
-    private val urlBySongId = ConcurrentHashMap<String, String>()
+    /**
+     * songId → last remote URL used to fill the cache file (avoid redownload same).
+     * LRU acotada: solo sirve para no re-descargar la misma carátula, no necesita crecer
+     * sin límite con cada canción de la sesión.
+     */
+    private val urlBySongId = Collections.synchronizedMap(
+        object : LinkedHashMap<String, String>(0, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?) = size > 256
+        },
+    )
 
     /**
      * Devuelve la mejor [coverUrl] para media-control:

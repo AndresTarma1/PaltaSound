@@ -23,9 +23,14 @@ object AppRestarter {
         "-XX:ReservedCodeCacheSize=128m",
         "-XX:CICompilerCount=2",
         "-XX:ActiveProcessorCount=4",
+        // Sin fichero hsperfdata ni contadores de rendimiento: nadie los lee (no hay JMX ni
+        // jstat en la app instalada) y el mmap se queda residente toda la sesión.
+        "-XX:-UsePerfData",
         "-Xss768k",
         "-Dkotlinx.coroutines.io.parallelism=16",
-        "-Dskiko.gpu.resourceCacheLimit=128M",
+        // 32M, igual que `jvmArgs` de desktopApp/build.gradle.kts: aquí estaba en 128M y el
+        // reinicio desde Ajustes cuadruplicaba el caché de texturas respecto al arranque normal.
+        "-Dskiko.gpu.resourceCacheLimit=32M",
         "-Dskiko.buffering=DOUBLE",
         "-Dskiko.vsync.enabled=true",
     )

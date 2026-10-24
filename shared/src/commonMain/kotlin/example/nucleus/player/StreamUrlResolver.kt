@@ -1,13 +1,12 @@
 package example.nucleus.player
 
+import example.nucleus.network.AppHttpClient
 import example.nucleus.utils.cipher.CipherDeobfuscator
 import com.metrolist.innertube.NewPipeExtractor
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.response.PlayerResponse
 import io.github.aakira.napier.Napier
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
@@ -15,13 +14,7 @@ import io.ktor.http.HttpHeaders
 
 object StreamUrlResolver {
 
-    private val validateClient = HttpClient(CIO) {
-        expectSuccess = false
-        install(HttpTimeout) {
-            connectTimeoutMillis = 5000
-            requestTimeoutMillis = 8000
-        }
-    }
+    private val validateClient = AppHttpClient.client
     /**
      * Resolves a stream URL for a given YouTube video format.
      *
@@ -115,6 +108,8 @@ object StreamUrlResolver {
         // (403/throttled) before handing them to the player.
         return try {
             val response: HttpResponse = validateClient.get(url) {
+                // Probe corto: no bloquea la reproducción más de 8 s si el CDN no responde.
+                timeout { requestTimeoutMillis = 8_000 }
                 // Range ABIERTO: es el perfil exacto que manda mpv/ffmpeg al abrir el stream.
                 // Las URLs con restricciones de YouTube (rqh=1 / spc=) rechazan este perfil con
                 // 403 (aceptan solo rangos acotados pequeños), así que este probe detecta el

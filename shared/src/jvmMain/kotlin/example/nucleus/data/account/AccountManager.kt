@@ -1,6 +1,7 @@
 package example.nucleus.data.account
 
 import com.metrolist.innertube.YouTube
+import example.nucleus.network.AppHttpClient
 import example.nucleus.platform.AppPaths
 import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.innertube.utils.sha1
@@ -9,7 +10,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
@@ -149,7 +149,6 @@ actual object AccountManager {
 
     suspend fun fetchYtCfg(cookie: String): Map<String, String> {
         val result = mutableMapOf<String, String>()
-        val client = HttpClient()
         try {
             val cookieMap = parseCookieString(cookie)
             val sapisid = cookieMap["SAPISID"] ?: return result
@@ -157,7 +156,7 @@ actual object AccountManager {
             val currentTime = System.currentTimeMillis() / 1000
             val sapisidHash = sha1("$currentTime $sapisid $origin")
 
-            val html = client.get(origin) {
+            val html = AppHttpClient.client.get(origin) {
                 header("cookie", cookie)
                 header("Authorization", "SAPISIDHASH ${currentTime}_${sapisidHash}")
                 header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36")
@@ -185,8 +184,6 @@ actual object AccountManager {
             }
         } catch (e: Exception) {
             Napier.e("fetchYtCfg error: ${e.message}")
-        } finally {
-            client.close()
         }
         return result
     }

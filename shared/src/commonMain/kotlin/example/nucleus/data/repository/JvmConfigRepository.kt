@@ -71,7 +71,9 @@ data class JvmConfig(
         args.add("-XX:ActiveProcessorCount=4")
         args.add("-Xss768k")
         args.add("-Dkotlinx.coroutines.io.parallelism=16")
-        args.add("-Dskiko.gpu.resourceCacheLimit=128M")
+        // Debe coincidir con `jvmArgs` de desktopApp/build.gradle.kts y con AppRestarter: el
+        // límite real del caché de texturas de Skia (32M), no el 128M que se colaba al reiniciar.
+        args.add("-Dskiko.gpu.resourceCacheLimit=32M")
         args.add("-Dskiko.buffering=DOUBLE")
         args.add("-Dskiko.vsync.enabled=true")
         renderApi.skikoValue?.let { args.add("-Dskiko.renderApi=$it") }

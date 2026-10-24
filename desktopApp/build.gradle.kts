@@ -155,6 +155,8 @@ nucleus.application {
         // Limita los "cores vistos" por la JVM: reduce ForkJoinPool/Dispatchers.Default (32->4),
         // el dispatcher de OkHttp y los hilos de GC. Para un reproductor bastan 4 workers CPU.
         "-XX:ActiveProcessorCount=4",
+        // Sin hsperfdata ni contadores de rendimiento: nadie los lee y el mmap se queda residente.
+        "-XX:-UsePerfData",
         // Pilas de hilo más pequeñas (muchos hilos IO/render).
         "-Xss768k",
         // Pool IO de coroutines: default real es 64 hilos (~1MB stack c/u).

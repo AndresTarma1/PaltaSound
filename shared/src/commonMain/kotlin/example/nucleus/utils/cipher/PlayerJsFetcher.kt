@@ -1,10 +1,8 @@
 package example.nucleus.utils.cipher
 
+import example.nucleus.network.AppHttpClient
 import example.nucleus.platform.AppPaths
 import io.github.aakira.napier.Napier
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
@@ -15,13 +13,7 @@ object PlayerJsFetcher {
     private const val PLAYER_JS_URL_TEMPLATE = "https://www.youtube.com/s/player/%s/player_ias.vflset/en_GB/base.js"
     private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L
 
-    private val httpClient = HttpClient(CIO) {
-        expectSuccess = false
-        install(HttpTimeout) {
-            connectTimeoutMillis = 5000
-            requestTimeoutMillis = 15000
-        }
-    }
+    private val httpClient = AppHttpClient.client
 
     // Coincidir tanto /s/player/hash/ como \/s\/player\/hash\/ (barras escapadas en JSON)
     private val PLAYER_HASH_REGEX = Regex("""\\?/s\\?/player\\?/([a-zA-Z0-9_-]+)\\?/""")
