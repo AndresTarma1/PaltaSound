@@ -5,6 +5,7 @@ import example.nucleus.utils.cipher.PoTokenManager
 import example.nucleus.utils.cipher.PoTokenGenerator
 import example.nucleus.utils.cipher.PoTokenResult
 import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.YouTubeClient
 import com.metrolist.innertube.models.response.PlayerResponse
 import example.nucleus.utils.cipher.PlayerJsFetcher
 import io.github.aakira.napier.Napier
@@ -239,6 +240,33 @@ object YTPlayerutils {
     ): Result<PlayerResponse> {
         return YouTube.player(videoId, playlistId, client = FallbackClients.mainClient)
     }
+
+    /**
+     * URL de `videostatsPlaybackUrl` para registrar la reproducción en el historial de la cuenta.
+     *
+     * POR QUÉ UNA LLAMADA APARTE, Y CON OTRO CLIENTE
+     * -----------------------------------------------
+     * `playerResponseForMetadata` usa [FallbackClients.mainClient], que es `VISIONOS`: vale para
+     * resolver audio, pero ese cliente está declarado con `loginSupported = false`, así que su
+     * `playbackTracking` no lleva ningún contexto de cuenta. La URL que sale de ahí lleva `cl=`
+     * de visionOS, y al pedirla declarando `c=WEB_REMIX` YouTube no tiene contra qué escribir el
+     * historial: o lo ignora o lo rechaza, y en ambos casos no sale nada.
+     *
+     * Aquí se pide con `WEB_REMIX`, que sí es cliente de Music autenticado, y solo se extrae el
+     * tracking. No se toca el cliente del stream: ese camino esta optimizado y cambiarlo seria
+     * arriesgar la reproduccion por una question de historial.
+     *
+     * Ojo: la respuesta cacheada durante la resolucion del stream sigue viniendo de `VISIONOS`
+     * (ver [playerResponseForPlayback]), y es la que se usa cuando hay cache. Por eso, si el
+     * registro sigue sin aparecer, hay que mirar tambien ahi y no solo en esta funcion.
+     */
+    suspend fun playbackTrackingUrl(videoId: String): String? =
+        YouTube.player(videoId, client = YouTubeClient.WEB_REMIX)
+            .getOrNull()
+            ?.playbackTracking
+            ?.videostatsPlaybackUrl
+            ?.baseUrl
+            ?.takeIf { it.isNotBlank() }
 
     /**
      * `sts` real del player.js de YouTube asociado al [videoId], extraído del mismo base.js

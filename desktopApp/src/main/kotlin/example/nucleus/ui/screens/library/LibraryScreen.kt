@@ -65,6 +65,7 @@ import example.nucleus.ui.screens.library.tabs.ArtistsTab
 import example.nucleus.ui.screens.library.tabs.LibraryMixedTab
 import example.nucleus.ui.screens.library.tabs.PlaylistsTab
 import example.nucleus.ui.screens.library.tabs.PodcastsTab
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.viewmodels.CsvImportState
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
 import example.nucleus.viewmodels.LibrarySortOrder
@@ -251,7 +252,7 @@ fun LibraryScreenRoute(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(AppShapes.small)
                             .clickable { openExtractPage = !openExtractPage }
                             .padding(4.dp)
                     ) {

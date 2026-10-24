@@ -57,7 +57,11 @@ fun dimensFor(
         chromeBorderWidth = 0.5.dp,
     )
     LayoutMode.ATTACHED -> Dimens(
-        surfaceCorner = 0.dp,
+        // Pegado/compacto NO es un modo sin esquinas: es sin margenes ni sombras. El armazón se
+        // apoya en el borde de la ventana pero conserva el redondeo, asi que surfaceCorner
+        // necesita un radio real. Antes valia 0.dp y eso dejaba el contenido de pegado con
+        // esquinas rectas, que es justo lo que se quejaba de "cuadrado/bordes".
+        surfaceCorner = 20.dp,
         surfaceGap = 0.dp,
         windowPadding = 0.dp,
         surfacePadding = 12.dp,
@@ -85,3 +89,17 @@ val LocalLayoutMode = staticCompositionLocalOf { LayoutMode.ATTACHED }
  * listas para que el contenido pueda pasar por debajo de la tarjeta sin quedar oculto.
  */
 val LocalMiniPlayerInset = staticCompositionLocalOf { 0.dp }
+
+/**
+ * Alto que el contenido de la pantalla debe dejar libre ARRIBA porque la barra de título se
+ * dibuja **encima** en lugar de apilada encima del contenido.
+ *
+ * Es 0 en todas las pantallas salvo en Now Playing. Allí la barra se superpone para que el fondo
+ * ambiental de la pantalla llegue hasta el borde superior de la ventana, en vez de quedar cortado
+ * por una franja opaca de 36dp.
+ *
+ * El fondo se pinta en el contenedor que llena la ventana entera, así que el padding va en la
+ * columna de contenido de dentro. Si se aplicara al fondo, la franja de la barra volvería a
+ * verse del color del chrome y esto no serviría para nada.
+ */
+val LocalTitleBarOverlayInset = staticCompositionLocalOf { 0.dp }

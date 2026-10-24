@@ -393,6 +393,7 @@
     <string name="tab_cover">Cover</string>
     <string name="lyrics_sync_jump">Sync</string>
     <string name="lyrics_instrumental">Instrumental</string>
+    <string name="lyrics_provider_credit">Lyrics by %1$s</string>
     <string name="tab_queue">Queue</string>
     <string name="tab_info">Info</string>
     <string name="info_duration">Duration</string>
@@ -482,6 +483,12 @@
     <string name="island_style_compact">Compact</string>
     <string name="island_style_comfortable">Comfortable</string>
     <string name="island_style_spacious">Spacious</string>
+
+    <string name="settings_corner_style">Component corners</string>
+    <string name="corner_style_rounded">Very round</string>
+    <string name="corner_style_soft">Round</string>
+    <string name="corner_style_sharp">Almost square</string>
+    <string name="corner_style_rectangular">Square</string>
 
     <!-- Theme palettes -->
     <string name="palette_default">Default</string>

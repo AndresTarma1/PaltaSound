@@ -22,6 +22,7 @@ fun AppearanceSettingsGroup() {
     val themeMode by viewModel.themeMode.collectAsState()
     val darkLevel by viewModel.darkLevel.collectAsState()
     val layoutMode by viewModel.layoutMode.collectAsState()
+val cornerStyle by viewModel.cornerStyle.collectAsState()
     val themePalette by viewModel.themePalette.collectAsState()
     val dynamicColor by viewModel.dynamicColorFromArtwork.collectAsState()
     val navigationRailStyle by viewModel.navigationRailStyle.collectAsState()
@@ -33,6 +34,7 @@ fun AppearanceSettingsGroup() {
     var showThemeDropdown by remember { mutableStateOf(false) }
     var showDarkLevelDropdown by remember { mutableStateOf(false) }
     var showLayoutDropdown by remember { mutableStateOf(false) }
+var showCornerStyleDropdown by remember { mutableStateOf(false) }
     var showPaletteDropdown by remember { mutableStateOf(false) }
     var showNavigationRailStyle by remember { mutableStateOf(false) }
     var showAppBackgroundDropdown by remember { mutableStateOf(false) }
@@ -89,6 +91,17 @@ fun AppearanceSettingsGroup() {
                 .map { it to it.displayName() },
             isSelected = { it == layoutMode },
             onSelect = { viewModel.setLayoutMode(it); showLayoutDropdown = false },
+        )
+        DropdownSelector(
+            label = stringResource(Res.string.settings_corner_style),
+            icon = Icons.Rounded.RoundedCorner,
+            currentValue = cornerStyle.displayName(),
+            expanded = showCornerStyleDropdown,
+            segmentedShape = ListItemDefaults.segmentedShapes(index = 4, count = 10),
+            onExpandedChange = { showCornerStyleDropdown = it },
+            options = CornerStyle.entries.map { it to it.displayName() },
+            isSelected = { it == cornerStyle },
+            onSelect = { viewModel.setCornerStyle(it); showCornerStyleDropdown = false },
         )
         DropdownSelector(
             label = stringResource(Res.string.navigation_rail_style),

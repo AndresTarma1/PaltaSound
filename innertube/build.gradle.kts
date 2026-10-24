@@ -17,7 +17,7 @@ dependencies {
     implementation("com.github.MetrolistGroup:MetrolistExtractor:6305155") {
         exclude(group = "com.google.protobuf")
     }
-    // El upstream (Metrolist) usa Timber (solo Android) para logging; se cambió por Napier ya que este
+    // El upstream (Metrolist) usa Timber (solo Android) para logging; se cambió por Napier, ya que este
     // módulo no tiene dependencia de Android y el resto de MusicPlayer ya usa Napier para logging.
     implementation("io.github.aakira:napier:2.7.1")
     testImplementation(libs.junit)

@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
+import example.nucleus.data.repository.CornerStyle
 import example.nucleus.data.repository.DarkLevel
 import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.IslandStyle
@@ -33,35 +35,108 @@ val LocalIsSolidBackground = staticCompositionLocalOf { true }
  * [MaterialTheme.shapes].
  */
 object AppShapes {
-    val extraSmall: RoundedCornerShape = RoundedCornerShape(4.dp)
-    val small: RoundedCornerShape = RoundedCornerShape(8.dp)
-    val medium: RoundedCornerShape = RoundedCornerShape(12.dp)
-    val large: RoundedCornerShape = RoundedCornerShape(16.dp)
-    val xLarge: RoundedCornerShape = RoundedCornerShape(20.dp)
-    val extraLarge: RoundedCornerShape = RoundedCornerShape(28.dp)
+    val extraSmall: RoundedCornerShape @Composable get() = LocalAppShapes.current.extraSmall
+    val small: RoundedCornerShape @Composable get() = LocalAppShapes.current.small
+    val medium: RoundedCornerShape @Composable get() = LocalAppShapes.current.medium
+    val large: RoundedCornerShape @Composable get() = LocalAppShapes.current.large
+    val xLarge: RoundedCornerShape @Composable get() = LocalAppShapes.current.xLarge
+    val extraLarge: RoundedCornerShape @Composable get() = LocalAppShapes.current.extraLarge
 
     // Roles "increased" de M3 Expressive: un punto más de redondeo sobre large/extraLarge.
     // Los usan contenedores que alojan contenido (tarjetas de rejilla, bloques de sección).
-    val largeIncreased: RoundedCornerShape = RoundedCornerShape(20.dp)
-    val extraLargeIncreased: RoundedCornerShape = RoundedCornerShape(32.dp)
-    val extraExtraLarge: RoundedCornerShape = RoundedCornerShape(40.dp)
+    val largeIncreased: RoundedCornerShape @Composable get() = LocalAppShapes.current.largeIncreased
+    val extraLargeIncreased: RoundedCornerShape @Composable get() = LocalAppShapes.current.extraLargeIncreased
+    val extraExtraLarge: RoundedCornerShape @Composable get() = LocalAppShapes.current.extraExtraLarge
 }
 
 /**
- * [MaterialTheme.shapes] con los ocho roles de la alpha actual. Los tres primeros son los
- * increased, que antes se emulaban pasando [AppShapes.large] a mano y quedaban fuera del
- * tema: cualquier componente de M3 que los pida por defecto los toma ya de aqui.
+ * Escala de formas completa de la app, ya escalada por la preferencia [CornerStyle].
+ *
+ * Es una data class y no un simple factor para poder fijar los roles "increased" de M3 Expressive
+ * de forma independiente: aun subiendo el radio general, un `extraExtraLarge` tiene que seguir
+ * siendo claramente más redondo que un `small`. Con un único multiplicador, `RECTANGULAR` los
+ * aplastaría todos a 0 por igual; aquí cada rol tiene su propio peso para que la jerarquía se
+ * mantenga incluso en los extremos.
  */
-private val MaterialShapes = Shapes(
-    extraSmall = AppShapes.extraSmall,
-    small = AppShapes.small,
-    medium = AppShapes.medium,
-    large = AppShapes.large,
-    extraLarge = AppShapes.extraLarge,
-    largeIncreased = AppShapes.largeIncreased,
-    extraLargeIncreased = AppShapes.extraLargeIncreased,
-    extraExtraLarge = AppShapes.extraExtraLarge,
-)
+data class AppShapeScale(
+    val extraSmall: RoundedCornerShape,
+    val small: RoundedCornerShape,
+    val medium: RoundedCornerShape,
+    val large: RoundedCornerShape,
+    val xLarge: RoundedCornerShape,
+    val extraLarge: RoundedCornerShape,
+    val largeIncreased: RoundedCornerShape,
+    val extraLargeIncreased: RoundedCornerShape,
+    val extraExtraLarge: RoundedCornerShape,
+) {
+    companion object {
+        /**
+         * Radios base (dp) de la escala de la app, antes de aplicar [CornerStyle]. Se guardan
+         * como Int porque tienen que poder multiplicarse por un factor antes de convertirse en dp.
+         */
+        private const val BASE_EXTRA_SMALL = 4
+        private const val BASE_SMALL = 8
+        private const val BASE_MEDIUM = 12
+        private const val BASE_LARGE = 16
+        private const val BASE_X_LARGE = 20
+        private const val BASE_EXTRA_LARGE = 28
+        private const val BASE_LARGE_INCREASED = 20
+        private const val BASE_EXTRA_LARGE_INCREASED = 32
+        private const val BASE_EXTRA_EXTRA_LARGE = 40
+
+        /**
+         * `extraSmall` no se escala igual que el resto: es el radio de campos diminutos y
+         * separadores, donde un factor 1.35 lo desproporcionaría. Sigue la preferencia pero con
+         * la mitad de fuerza, para que en RECTANGULAR sea 0 y en ROUNDED no se vuelva una píldora.
+         */
+        fun forCornerStyle(style: CornerStyle): AppShapeScale {
+            val f = style.scale
+            val fSmall = f * 0.5f
+            // coerceAtLeast por construccion: un radio negativo revienta con
+            // IllegalArgumentException en CornerBasedShape.createOutline, y eso es un crash de
+            // ventana, no un warning. Blindamos el punto por si el factor llegara negativo.
+            fun scale(dp: Int, factor: Float = f) =
+                RoundedCornerShape((dp * factor).coerceAtLeast(0f).dp)
+
+            return AppShapeScale(
+                extraSmall = scale(BASE_EXTRA_SMALL, fSmall),
+                small = scale(BASE_SMALL),
+                medium = scale(BASE_MEDIUM),
+                large = scale(BASE_LARGE),
+                xLarge = scale(BASE_X_LARGE),
+                extraLarge = scale(BASE_EXTRA_LARGE),
+                largeIncreased = scale(BASE_LARGE_INCREASED),
+                extraLargeIncreased = scale(BASE_EXTRA_LARGE_INCREASED),
+                extraExtraLarge = scale(BASE_EXTRA_EXTRA_LARGE),
+            )
+        }
+    }
+}
+
+val LocalAppShapes = staticCompositionLocalOf { AppShapeScale.forCornerStyle(CornerStyle.SOFT) }
+
+/**
+ * [MaterialTheme.shapes] alimentado por la escala viva, para que cualquier componente de M3 que
+ * pida su forma por defecto (un `Button`, un `Card` sin `shape`) herede la preferencia sin tocar
+ * nada. Se construye dentro de la composicion porque `AppShapes` ya es dinamico.
+ *
+ * Los tres ultimos roles son los increased de M3 Expressive, que antes se emulaban pasando
+ * [AppShapes.large] a mano y quedaban fuera del tema.
+ */
+@Composable
+private fun materialShapes(): Shapes {
+    val s = LocalAppShapes.current
+    return Shapes(
+        extraSmall = s.extraSmall,
+        small = s.small,
+        medium = s.medium,
+        large = s.large,
+        extraLarge = s.extraLarge,
+        largeIncreased = s.largeIncreased,
+        extraLargeIncreased = s.extraLargeIncreased,
+        extraExtraLarge = s.extraExtraLarge,
+    )
+}
 
 @Composable
 fun AppTheme(
@@ -76,6 +151,7 @@ fun AppTheme(
     val backgroundStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
     val layoutMode by userPreferences.layoutMode.collectAsState(LayoutMode.ATTACHED)
     val islandStyle by userPreferences.islandStyle.collectAsState(IslandStyle.COMFORTABLE)
+    val cornerStyle by userPreferences.cornerStyle.collectAsState(CornerStyle.SOFT)
     val selectedFont by userPreferences.selectedFont.collectAsState("")
     val animationsEnabled by userPreferences.animationsEnabled.collectAsState(true)
 
@@ -137,9 +213,14 @@ fun AppTheme(
     }
     val fontFamily = customFamily ?: defaultFamily
 
+    // Escala de formas segun la preferencia del usuario. Va en un CompositionLocal aparte porque
+    // AppTheme.colorScheme cambia con el tema pero las formas no dependen de el.
+    val appShapes = remember(cornerStyle) { AppShapeScale.forCornerStyle(cornerStyle) }
+
+    CompositionLocalProvider(LocalAppShapes provides appShapes) {
     MaterialTheme(
         colorScheme = colorScheme,
-        shapes = MaterialShapes,
+        shapes = materialShapes(),
         typography = remember(fontFamily) { paltaTypography(fontFamily) },
         // Scheme oficial de M3 Expressive: los componentes M3 que lo consulten (menús,
         // chips, indicators) toman ya sus curvas. Con las animaciones apagadas se
@@ -158,6 +239,7 @@ fun AppTheme(
             },
             content = content,
         )
+    }
     }
 }
 

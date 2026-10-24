@@ -25,6 +25,7 @@ import example.nucleus.data.repository.RenderApi
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.screens.shared.displayDescription
 import example.nucleus.ui.screens.shared.displayName
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.AppRestarter
 import example.nucleus.viewmodels.JvmSettingsUiState
 import example.nucleus.viewmodels.JvmSettingsViewModel
@@ -51,7 +52,7 @@ fun AdvancedJvmSettingsScreen(
 
             Surface(
                 modifier = Modifier.width(dialogWidth).height(dialogHeight),
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShapes.large,
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp,
             ) {
@@ -166,7 +167,7 @@ private fun RestartDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onSaveAndRestart, shape = RoundedCornerShape(8.dp)) {
+            Button(onClick = onSaveAndRestart, shape = AppShapes.small) {
                 Text(stringResource(Res.string.save_restart))
             }
         },

@@ -2,11 +2,14 @@ package example.nucleus
 
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
@@ -46,9 +49,10 @@ import dev.nucleusframework.autolaunch.AutoLaunch
 import dev.nucleusframework.autolaunch.AutoLaunchResult
 import dev.nucleusframework.window.NucleusDecoratedWindowTheme
 import dev.nucleusframework.window.TitleBar
+import dev.nucleusframework.window.WindowAppearance
+import dev.nucleusframework.window.WindowAppearanceMode
+import dev.nucleusframework.window.WindowBackground
 import dev.nucleusframework.window.macOSLargeCornerRadius
-import dev.nucleusframework.window.material.MaterialDecoratedWindow
-import dev.nucleusframework.window.material.MaterialTitleBar
 import dev.nucleusframework.window.styling.TitleBarColors
 import dev.nucleusframework.window.styling.TitleBarMetrics
 import dev.nucleusframework.window.styling.TitleBarStyle
@@ -64,11 +68,13 @@ import example.nucleus.data.repository.UserPreferencesRepository
 import example.nucleus.data.repository.YouTubeRegion
 import example.nucleus.navigation.NavigationDesktop
 import example.nucleus.navigation.RootComponent
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.overlay.GlobalHotkeyManager
 import example.nucleus.overlay.HotkeyCombo
 import example.nucleus.player.PlaybackState
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
+import example.nucleus.ui.components.CoilSetup
 import example.nucleus.ui.components.artwork.ArtworkColors
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.artwork.rememberArtworkColors
@@ -81,7 +87,6 @@ import example.nucleus.utils.LocalSnackbarHostState
 import example.nucleus.utils.LocalSnackbarScope
 import example.nucleus.utils.LocalUserPreferences
 import example.nucleus.utils.LocalAnimationsEnabled
-import example.nucleus.viewmodels.AppUpdateInfo
 import example.nucleus.viewmodels.AppViewModel
 import example.nucleus.viewmodels.DownloadViewModel
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
@@ -100,16 +105,38 @@ import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 import example.nucleus.ui.themes.LocalChromeSurface
 import example.nucleus.ui.themes.LocalLayoutMode
+import example.nucleus.ui.themes.LocalTitleBarOverlayInset
+import example.nucleus.utils.cipher.PlayerPipelineWarmup
 
 /**
  * Jewel se usaba aquí solo por su tema (`IntUiTheme`), pero Jewel engancha su infraestructura al
  * image heap de native-image mediante `sun.misc.Unsafe`, y en la variante GraalVM eso provocaba
  * un segfault al arrancar (EXCEPTION_ACCESS_VIOLATION leyendo en heapBase+8, con R8 apuntando al
- * hub de UnsafeAccessing). JewelTheme sigue nuriendo la paleta, así que se mantiene solo el color.
+ * hub de UnsafeAccessing).
+ *
+ * Jewel hacia dos cosas aqui. Una era la paleta, que hoy aporta `AppTheme` (nuestro). La otra era
+ * que `BaseJewelTheme` instalaba `LocalIndication provides NoIndication` GLOBALMENTE: ningun
+ * `.clickable()` de la app pintaba ripple ni resaltado de hover. Al quitarselo, los ~19
+ * `.clickable()` planos de la app caen al `LocalIndication` por defecto de Compose, que en build
+ * de depuracion dibuja un recuadro y en release un ripple, donde antes no habia nada. Por eso se
+ * reproduce aqui a mano: es justo lo que hacia Jewel, sin arrastrar su codigo nativo.
  */
 @Composable
 private fun JewelFreeWindowTheme(content: @Composable () -> Unit) {
-    content()
+    CompositionLocalProvider(LocalIndication provides NoIndication, content = content)
+}
+
+/**
+ * Réplica de `NoIndication` de Jewel (`jewel-ui/.../ui/theme/JewelTheme.kt`): un
+ * `IndicationNodeFactory` cuya factory devuelve un nodo vacío, o sea, no pinta nada.
+ */
+private object NoIndication : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode =
+        object : Modifier.Node() {}
+
+    override fun hashCode(): Int = System.identityHashCode(this)
+
+    override fun equals(other: Any?): Boolean = this === other
 }
 
 @Composable
@@ -132,9 +159,7 @@ fun NucleusApplicationScope.App(
     LaunchedEffect(isVisible, trimMemoryOnTray) {
         if (!isVisible && trimMemoryOnTray) {
             delay(2000.milliseconds)
-            // Liberar los bitmaps decodificados (Coil) — el disk cache de 256 MB los conserva, así
-            // que solo se pierde la copia en RAM. Luego se recorta el working set de Windows.
-            runCatching { example.nucleus.ui.components.CoilSetup.evictMemoryCache() }
+            runCatching { CoilSetup.evictMemoryCache() }
             example.nucleus.utils.WorkingSetTrimmer.trim()
         }
     }
@@ -148,14 +173,10 @@ fun NucleusApplicationScope.App(
         }
     }
 
-    // Precalienta el pipeline WEB (solucionador EJS + PoToken sidecar) en background para que
-    // la primera reproducción web no pague el cold-start (~20-25s de prepare). Nunca bloquea la UI.
-    // En training AOT se omite: GraalJS/Truffle cargan una enormidad de clases, usan red y
-    // lanzan procesos, las tres cosas que un training no quiere (tamaño, determinismo, efectos).
     LaunchedEffect(Unit) {
         if (!AotRuntime.isTraining()) {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                example.nucleus.utils.cipher.PlayerPipelineWarmup.warmup()
+                PlayerPipelineWarmup.warmup()
             }
         }
     }
@@ -277,7 +298,7 @@ fun NucleusApplicationScope.App(
                 // Se compone en su propia ventana, pero hereda estos CompositionLocals y el tema.
                 // Opcional: se activa desde Ajustes → Aplicación.
                 val taskbarWidgetEnabled by remember(userPreferences) { userPreferences.taskbarWidgetEnabled }
-                    .collectAsState(true)
+                    .collectAsState(false)
                 if (taskbarWidgetEnabled) {
                     TaskBarMediaWidget(
                         playerViewModel = playerViewModel,
@@ -288,14 +309,27 @@ fun NucleusApplicationScope.App(
                     )
                 }
 
+                // El estado de navegación se lee ANTES de construir la barra de título, porque de
+                // él depende su estilo (transparente en Now Playing, opaca en el resto).
+                val isSquareLayout = LocalLayoutMode.current == LayoutMode.SQUARE
+                val navStack by rootComponent.childStack.subscribeAsState()
+                val canGoBack = navStack.items.size > 1
+                val isOnNowPlaying = navStack.active.configuration is ScreenConfig.NowPlaying
+
+                val titleBarHeight = 36.dp
+
                 val titleBarStyle = TitleBarStyle(
                     colors = TitleBarColors(
-                        background = LocalChromeSurface.current,
-                        inactiveBackground = LocalChromeSurface.current,
+                        // En Now Playing la barra se superpone al contenido con fondo transparente:
+                        // asi se ve el fondo ambiental de la pantalla detras de los botones, en vez de
+                        // una franja opaca de 36dp cortando el degradado. Los botones de caption se
+                        // siguen pintando, que es lo unico que no se puede quitar.
+                        background = if (isOnNowPlaying) Color.Transparent else LocalChromeSurface.current,
+                        inactiveBackground = if (isOnNowPlaying) Color.Transparent else LocalChromeSurface.current,
                         border = Color.Transparent,
                         content = MaterialTheme.colorScheme.onSurface,
                     ),
-                    metrics = TitleBarMetrics(height = 36.dp),
+                    metrics = TitleBarMetrics(height = titleBarHeight),
                 )
 
                 NucleusDecoratedWindowTheme(isDark = isDark, titleBarStyle = titleBarStyle) {
@@ -308,6 +342,19 @@ fun NucleusApplicationScope.App(
                         icon = painterResource(Res.drawable.PaltaSound),
                         minimumSize = DpSize(900.dp, 600.dp),
                     ) {
+
+                        // Fuerza a las superficies nativas (botones de caption, menus) a seguir el
+                        // tema de la app y no el del SO: si el usuario elige DARK con Windows en
+                        // claro, sin esto el chrome nativo se queda claro. NucleusDecoratedWindowTheme
+                        // NO hace esto (solo pinta el TitleBarStyle), asi que hay que declararlo.
+                        WindowAppearance(
+                            if (isDark) WindowAppearanceMode.Dark else WindowAppearanceMode.Light
+                        )
+
+                        // Color de borrado de la ventana: lo que se ve al arrancar, durante el
+                        // redimensionado en vivo y donde Compose no pinta nada. Sin esto la ventana
+                        // arranca en blanco/black antes de que el arbol de Compose dibuje.
+                        WindowBackground(MaterialTheme.colorScheme.background)
 
                         // Estado de actualizaciones. En training no se comprueba: es red (no determinista
                         // para la cache) y el resultado no se usa para nada en un training.
@@ -366,22 +413,17 @@ fun NucleusApplicationScope.App(
                             backgroundStyle = backgroundAppStyle
                         ) {
 
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(LocalChromeSurface.current)
-                            ) {
-                                Column {
-
-                                    val isSquareLayout = LocalLayoutMode.current == LayoutMode.SQUARE
-                                    val navStack by rootComponent.childStack.subscribeAsState()
-                                    val canGoBack = navStack.items.size > 1
-
+                            // Definida UNA vez y reutilizada por las dos ramas de abajo. No es que haya dos
+                                // barras: es el mismo composable llamado desde dos ramas
+                                // excluyentes, porque lo unico que cambia es si se apila encima del
+                                // contenido o se superpone (ver mas abajo). Duplicar el contenido
+                                // en las dos ramas hacia falta acordarse de tocar los dos sitios cada
+                                // vez que DesktopTitleBar gane un parametro.
+                                val titleBar: @Composable () -> Unit = {
                                     TitleBar(
                                         modifier = if (isSquareLayout) Modifier else Modifier.macOSLargeCornerRadius(),
                                         style = titleBarStyle
                                     ) {
-
                                         DesktopTitleBar(
                                             currentSong = currentSong?.title,
                                             isPlaying = isPlaying,
@@ -401,19 +443,45 @@ fun NucleusApplicationScope.App(
                                             },
                                             onSyncNow = { syncUtils.performFullSync() },
                                         )
+                                    }
+                                }
 
-                                    }
-                                    if (isSquareLayout) {
-                                        HorizontalDivider(
-                                            color = MaterialTheme.colorScheme.outlineVariant,
-                                            thickness = 1.dp
-                                        )
-                                    }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(LocalChromeSurface.current)
+                                ) {
+                                    Column {
+
+                                        // Fuera de Now Playing la barra va APILADA arriba, dentro de la
+                                        // columna: reserva su alto y el contenido empieza debajo.
+                                        if (!isOnNowPlaying) {
+                                            titleBar()
+                                            if (isSquareLayout) {
+                                                HorizontalDivider(
+                                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                                    thickness = 1.dp
+                                                )
+                                            }
+                                        }
                                     CompositionLocalProvider(
+                                        // Esta densidad convierte CADA dp de todo el arbol a px. Con
+                                        // un factor <= 0 o NaN (un valor corrupto en DataStore),
+                                        // cualquier radio de esquina sale negativo y Compose
+                                        // revienta con IllegalArgumentException en createOutline.
+                                        // `coerceAtLeast` NO protege de NaN (NaN < x es false), asi
+                                        // que el filtro va con takeIf + isFinite. Los presets
+                                        // validos van de 0.75 a 1.50: el suelo no altera nada real.
                                         LocalDensity provides Density(
-                                            density = LocalDensity.current.density * uiScaleFactor,
+                                            density = (LocalDensity.current.density * uiScaleFactor)
+                                                .takeIf { it.isFinite() && it > 0.01f } ?: 1f,
                                             fontScale = LocalDensity.current.fontScale,
-                                        )
+                                        ),
+                                        LocalTitleBarOverlayInset provides if (isOnNowPlaying) {
+                                            titleBarHeight
+                                        } else {
+                                            0.dp
+                                        },
                                     )
                                     {
                                         key(appLocale) {
@@ -423,6 +491,15 @@ fun NucleusApplicationScope.App(
                                             )
                                         }
                                     }
+                                }
+
+                                // Barra SUPERPUESTA: solo en Now Playing, por eso no reserva alto y
+                                // el contenido deja el hueco con LocalTitleBarOverlayInset. Se queda
+                                // siempre visible aunque el auto-hide del resto del cromo actue,
+                                // porque es lo unico que da acceso a minimizar/maximizar/cerrar sin
+                                // salir de la pantalla.
+                                if (isOnNowPlaying) {
+                                    titleBar()
                                 }
                             }
                         }

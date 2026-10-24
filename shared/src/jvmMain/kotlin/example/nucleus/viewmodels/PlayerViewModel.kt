@@ -8,7 +8,6 @@ import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.UserPreferencesRepository
 import example.nucleus.db.DatabaseDao
 import example.nucleus.db.entities.ArtistEntity
-import example.nucleus.db.entities.LyricsEntity
 import example.nucleus.download.DownloadService
 import example.nucleus.lyrics.BetterLyrics
 import example.nucleus.lyrics.LyricLine
@@ -1200,16 +1199,18 @@ class PlayerViewModel(
      */
     private suspend fun registerPlaybackFor(songId: String) {
         val url = trackingUrlCache[songId]
-            ?: YTPlayerutils.playerResponseForMetadata(songId)
-                .getOrNull()
-                ?.playbackTracking
-                ?.videostatsPlaybackUrl
-                ?.baseUrl
+            ?: YTPlayerutils.playbackTrackingUrl(songId)
         if (url.isNullOrBlank()) {
             Napier.w("No playback tracking URL for $songId; skipping YouTube history registration")
             return
         }
+        // SIN `runCatching` ANIDADO. `YouTube.registerPlayback` ya era `= runCatching { ... }`: no
+        // lanzaba, devolvia un `Result.failure` como valor. Envolverlo aqui en otro `runCatching`
+        // hacia que el bloque terminara bien y este `.onFailure` no se ejecutara nunca, con lo que
+        // un 403 o un 500 se perdia en silencio. Ahora `registerPlayback` propaga la excepcion y
+        // este es el unico sitio que la captura y la registra.
         runCatching { YouTube.registerPlayback(playbackTracking = url) }
+            .onSuccess { Napier.d("registerPlayback OK for $songId") }
             .onFailure { Napier.w("registerPlayback failed for $songId: ${it.message}") }
     }
 
@@ -1505,6 +1506,10 @@ class PlayerViewModel(
     private val _lyricsFetchFailed = MutableStateFlow(false)
     val lyricsFetchFailed: StateFlow<Boolean> = _lyricsFetchFailed.asStateFlow()
 
+    /** Proveedor del que salieron las letras actuales (null si no hay letras que acreditar). */
+    private val _lyricsProvider = MutableStateFlow<String?>(null)
+    val lyricsProvider: StateFlow<String?> = _lyricsProvider.asStateFlow()
+
     fun retryFetchLyrics() {
         lastLyricsSongId = null
         viewModelScope.launch { fetchLyrics() }
@@ -1521,8 +1526,9 @@ class PlayerViewModel(
     private var lyricsPrefetchJob: Job? = null
 
     /**
-     * Cache en memoria de LRC crudo (o marcador NOT_FOUND) por song id.
-     * Complementa la tabla SQL `Lyrics` para hits rápidos entre pistas.
+     * Cache en memoria de las letras por song id (LRU acotada). Es la unica persistencia:
+     * las letras no se guardan en disco a proposito, asi que al cerrar la app se descartan
+     * y se vuelven a resolver en la siguiente sesion.
      */
     private val lyricsMemoryCache = Collections.synchronizedMap(
         object : LinkedHashMap<String, CachedLyrics>(0, 0.75f, true) {
@@ -1560,6 +1566,7 @@ class PlayerViewModel(
         // Limpiar de inmediato para que la UI no muestre letras de la pista anterior.
         _currentLyrics.value = null
         _syncedLyrics.value = null
+        _lyricsProvider.value = null
         _lyricsLoading.value = true
 
         lyricsJob = viewModelScope.launch(Dispatchers.IO) {
@@ -1571,6 +1578,7 @@ class PlayerViewModel(
                 val plain = text.orEmpty()
                 _syncedLyrics.value = null
                 _currentLyrics.value = plain
+                _lyricsProvider.value = provider.takeIf { plain.isNotBlank() }
                 _lyricsLoading.value = false
                 rememberLyrics(requestSongId, plain, provider, notFound = plain.isBlank())
             }
@@ -1579,28 +1587,12 @@ class PlayerViewModel(
                 if (!stillCurrent()) return
                 _syncedLyrics.value = parsed
                 _currentLyrics.value = plainFallback
+                _lyricsProvider.value = provider
                 _lyricsLoading.value = false
                 rememberLyrics(requestSongId, raw, provider, notFound = false)
             }
 
             try {
-                // 1) Disco (SQLDelight)
-                val dbHit = databaseDao.getLyrics(requestSongId)
-                if (dbHit != null) {
-                    val notFound = dbHit.lyrics == LyricsEntity.LYRICS_NOT_FOUND || dbHit.lyrics.isBlank()
-                    val cached = CachedLyrics(
-                        raw = if (notFound) "" else dbHit.lyrics,
-                        provider = dbHit.provider,
-                        notFound = notFound,
-                    )
-                    lyricsMemoryCache[requestSongId] = cached
-                    if (stillCurrent()) {
-                        applyCachedLyrics(cached)
-                        _lyricsLoading.value = false
-                    }
-                    return@launch
-                }
-
                 withTimeout(20_000L) {
                     val result = lookupLyricsRemote(song) ?: return@withTimeout
                     if (!stillCurrent()) return@withTimeout
@@ -1631,6 +1623,7 @@ class PlayerViewModel(
                 if (stillCurrent() && _currentLyrics.value == null) {
                     _currentLyrics.value = ""
                     _syncedLyrics.value = null
+                    _lyricsProvider.value = null
                     _lyricsLoading.value = false
                     rememberLyrics(requestSongId, "", "None", notFound = true)
                 }
@@ -1645,8 +1638,10 @@ class PlayerViewModel(
         if (cached.notFound || cached.raw.isBlank()) {
             _syncedLyrics.value = null
             _currentLyrics.value = ""
+            _lyricsProvider.value = null
             return
         }
+        _lyricsProvider.value = cached.provider
         if (SyncedLyrics.isSynced(cached.raw)) {
             val parsed = SyncedLyrics.parse(cached.raw)
             if (parsed.isNotEmpty()) {
@@ -1660,17 +1655,12 @@ class PlayerViewModel(
     }
 
     private fun rememberLyrics(songId: String, raw: String, provider: String, notFound: Boolean) {
-        val storeRaw = if (notFound) LyricsEntity.LYRICS_NOT_FOUND else raw
+        // Solo memoria: las letras son material con licencia y no se guardan en disco.
         lyricsMemoryCache[songId] = CachedLyrics(
             raw = if (notFound) "" else raw,
             provider = provider,
             notFound = notFound,
         )
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                databaseDao.insertLyrics(songId, storeRaw, provider)
-            }
-        }
     }
 
     private data class RemoteLyrics(val raw: String, val provider: String)
@@ -1682,7 +1672,8 @@ class PlayerViewModel(
         // Intentar proveedores sincronizados en orden de fiabilidad. El primer LRC utilizable gana.
         //   1) LrcLib  — gratuito, confiable, sincronizado por líneas
         //   2) KuGou   — sincronizado por líneas
-        //   3) BetterLyrics — sincronizado por palabras
+        //   3) BetterLyrics — sincronizado por palabras; su API publica ya solo sirve consultas
+        //      que esten en su cache (el resto exige una key privada), asi que suele caer
         //   4) YouTube lyrics endpoint
         suspend fun <T> attempt(block: suspend () -> T): T? = try {
             block()
@@ -1718,16 +1709,6 @@ class PlayerViewModel(
         lyricsPrefetchJob?.cancel()
         lyricsPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val dbHit = databaseDao.getLyrics(next.id)
-                if (dbHit != null) {
-                    val notFound = dbHit.lyrics == LyricsEntity.LYRICS_NOT_FOUND || dbHit.lyrics.isBlank()
-                    lyricsMemoryCache[next.id] = CachedLyrics(
-                        raw = if (notFound) "" else dbHit.lyrics,
-                        provider = dbHit.provider,
-                        notFound = notFound,
-                    )
-                    return@launch
-                }
                 withTimeout(20_000L) {
                     val result = lookupLyricsRemote(next) ?: run {
                         rememberLyrics(next.id, "", "None", notFound = true)

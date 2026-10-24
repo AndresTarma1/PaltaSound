@@ -3065,10 +3065,20 @@ object YouTube {
             innerTube.player(client, videoId, playlistId, signatureTimestamp, poToken).body<PlayerResponse>()
         }
 
+    /**
+     * Registra la reproducción en el historial de la cuenta.
+     *
+     * SIN `runCatching`: devolver un `Result` como valor hacía que quien la llama no pudiera ver el
+     * fallo salvo que la envolviera en otro `runCatching` — y al hacerlo, el `onFailure` de fuera
+     * nunca se ejecutaba y un 403 o un 500 se perdía en silencio. Ahora propaga la excepción y es
+     * el caller quien la captura una sola vez y la registra.
+     *
+     * @throws Exception si el GET falla. Lanza, no devuelve.
+     */
     suspend fun registerPlayback(
         playlistId: String? = null,
         playbackTracking: String,
-    ) = runCatching {
+    ) {
         val cpn =
             (1..16)
                 .map {

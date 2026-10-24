@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 import example.nucleus.download.DownloadState
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.LocalSnackbarHostState
 import example.nucleus.utils.LocalSnackbarScope
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
@@ -205,10 +206,10 @@ fun AddToPlaylistDialog(
                                 .fillMaxWidth()
                                 .background(
                                     color = if(isHovered) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent,
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = AppShapes.small
                                 )
                                 .onHover{ isHovered = it}
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(AppShapes.small)
                                 .clickable {
                                     songs.forEach { playlistsViewModel.addSongToLocalPlaylist(playlist.id, it) }
                                     scope.launch {

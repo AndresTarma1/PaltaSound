@@ -391,7 +391,7 @@ private fun SuggestionListItem(suggestion: String, onClick: () -> Unit) {
     val bgColor = if (isHover) MaterialTheme.colorScheme.onSurface.copy(0.12f) else Color.Transparent
     ListItem(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(AppShapes.medium)
             .background(bgColor)
             .onHover { isHover = it }
             .pointerHoverIcon(PointerIcon.Hand)
@@ -429,7 +429,7 @@ private fun HistoryListItem(query: String, onClick: () -> Unit, onDelete: () -> 
 
     ListItem(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(AppShapes.medium)
             .pointerHoverIcon(PointerIcon.Hand)
             .onHover { isHovered = it }
             .clickable(onClick = onClick)

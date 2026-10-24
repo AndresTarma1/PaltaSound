@@ -198,20 +198,33 @@ class InnerTube {
         }
     }
 
-    suspend fun search(
+    /**
+ * Busqueda.
+ *
+ * CON SESION POR DEFECTO, igual que innertubex (`setLogin ?: true`). Esto era anonimo: sin cookie
+ * y con el `dataSyncId` del contexto forzado a `null` mientras el resto de endpoints si lo
+ * mandaban. Una busqueda anonima no se refleja en la cuenta — ni la escribe, ni la personaliza, ni
+ * toca las sugerencias posteriores—, y eso es lo que hacia que "antes se reflejaba y ahora no".
+ *
+ * @param setLogin `null` (por defecto) = autenticado. `false` solo para busquedas que no deban
+ *   tocar la sesion.
+ */
+suspend fun search(
         client: YouTubeClient,
         query: String? = null,
         params: String? = null,
         continuation: String? = null,
+        setLogin: Boolean? = null,
     ) = withRetry {
+        val setLoginForRequest = setLogin ?: true
         httpClient.post("search") {
-            ytClient(client, setLogin = false)
+            ytClient(client, setLogin = setLoginForRequest)
             setBody(
                 SearchBody(
                     context = client.toContext(
                         locale,
                         visitorData,
-                        null
+                        if (setLoginForRequest) dataSyncId else null
                     ),
                     query = query,
                     params = params
@@ -342,7 +355,15 @@ class InnerTube {
         }
     }
 
-    suspend fun getSearchSuggestions(
+    /**
+ * Sugerencias de busqueda.
+ *
+ * SIN login a proposito, igual que en innertubex (`getSearchSuggestions`, `setLogin = false`).
+ * Este endpoint no es el que refleja la cuenta: lo es [search]. Y mandarlo autenticado ademas
+ * quemaria la cookie en cada pulsacion, con un debounce de 300ms por Tecla. Por eso aqui el
+ * contexto va sin `dataSyncId`.
+ */
+suspend fun getSearchSuggestions(
         client: YouTubeClient,
         input: String,
     ) = withRetry {

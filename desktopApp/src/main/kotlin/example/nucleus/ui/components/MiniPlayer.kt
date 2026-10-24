@@ -571,7 +571,7 @@ private fun MiniPlayerWideRow(
         ) {
             val infoHeight = maxHeight
             val thumbSize = (infoHeight * 0.88f).coerceIn(48.dp, 68.dp)
-            val coverShape = AppShapes.medium
+            val coverShape = AppShapes.small
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,

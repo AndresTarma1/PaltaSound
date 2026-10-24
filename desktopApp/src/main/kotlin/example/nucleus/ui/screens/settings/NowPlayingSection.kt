@@ -24,6 +24,19 @@ import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.data.repository.LyricsAnimationStyle
 import kotlin.math.roundToInt
 
+/**
+ * Pasos de los selectores de letra. Mismo recorrido que `ui::MIN/MAX_LYRICS_SCALE` de Sonora
+ * (0.6..2.0), con el 1.0 —el tamaño de referencia— en medio para que se vuelva a él rápido.
+ */
+private val LYRICS_SCALE_OPTIONS = listOf(0.6f, 0.75f, 0.85f, 1f, 1.15f, 1.35f, 1.6f, 2f)
+
+/** Interlineado: de compacto a muy aireado, con 1.25 (`ui::LEADING`) en el medio. */
+private val LYRICS_SPACING_OPTIONS = listOf(1f, 1.1f, 1.25f, 1.4f, 1.6f, 1.8f, 2f)
+
+/** `×1.25`, no `1.25 sp`: son multiplicadores, y sp mentiria sobre lo que hace el ajuste. */
+private fun formatLyricsScale(scale: Float): String =
+    "×" + ((scale * 100f).roundToInt() / 100f).toString()
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun NowPlayingSettingsGroup() {
@@ -104,25 +117,29 @@ fun NowPlayingSettingsGroup() {
             isSelected = { it == lyricsAnimationStyle },
             onSelect = { viewModel.setLyricsAnimationStyle(it); showAnimationDropdown = false },
         )
+        // El tamaño y el interlineado ya no son sp absolutos sino multiplicadores: el tamaño real sale
+        // de la ventana (`27 * frameScale * multiplicador`), asi que un sp fijo se descuadraba en
+        // cuanto cambiabas de ventana. Rango y etiquetas siguen a Sonora (`ui::MIN/MAX_LYRICS_SCALE`
+        // = 0.6..2.0, `ui::LEADING` = 1.25).
         DropdownSelector(
             label = stringResource(Res.string.lyrics_text_size),
             icon = Icons.Rounded.FormatSize,
-            currentValue = "${lyricsTextSize.roundToInt()} sp",
+            currentValue = formatLyricsScale(lyricsTextSize),
             segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
             expanded = showSizeDropdown,
             onExpandedChange = { showSizeDropdown = it },
-            options = listOf(28f, 32f, 36f, 40f, 44f, 48f, 52f).map { it to "${it.roundToInt()} sp" },
+            options = LYRICS_SCALE_OPTIONS.map { it to formatLyricsScale(it) },
             isSelected = { it == lyricsTextSize },
             onSelect = { viewModel.setLyricsTextSize(it); showSizeDropdown = false },
         )
         DropdownSelector(
             label = stringResource(Res.string.lyrics_line_spacing),
             icon = Icons.Rounded.TextFields,
-            currentValue = "${lyricsLineSpacing.roundToInt()} sp",
+            currentValue = formatLyricsScale(lyricsLineSpacing),
             segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
             expanded = showSpacingDropdown,
             onExpandedChange = { showSpacingDropdown = it },
-            options = listOf(40f, 46f, 54f, 60f, 68f).map { it to "${it.roundToInt()} sp" },
+            options = LYRICS_SPACING_OPTIONS.map { it to formatLyricsScale(it) },
             isSelected = { it == lyricsLineSpacing },
             onSelect = { viewModel.setLyricsLineSpacing(it); showSpacingDropdown = false },
         )

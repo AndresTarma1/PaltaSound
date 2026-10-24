@@ -257,7 +257,9 @@ fun YouTubeGridItem(
                             .align(Alignment.TopEnd)
                             .padding(6.dp)
                             .alpha(actionAlpha),
-                        buttonModifier = menuButtonModifier.pointerHoverIcon(PointerIcon.Hand),
+                        // El contenedor de la portada ya fija `PointerIcon.Hand`: repetirlo
+                        // aqui creaba un segundo nodo de cursor para el mismo puntero.
+                        buttonModifier = menuButtonModifier,
                         visible = isHovered,
                         onButtonHoverChange = { if (it) isHovered = true }
                     )
@@ -273,7 +275,6 @@ fun YouTubeGridItem(
                             .align(Alignment.BottomEnd)
                             .padding(6.dp)
                             .alpha(quickPlayAlpha),
-                        buttonModifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
                         visible = isHovered,
                         size = quickPlay.size,
                         iconSize = quickPlay.iconSize,
@@ -602,7 +603,7 @@ fun YoutubeListItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .desktopInteractiveSurface(shape = rowShape, showHandCursor = true)
+//            .desktopInteractiveSurface(shape = rowShape, showHandCursor = true)
             .clickable { onClick(item) }
             .contextMenuArea(
                 enabled = item is SongItem || isEpisodeItem || isCollectionItem,

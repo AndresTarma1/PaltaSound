@@ -151,20 +151,36 @@ object HiddenCursor {
     }
 
     /**
+     * Si el cursor lo ocultamos nosotros. [show] solo toca el cursor cuando hay algo que
+     * restaurar: el motor la llama en cada movimiento real del puntero, y un
+     * `SetCursor(IDC_ARROW)` incondicional pisaba el `PointerIcon.Hand` que Compose acababa
+     * de fijar sobre un boton. El resultado era el cursor alternando entre mano y flecha
+     * al pasar por encima de los controles de Now Playing.
+     */
+    @Volatile
+    private var hidden = false
+
+    /**
      * Fija el cursor invisible. Idempotente: pensarse para llamarla en cada tick, porque
      * cualquier `WM_SETCURSOR` repone la flecha. Si no se pudo crear el cursor transparente,
      * recurre a `SetCursor(NULL)`, que en Windows equivale a no dibujar cursor.
      */
     fun hide() {
         if (!supported) return
+        hidden = true
         val target = blankCursor
         runCatching { User32.INSTANCE.SetCursor(target) }
             .onFailure { Napier.w("[cursor] no se pudo ocultar: ${it.message}") }
     }
 
-    /** Devuelve el cursor normal. Debe llamarse en cuanto el puntero se mueva. */
+    /**
+     * Devuelve el cursor normal. Debe llamarse en cuanto el puntero se mueva, pero solo
+     * actua si el cursor seguia oculto: restaurarlo cuando ya era visible sobrescribia el
+     * icono que Compose hubiera puesto encima (mano en botones y enlaces).
+     */
     fun show() {
-        if (!supported) return
+        if (!supported || !hidden) return
+        hidden = false
         val target = arrowCursor
         runCatching { User32.INSTANCE.SetCursor(target) }
             .onFailure { Napier.w("[cursor] no se pudo restaurar: ${it.message}") }

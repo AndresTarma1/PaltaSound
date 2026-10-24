@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
 import androidx.compose.ui.draw.clip
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.utils.circleAwareShape
 
 @Composable
@@ -96,13 +97,13 @@ internal fun ArtistScreenSkeletonContent() {
                     .fillMaxWidth()
                     .padding(horizontal = 40.dp, vertical = 32.dp)
             ) {
-                Box(Modifier.width(320.dp).height(54.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+                Box(Modifier.width(320.dp).height(54.dp).shimmerBackground(AppShapes.extraSmall))
                 Spacer(Modifier.height(10.dp))
-                Box(Modifier.width(180.dp).height(18.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+                Box(Modifier.width(180.dp).height(18.dp).shimmerBackground(AppShapes.extraSmall))
                 Spacer(Modifier.height(14.dp))
-                Box(Modifier.fillMaxWidth(0.48f).height(15.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+                Box(Modifier.fillMaxWidth(0.48f).height(15.dp).shimmerBackground(AppShapes.extraSmall))
                 Spacer(Modifier.height(6.dp))
-                Box(Modifier.fillMaxWidth(0.34f).height(15.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+                Box(Modifier.fillMaxWidth(0.34f).height(15.dp).shimmerBackground(AppShapes.extraSmall))
                 Spacer(Modifier.height(22.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Box(Modifier.width(118.dp).height(42.dp).shimmerBackground(circleAwareShape()))
@@ -134,15 +135,15 @@ internal fun SkeletonSongRow() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Caja de índice / PlayArrow — 36dp de ancho
-        Box(Modifier.width(36.dp).height(36.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+        Box(Modifier.width(36.dp).height(36.dp).shimmerBackground(AppShapes.extraSmall))
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Box(Modifier.fillMaxWidth(0.55f).height(18.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+            Box(Modifier.fillMaxWidth(0.55f).height(18.dp).shimmerBackground(AppShapes.extraSmall))
             Spacer(Modifier.height(5.dp))
-            Box(Modifier.fillMaxWidth(0.3f).height(13.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+            Box(Modifier.fillMaxWidth(0.3f).height(13.dp).shimmerBackground(AppShapes.extraSmall))
         }
         Spacer(Modifier.width(12.dp))
-        Box(Modifier.width(36.dp).height(16.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+        Box(Modifier.width(36.dp).height(16.dp).shimmerBackground(AppShapes.extraSmall))
     }
 }
 
@@ -155,25 +156,25 @@ internal fun PlaylistSkeletonSongRow() {
         Box(Modifier.size(44.dp).shimmerBackground(RoundedCornerShape(6.dp)))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Box(Modifier.fillMaxWidth(0.55f).height(18.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+            Box(Modifier.fillMaxWidth(0.55f).height(18.dp).shimmerBackground(AppShapes.extraSmall))
             Spacer(Modifier.height(5.dp))
-            Box(Modifier.fillMaxWidth(0.35f).height(13.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+            Box(Modifier.fillMaxWidth(0.35f).height(13.dp).shimmerBackground(AppShapes.extraSmall))
         }
         Spacer(Modifier.width(12.dp))
-        Box(Modifier.width(36.dp).height(16.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+        Box(Modifier.width(36.dp).height(16.dp).shimmerBackground(AppShapes.extraSmall))
     }
 }
 
 @Composable
 internal fun InfoPanelSkeleton(coverSize: Dp) {
     Spacer(Modifier.height(20.dp))
-    Box(Modifier.size(coverSize).shimmerBackground(RoundedCornerShape(8.dp)))
+    Box(Modifier.size(coverSize).shimmerBackground(AppShapes.small))
     Spacer(Modifier.height(24.dp))
-    Box(Modifier.width(200.dp).height(28.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+    Box(Modifier.width(200.dp).height(28.dp).shimmerBackground(AppShapes.extraSmall))
     Spacer(Modifier.height(6.dp))
-    Box(Modifier.width(120.dp).height(16.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+    Box(Modifier.width(120.dp).height(16.dp).shimmerBackground(AppShapes.extraSmall))
     Spacer(Modifier.height(3.dp))
-    Box(Modifier.width(150.dp).height(13.dp).shimmerBackground(RoundedCornerShape(4.dp)))
+    Box(Modifier.width(150.dp).height(13.dp).shimmerBackground(AppShapes.extraSmall))
     Spacer(Modifier.height(24.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.size(44.dp).shimmerBackground(circleAwareShape()))
@@ -216,7 +217,7 @@ internal fun ArtistSectionSkeleton() {
             Modifier
                 .fillMaxWidth(0.3f)
                 .height(22.dp)
-                .shimmerBackground(RoundedCornerShape(4.dp))
+                .shimmerBackground(AppShapes.extraSmall)
         )
         Spacer(Modifier.height(12.dp))
         val rowState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -230,20 +231,20 @@ internal fun ArtistSectionSkeleton() {
                 Column(
                     modifier = Modifier
                         .width(150.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(AppShapes.medium)
                         .padding(8.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Box(Modifier.size(134.dp).shimmerBackground(RoundedCornerShape(8.dp)))
+                    Box(Modifier.size(134.dp).shimmerBackground(AppShapes.small))
                     Spacer(Modifier.height(8.dp))
                     Box(
                         Modifier.fillMaxWidth(0.85f).height(14.dp)
-                            .shimmerBackground(RoundedCornerShape(4.dp))
+                            .shimmerBackground(AppShapes.extraSmall)
                     )
                     Spacer(Modifier.height(4.dp))
                     Box(
                         Modifier.fillMaxWidth(0.55f).height(12.dp)
-                            .shimmerBackground(RoundedCornerShape(4.dp))
+                            .shimmerBackground(AppShapes.extraSmall)
                     )
                 }
             }

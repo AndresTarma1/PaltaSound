@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -210,13 +211,18 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
 
                         val islands = LocalLayoutMode.current == LayoutMode.ISLANDS
                         val square = LocalLayoutMode.current == LayoutMode.SQUARE
-                        // Formas M3E del armazón: el marco de contenido usa la escala expresiva;
-                        // en Square se suavizan las esquinas (small) manteniendo los bordes separadores.
-                        val contentShape: Shape = when {
-                            islands -> RoundedCornerShape(dimens.surfaceCorner)
-                            square -> AppShapes.small
-                            else -> AppShapes.xLarge
-                        }
+                        // La forma sale de `dimens.surfaceCorner`, que ya es 0dp en ATTACHED y en
+                        // SQUARE y el radio del IslandStyle en ISLANDS (Dimens.kt). Antes esta
+                        // when decidia por su cuenta y ponia AppShapes.small en Square, o sea 8dp:
+                        // por eso el modo "cuadrado/bordes" seguia viéndose redondeado y solo se
+                        // notaba en las esquinas, contradiciendo al resto de superficies (el
+                        // MiniPlayer ya usaba RectangleShape). Ahora manda `dimens`, una sola fuente.
+                        val contentShape: Shape =
+                            if (dimens.surfaceCorner > 0.dp) {
+                                RoundedCornerShape(topStart = dimens.surfaceCorner, bottomStart = dimens.surfaceCorner)
+                            } else {
+                                RectangleShape
+                            }
                         val bottomPadding = if (currentSong != null) 0.dp else dimens.windowPadding
 
                         Column(

@@ -68,6 +68,64 @@ enum class IslandStyle(val cornerDp: Int, val gapDp: Int) {
 }
 
 /**
+ * Cuánto se redondean los componentes: botones, cards, chips, menús, campos.
+ *
+ * Es independiente de [LayoutMode]: aquel decide cómo se reparte la superficie (islas flotantes
+ * frente a pegado), este decide el carácter de las formas. Se multiplica sobre la escala base de
+ * formas de la app (`AppShapes` en el módulo de UI), de forma que un solo ajuste reescala los ocho
+ * roles de M3 de una vez, en vez de tener un ajuste por componente.
+ *
+ * El factor es un multiplicador del radio base, no un dp absoluto: así la jerarquía entre roles se
+ * mantiene (un `small` sigue siendo más pequeño que un `extraLarge`) en vez de aplanarse.
+ */
+enum class CornerStyle(val scale: Float) {
+    /** Redondeo suave, el de por defecto: la escala actual de la app. */
+    SOFT(1.0f),
+
+    /** Más marcado, estilo M3 Expressive: todo más redondeado. */
+    ROUNDED(1.35f),
+
+    /** apenas redondeado: componentes casi rectos, tipo Windows 11. */
+    SHARP(0.45f),
+
+    /** Sin redondeo: esquinas rectas. */
+    RECTANGULAR(0.0f),
+}
+
+// ── Escala tipográfica de las letras sincronizadas ──
+//
+// Réplica del modelo de Sonora (crates/ui/src/metrics.rs y crates/views/src/chrome/aside.rs):
+// un tamaño BASE que depende del tamaño de la ventana, y encima un multiplicador que es lo único
+// que el usuario toca. Antes esto era un sp absoluto y por eso la letra se veía grande en ventanas
+// pequeñas y pequeña en las grandes: el responsive estaba al revés.
+
+/** `theme.text(Text::Title) + FULLSCREEN_VERSE_GROWTH`: 14 × 1.69 + 3 ≈ 27. */
+const val LYRICS_TEXT_SIZE_BASE = 27f
+
+/** Ventana en la que el texto deja de crecer: `LYRICS_FRAME` de Sonora, 1152×648. */
+const val LYRICS_FRAME_WIDTH = 1152f
+const val LYRICS_FRAME_HEIGHT = 648f
+
+/** Techo de crecimiento: `LYRICS_FRAME_MOST = 2.0`. */
+const val LYRICS_FRAME_MOST = 2f
+
+/** `ui::MIN_LYRICS_SCALE` / `ui::MAX_LYRICS_SCALE` de Sonora. */
+const val LYRICS_TEXT_SCALE_MIN = 0.6f
+const val LYRICS_TEXT_SCALE_MAX = 2f
+const val LYRICS_TEXT_SCALE_DEFAULT = 1f
+
+/** `ui::LEADING = 1.25`, el interlineado como cociente del tamaño de la letra. */
+const val LYRICS_LINE_SPACING_DEFAULT = 1.25f
+const val LYRICS_LINE_SPACING_MIN = 1f
+const val LYRICS_LINE_SPACING_MAX = 2f
+
+/**
+ * Tamaño de letra con el que se calcularon los sp absolutos viejos (40f). Solo sirve para migrar el
+ * interlineado guardado, que era un sp y ahora es un cociente.
+ */
+const val LYRICS_TEXT_SIZE_MIGRATION_BASE = 40f
+
+/**
  * Estilo visual de la barra de progreso de reproducción, elegido desde un diálogo de vista previa.
  *  - WAVY: garabato animado (estilo Metrolist).
  *  - LINEAR: barra plana delgada con un pulgar de punto redondo (estilo Spotify).
@@ -83,9 +141,28 @@ enum class LoudnessLevel(val lufs: Int) {
     OFF(-1), AGGRESSIVE(-7), LOUD(-11), BALANCED(-14), QUIET(-19)
 }
 
-/** Estilo de animación de la línea activa en las letras sincronizadas. */
+/**
+ * Estilo de animación de la línea activa en las letras sincronizadas.
+ *
+ * - NONE: plana, sin realce.
+ * - FADE: solo opacidad.
+ * - KARAOKE: relleno con barrido y borde degradado (estilo Apple Music).
+ * - GLOW: el preset completo — barrido + halo del primario + blur de profundidad.
+ */
 enum class LyricsAnimationStyle {
-    NONE, FADE, KARAOKE, GLOW
+    NONE, FADE, KARAOKE, GLOW;
+
+    /** Relleno karaoke con barrido: por palabra si hay timings, por línea si no. */
+    val usesSweep: Boolean get() = this == KARAOKE || this == GLOW
+
+    /** Realce de escala de la línea activa. */
+    val usesScale: Boolean get() = this == KARAOKE || this == GLOW
+
+    /** Blur de desenfoque de las líneas inactivas; el hover enfoca la que está debajo. */
+    val usesBlur: Boolean get() = this == KARAOKE || this == GLOW
+
+    /** Preset completo: barrido + halo del primario sobre la línea activa. */
+    val usesGlow: Boolean get() = this == GLOW
 }
 
 enum class AppLocale(val tag: String?) {
@@ -154,6 +231,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val DARK_LEVEL = stringPreferencesKey("dark_level")
         val LAYOUT_MODE = stringPreferencesKey("layout_mode")
         val ISLAND_STYLE = stringPreferencesKey("island_style")
+        val CORNER_STYLE = stringPreferencesKey("corner_style")
         val YTM_SYNC = booleanPreferencesKey("ytm_sync_enabled")
         val LAST_FULL_SYNC_AT = longPreferencesKey("last_full_sync_at")
         val OVERLAY_HOTKEY_ENABLED = booleanPreferencesKey("overlay_hotkey_enabled")
@@ -279,18 +357,51 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     // ── Letras ──
 
-    /** Tamaño (sp) de la línea activa de letras sincronizadas. */
-    val lyricsTextSize: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LYRICS_TEXT_SIZE] ?: 40f }
-
-    suspend fun setLyricsTextSize(size: Float) {
-        dataStore.edit { it[PreferencesKeys.LYRICS_TEXT_SIZE] = size.coerceIn(20f, 64f) }
+    /**
+     * Tamaño de la línea activa, como **multiplicador** del tamaño base, no como sp absolutos.
+     *
+     * POR QUÉ UN MULTIPLICADOR Y NO UN sp
+     * -----------------------------------
+     * El tamaño base se calcula a partir del tamaño de la ventana (ver `lyricsFrameScale`), así que
+     * un sp absoluto se translate mal: si el usuario pide 40 sp se los pones en cualquier ventana
+     * y en una de 900px de alto se desborda. Sonora lo hace al revés —14px de base, `Text::Title`
+     * = ×1.69 más 3px, o sea ~27px, y encima un multiplicador de 0.6 a 2.0 (`ui::MIN/MAX_LYRICS_SCALE`).
+     *
+     * El ajuste es el multiplicador; el tamaño sale de `27 * frameScale * multiplicador`.
+     */
+    val lyricsTextSize: Flow<Float> = dataStore.data.map { pref ->
+        val stored = pref[PreferencesKeys.LYRICS_TEXT_SIZE] ?: return@map LYRICS_TEXT_SCALE_DEFAULT
+        // Antes esto era un sp absoluto (20..64) y ahora es un multiplicador (0.6..2.0). Los
+        // rangos NO se solapan, asi que cualquier valor > 3.0 es un sp antiguo sin duda posible y
+        // se convierte con su equivalencia real: dividir por el tamaño base para no encogerle ni
+        // agrandarle la letra. Un 40 sp -> 1.48 -> sigue viendo 40 sp.
+        if (stored > 3f) (stored / LYRICS_TEXT_SIZE_BASE) else stored
     }
 
-    /** Espaciado de línea (sp) de las letras sincronizadas. */
-    val lyricsLineSpacing: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LYRICS_LINE_SPACING] ?: 54f }
+    suspend fun setLyricsTextSize(scale: Float) {
+        dataStore.edit {
+            it[PreferencesKeys.LYRICS_TEXT_SIZE] = scale.coerceIn(LYRICS_TEXT_SCALE_MIN, LYRICS_TEXT_SCALE_MAX)
+        }
+    }
 
-    suspend fun setLyricsLineSpacing(spacing: Float) {
-        dataStore.edit { it[PreferencesKeys.LYRICS_LINE_SPACING] = spacing.coerceIn(30f, 80f) }
+    /**
+     * Interlineado de la letra como **proporción** del tamaño, no como sp sueltos.
+     *
+     * Sonora lo deriva del texto: `ui::LEADING = 1.25` (crates/ui/src/metrics.rs:6). El valor
+     * guardado es ese cociente, para que el interlineado escale con la letra en vez de quedarse
+     * clavado cuando el tamaño depende de la ventana.
+     */
+    val lyricsLineSpacing: Flow<Float> = dataStore.data.map { pref ->
+        val stored = pref[PreferencesKeys.LYRICS_LINE_SPACING] ?: return@map LYRICS_LINE_SPACING_DEFAULT
+        // Antes era sp absolutos (30..80) sobre una fuente de 40sp, o sea el cociente era sp/40.
+        // 54 -> 1.35, que es justo el aspecto que tenía.
+        if (stored > 3f) (stored / LYRICS_TEXT_SIZE_MIGRATION_BASE) else stored
+    }
+
+    suspend fun setLyricsLineSpacing(ratio: Float) {
+        dataStore.edit {
+            it[PreferencesKeys.LYRICS_LINE_SPACING] = ratio.coerceIn(LYRICS_LINE_SPACING_MIN, LYRICS_LINE_SPACING_MAX)
+        }
     }
 
     /** Estilo de animación de la línea activa. */
@@ -477,6 +588,15 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setIslandStyle(style: IslandStyle) {
         dataStore.edit { it[PreferencesKeys.ISLAND_STYLE] = style.name }
+    }
+
+    val cornerStyle: Flow<CornerStyle> = dataStore.data.map { pref ->
+        try { CornerStyle.valueOf(pref[PreferencesKeys.CORNER_STYLE] ?: CornerStyle.SOFT.name) }
+        catch (_: Exception) { CornerStyle.SOFT }
+    }
+
+    suspend fun setCornerStyle(style: CornerStyle) {
+        dataStore.edit { it[PreferencesKeys.CORNER_STYLE] = style.name }
     }
 
     val miniPlayerStyle: Flow<MiniPlayerStyle> = dataStore.data.map { pref ->

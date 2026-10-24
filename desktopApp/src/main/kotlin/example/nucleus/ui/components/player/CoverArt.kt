@@ -29,32 +29,57 @@ import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.nowPlayingTitle
 import example.nucleus.ui.themes.songTitle
 import example.nucleus.utils.LocalPlayerViewModel
+import example.nucleus.utils.videoThumbnailUrl
 import example.nucleus.viewmodels.PlayerUiState
 import example.nucleus.viewmodels.QueueSource
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.modifier.onHover
 
+/**
+ * Carátula del reproductor. Cuadrada siempre (`aspectRatio(1f)`).
+ *
+ * CON VIDEOID, USA EL FRAME DEL VÍDEO EN BRUTO
+ * ---------------------------------------------
+ * La miniatura que da la API de YouTube Music para una canción normal es un **cuadrado de 120x120**
+ * (`yt3.googleusercontent.com/...=w120-h120-l90-rj`). Cuando el vídeo es 16:9, ese cuadrado lleva
+ * el frame **encajado con barras negras ya grabadas en el JPEG**: son píxeles de la imagen, no un
+ * letterbox de Compose, así que ni `ContentScale.Crop` ni el aspect ratio del marco las quitan. El
+ * cover se ve como un cuadro negro con una foto en medio y el recorte hecho por el servidor.
+ *
+ * La única fuente limpia es `i.ytimg.com/vi/<id>/…jpg`, que da el frame 16:9 entero; al recortarlo
+ * al cuadrado `Crop` llena el marco y solo se pierden los lados del frame.
+ *
+ * Se pide `maxresdefault` (1280x720) y, si falla —no existe salvo que el uploader subiera un
+ * thumbnail de 720p o más—, cae a `mqdefault` (320x180), que está en todos los vídeos. Solo si
+ * fallan las dos se vuelve al artwork original de la API.
+ *
+ * El precio, a conciencia: una canción cuya portada sea artwork de verdad enseñará un fotograma
+ * del vídeo en lugar de la portada.
+ *
+ * @param videoId id del vídeo de YouTube. Si es null se usa tal cual [url].
+ */
 @Composable
 fun CoverArt(
     url: String?,
     title: String,
     modifier: Modifier = Modifier,
+    videoId: String? = null,
 ) {
+
     Surface(
         modifier = modifier.aspectRatio(1f),
-        shape = AppShapes.extraLarge,
+        shape = AppShapes.small,
         tonalElevation = 3.dp,
-        shadowElevation = 10.dp,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
         MusicPlayerImage(
             url = url,
             contentDescription = title,
             modifier = Modifier
-                .fillMaxSize()
-                .clip(AppShapes.extraLarge),
+                .fillMaxSize(),
             placeholderType = PlaceholderType.SONG,
             contentScale = ContentScale.Crop,
         )

@@ -4,7 +4,6 @@ import example.nucleus.db.dao.AlbumDao
 import example.nucleus.db.dao.ArtistDao
 import example.nucleus.db.dao.FormatDao
 import example.nucleus.db.dao.HistoryDao
-import example.nucleus.db.dao.LyricsDao
 import example.nucleus.db.dao.MappingDao
 import example.nucleus.db.dao.PlaylistDao
 import example.nucleus.db.dao.SongDao
@@ -35,7 +34,6 @@ class DatabaseDao(private val database: MusicPlayerDatabase) {
     private val playlists = PlaylistDao(database)
     private val mappings = MappingDao(database)
     private val history = HistoryDao(database)
-    private val lyrics = LyricsDao(database)
     private val formats = FormatDao(database)
 
     fun allSongs(): Flow<List<SongEntity>> = songs.allSongs()
@@ -133,9 +131,6 @@ class DatabaseDao(private val database: MusicPlayerDatabase) {
         database.savedPodcastQueries.deleteAll()
     }
 
-    suspend fun insertLyrics(id: String, lyricsText: String, provider: String = "Unknown") = lyrics.insertLyrics(id, lyricsText, provider)
-    suspend fun getLyrics(id: String) = lyrics.getLyrics(id)
-    suspend fun deleteLyrics(id: String) = lyrics.deleteLyrics(id)
     fun downloadedSongs(): Flow<List<SongEntity>> = songs.downloadedSongs()
     fun downloadedSongsCount(): Flow<Long> = songs.downloadedSongsCount()
     suspend fun updateSongDownloadStatus(songId: String, isDownloaded: Boolean, dateDownload: Long?) = songs.updateSongDownloadStatus(songId, isDownloaded, dateDownload)

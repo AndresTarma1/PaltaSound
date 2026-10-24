@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -25,7 +24,6 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -45,30 +43,6 @@ import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.ui.themes.AppShapes
 import org.jetbrains.compose.resources.stringResource
-
-import androidx.compose.ui.graphics.Shape
-
-/**
- * Calcula la forma de un item dentro de un grupo: esquinas grandes en los
- * extremos del grupo, chicas en el medio — mismo criterio visual que
- * MenuDefaults.groupShape/itemShape usan para los menús seleccionables.
- */
-private fun groupItemShape(index: Int, count: Int): Shape {
-    val bigRadius = 16.dp
-    val smallRadius = 4.dp
-    return when {
-        count == 1 -> RoundedCornerShape(bigRadius)
-        index == 0 -> RoundedCornerShape(
-            topStart = bigRadius, topEnd = bigRadius,
-            bottomStart = smallRadius, bottomEnd = smallRadius,
-        )
-        index == count - 1 -> RoundedCornerShape(
-            topStart = smallRadius, topEnd = smallRadius,
-            bottomStart = bigRadius, bottomEnd = bigRadius,
-        )
-        else -> RoundedCornerShape(smallRadius)
-    }
-}
 
 sealed interface SongMenuAction {
     data object StartRadio : SongMenuAction
@@ -117,7 +91,7 @@ private fun GroupMenuItem(
     DropdownMenuItem(
         text = { Text(text) },
         leadingIcon = { MenuLeadingIcon(icon, tint) },
-        shape = groupItemShape(itemIndex, groupItemCount),
+        shape = groupItemShapeOf(itemIndex, groupItemCount),
         onClick = onClick,
     )
 }
@@ -154,14 +128,18 @@ fun SongContextMenuContent(
         )
     }
 
-    // Cuántos items tiene cada grupo, en base a los flags condicionales.
+    // Cuántos GRUPOS tiene el menu, no cuántos items. Es lo que decide si un grupo es leading,
+    // middle o trailing: el grupo de la cola solo existe si `showQueueActions`.
+    val groupCount = if (showQueueActions) 3 else 2
+
+    // Cuántos items tiene el último grupo, en base a los flags condicionales.
     val trailingGroupCount = 1 + // Add to playlist siempre
             (if (showRemoveFromLibrary) 1 else 0) +
             (if (showRemoveFromPlaylist) 1 else 0)
 
     Column(modifier = Modifier.width(260.dp)) {
         // Grupo 1: Radio / Like / Download
-        DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, if (showQueueActions) 4 else 3)) {
+        StableDropdownMenuGroup(groupIndex = 0, groupCount = groupCount) {
             GroupMenuItem(
                 text = stringResource(Res.string.context_start_radio),
                 icon = Icons.Default.Radio,
@@ -190,7 +168,7 @@ fun SongContextMenuContent(
             Spacer(Modifier.height(MenuDefaults.GroupSpacing))
 
             // Grupo 2: Play next / Add to queue
-            DropdownMenuGroup(shapes = MenuDefaults.groupShape(1, 3)) {
+            StableDropdownMenuGroup(groupIndex = 1, groupCount = groupCount) {
                 GroupMenuItem(
                     text = stringResource(Res.string.context_play_next),
                     icon = Icons.AutoMirrored.Filled.PlaylistAdd,
@@ -211,7 +189,7 @@ fun SongContextMenuContent(
         Spacer(Modifier.height(MenuDefaults.GroupSpacing))
 
         // Grupo 3: Add to playlist / Remove from library / Remove from playlist
-        DropdownMenuGroup(shapes = MenuDefaults.groupShape(2, 3)) {
+        StableDropdownMenuGroup(groupIndex = groupCount - 1, groupCount = groupCount) {
             GroupMenuItem(
                 text = stringResource(Res.string.context_add_playlist),
                 icon = Icons.Default.AddCircleOutline,
@@ -256,7 +234,13 @@ fun CollectionContextMenuContent(
     onRemoveFromLibrary: (() -> Unit)? = null,
     onExport: (() -> Unit)? = null,
 ) {
-    // Cuántos items va a tener el primer grupo (título es aparte, sin grupo).
+    // Cuántos GRUPOS tiene el menu. Los de export y remove solo existen si su accion no es null,
+    // y eso es lo que decide si cada grupo queda leading, middle o trailing.
+    val groupCount = 1 + // Main (open/play/shuffle) siempre
+            (if (onExport != null) 1 else 0) +
+            (if (onRemoveFromLibrary != null) 1 else 0)
+
+    // Cuántos items tiene el primer grupo (título es aparte, sin grupo).
     val mainGroupCount = 1 + // Open siempre
             (if (onPlay != null) 1 else 0) +
             (if (onShuffle != null) 1 else 0)
@@ -277,7 +261,7 @@ fun CollectionContextMenuContent(
 
         Spacer(Modifier.height(MenuDefaults.GroupSpacing))
 
-        DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, if (onRemoveFromLibrary != null) 2 else 1)) {
+        StableDropdownMenuGroup(groupIndex = 0, groupCount = groupCount) {
             GroupMenuItem(
                 text = stringResource(
                     if (isPlaylist) Res.string.context_open_playlist else Res.string.context_open_album
@@ -309,11 +293,9 @@ fun CollectionContextMenuContent(
             }
         }
 
-        val hasExport = onExport != null
-        val hasRemove = onRemoveFromLibrary != null
         onExport?.let { action ->
             Spacer(Modifier.height(MenuDefaults.GroupSpacing))
-            DropdownMenuGroup(shapes = MenuDefaults.groupShape(1, if (hasRemove) 3 else 2)) {
+            StableDropdownMenuGroup(groupIndex = 1, groupCount = groupCount) {
                 GroupMenuItem(
                     text = stringResource(Res.string.export_playlist),
                     icon = Icons.Default.Save,
@@ -326,7 +308,7 @@ fun CollectionContextMenuContent(
 
         onRemoveFromLibrary?.let { action ->
             Spacer(Modifier.height(MenuDefaults.GroupSpacing))
-            DropdownMenuGroup(shapes = MenuDefaults.groupShape(if (hasExport) 2 else 1, if (hasExport) 3 else 2)) {
+            StableDropdownMenuGroup(groupIndex = groupCount - 1, groupCount = groupCount) {
                 GroupMenuItem(
                     text = stringResource(Res.string.context_remove_library),
                     icon = Icons.Default.Delete,

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.utils.LocalAnimationsEnabled
 
@@ -136,7 +137,7 @@ fun ChipRowSkeleton() {
                 modifier = Modifier
                     .width(90.dp)
                     .height(32.dp)
-                    .shimmerBackground(RoundedCornerShape(28.dp))
+                    .shimmerBackground(AppShapes.extraLarge)
             )
         }
     }
@@ -158,14 +159,14 @@ fun SectionSkeleton() {
             Box(
                 modifier = Modifier
                     .size(20.dp)
-                    .shimmerBackground(RoundedCornerShape(4.dp))
+                    .shimmerBackground(AppShapes.extraSmall)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Box(
                 modifier = Modifier
                     .width(180.dp)
                     .height(24.dp)
-                    .shimmerBackground(RoundedCornerShape(4.dp))
+                    .shimmerBackground(AppShapes.extraSmall)
             )
         }
 
@@ -180,7 +181,7 @@ fun SectionSkeleton() {
                 Column(
                     modifier = Modifier
                         .width(200.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(AppShapes.medium)
                         .padding(8.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
@@ -188,21 +189,21 @@ fun SectionSkeleton() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(1f)
-                            .shimmerBackground(RoundedCornerShape(12.dp))
+                            .shimmerBackground(AppShapes.medium)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.8f)
                             .height(18.dp)
-                            .shimmerBackground(RoundedCornerShape(4.dp))
+                            .shimmerBackground(AppShapes.extraSmall)
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.5f)
                             .height(13.dp)
-                            .shimmerBackground(RoundedCornerShape(4.dp))
+                            .shimmerBackground(AppShapes.extraSmall)
                     )
                 }
             }
@@ -219,7 +220,7 @@ fun SongSkeleton() {
         Box(
             modifier = Modifier
                 .size(52.dp)
-                .shimmerBackground(RoundedCornerShape(4.dp))
+                .shimmerBackground(AppShapes.extraSmall)
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -229,14 +230,14 @@ fun SongSkeleton() {
                 modifier = Modifier
                     .width(180.dp)
                     .height(20.dp)
-                    .shimmerBackground(RoundedCornerShape(4.dp))
+                    .shimmerBackground(AppShapes.extraSmall)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
                     .width(100.dp)
                     .height(14.dp)
-                    .shimmerBackground(RoundedCornerShape(4.dp))
+                    .shimmerBackground(AppShapes.extraSmall)
             )
         }
 

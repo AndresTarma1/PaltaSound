@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.DarkLevel
 import example.nucleus.data.repository.IslandStyle
+import example.nucleus.data.repository.CornerStyle
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.ThemeMode
@@ -65,8 +66,15 @@ class AppearanceSettingsViewModel(
         viewModelScope.launch { preferencesRepository.setLayoutMode(mode) }
     }
 
-    fun setIslandStyle(style: IslandStyle) {
+    val cornerStyle: StateFlow<CornerStyle> = preferencesRepository.cornerStyle
+.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CornerStyle.SOFT)
+
+fun setIslandStyle(style: IslandStyle) {
         viewModelScope.launch { preferencesRepository.setIslandStyle(style) }
+    }
+
+    fun setCornerStyle(style: CornerStyle) {
+        viewModelScope.launch { preferencesRepository.setCornerStyle(style) }
     }
 
     fun setNavigationRailStyle(style: NavigationRailStyle) {

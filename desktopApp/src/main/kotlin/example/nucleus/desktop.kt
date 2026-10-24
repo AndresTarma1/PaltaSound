@@ -5,13 +5,9 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,24 +40,17 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.FrameWindowScope
-import androidx.compose.ui.window.rememberTrayState
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.AccountInfo
-import dev.nucleusframework.application.NucleusApplicationScope
-import dev.nucleusframework.application.NucleusDecoratedWindowScope
 import dev.nucleusframework.composenativetray.tray.api.Tray
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
@@ -250,7 +239,7 @@ fun TitleBarScope.DesktopTitleBar(
 }
 
 @Composable
-fun NucleusApplicationScope.TrayCustom(
+fun TrayCustom(
     playerViewModel: PlayerViewModel,
     onToggleVisibility: () -> Unit,
     onShow: () -> Unit,
@@ -295,17 +284,6 @@ fun NucleusApplicationScope.TrayCustom(
                 handleExit()
             }
         )
-    }
-}
-
-@Composable
-fun FrameWindowScope.windowBackgroundFlashingWorkaround(
-    themeBg: Color
-) {
-    val awtColor = java.awt.Color(themeBg.toArgb())
-    LaunchedEffect(window, themeBg) {
-        window.background = awtColor
-        window.contentPane.background = awtColor
     }
 }
 

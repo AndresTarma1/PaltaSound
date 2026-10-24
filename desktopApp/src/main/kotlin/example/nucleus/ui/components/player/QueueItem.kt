@@ -39,6 +39,7 @@ import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.formatPlayerTimeValue
 import example.nucleus.ui.components.song.DownloadIndicator
 import example.nucleus.ui.components.skeletons.AnimatedEqualizer
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.LocalDownloadViewModel
 import example.nucleus.ui.components.context.SongContextMenuPopup
 import example.nucleus.ui.helpers.rememberSongDownloadState
@@ -70,7 +71,7 @@ fun QueueItem(
     var isHovered by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    val itemShape = RoundedCornerShape(12.dp)
+    val itemShape = AppShapes.medium
     val colorScheme = MaterialTheme.colorScheme
 
     val containerBg = when {
@@ -106,8 +107,7 @@ fun QueueItem(
                     modifier = Modifier
                         .width(16.dp)
                         .height(40.dp)
-                        .then(dragModifier)
-                        .pointerHoverIcon(PointerIcon.Hand),
+                        .then(dragModifier),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(

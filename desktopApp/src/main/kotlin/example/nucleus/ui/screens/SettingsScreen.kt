@@ -25,6 +25,7 @@ import example.nucleus.ui.components.layout.AppScrollbarGutter
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
 import example.nucleus.ui.screens.settings.*
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.expressiveFadeTween
 import example.nucleus.ui.themes.screenTitle
@@ -152,7 +153,7 @@ private fun SettingsCategoryTabs(
 
             Surface(
                 onClick = { onSelect(cat) },
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShapes.xLarge,
                 color = containerColor,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,

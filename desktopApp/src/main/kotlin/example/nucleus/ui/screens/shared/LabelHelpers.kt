@@ -5,6 +5,7 @@ import example.nucleus.generated.resources.*
 import example.nucleus.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import example.nucleus.data.repository.AppLocale
+import example.nucleus.data.repository.CornerStyle
 import example.nucleus.data.repository.AudioQuality
 import example.nucleus.data.repository.DarkLevel
 import example.nucleus.data.repository.IslandStyle
@@ -94,6 +95,14 @@ fun IslandStyle.displayName(): String = when (this) {
     IslandStyle.COMPACT -> stringResource(Res.string.island_style_compact)
     IslandStyle.COMFORTABLE -> stringResource(Res.string.island_style_comfortable)
     IslandStyle.SPACIOUS -> stringResource(Res.string.island_style_spacious)
+}
+
+@Composable
+fun CornerStyle.displayName(): String = when (this) {
+    CornerStyle.ROUNDED -> stringResource(Res.string.corner_style_rounded)
+    CornerStyle.SOFT -> stringResource(Res.string.corner_style_soft)
+    CornerStyle.SHARP -> stringResource(Res.string.corner_style_sharp)
+    CornerStyle.RECTANGULAR -> stringResource(Res.string.corner_style_rectangular)
 }
 
 @Composable

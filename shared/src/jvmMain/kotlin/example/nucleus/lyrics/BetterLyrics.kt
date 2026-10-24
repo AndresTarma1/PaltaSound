@@ -54,7 +54,14 @@ object BetterLyrics {
             if (response.status.isSuccess() || response.status == HttpStatusCode.OK) {
                 response.body<TTMLResponse>().ttml?.trim()?.takeIf { it.isNotEmpty() }
             } else {
-                Napier.w("[BetterLyrics] API status ${response.status}")
+                when (response.status) {
+                    // La API publica ahora exige X-API-Key para las consultas que no esten en
+                    // su cache; la key es privada de la extension Better Lyrics. No es un fallo
+                    // del cliente: esa letra simplemente no esta disponible por esta via.
+                    HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden ->
+                        Napier.w("[BetterLyrics] ${response.status} (uncached queries require an X-API-Key) — skipping")
+                    else -> Napier.w("[BetterLyrics] API status ${response.status}")
+                }
                 null
             }
         }.getOrElse {

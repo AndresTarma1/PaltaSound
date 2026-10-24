@@ -2,25 +2,12 @@
 
 package example.nucleus.ui.components.player
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
@@ -36,30 +23,21 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.*
+import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import example.nucleus.data.repository.SeekBarStyle
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.mp_like
@@ -72,18 +50,26 @@ import example.nucleus.generated.resources.tray_pause
 import example.nucleus.generated.resources.tray_play
 import example.nucleus.player.PlaybackState
 import example.nucleus.ui.components.PlayerSeekBar
-import example.nucleus.ui.components.SlimSlider
 import example.nucleus.ui.components.TimeText
 import example.nucleus.ui.helpers.onHover
+import example.nucleus.ui.helpers.pointerScrollToInt
 import example.nucleus.ui.themes.AppShapes
-import example.nucleus.ui.themes.rememberInteractionSpring
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.viewmodels.PlayerViewModel
 import example.nucleus.viewmodels.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import example.nucleus.ui.themes.rememberInteractionSpring
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
+
 /**
  * Toggle M3E: contenedor tonal suave cuando está activo, transparente al reposo.
  * Hover desktop con state-layer sutil vía IconButtonDefaults.
@@ -171,7 +157,7 @@ fun PlayerTransportRow(
             )
         }
 
-        // Play pill — acento Expressive principal
+        // Play pill con acento Expressive principal
         FilledIconButton(
             onClick = { playerViewModel.togglePlayPause() },
             modifier = Modifier
@@ -290,124 +276,73 @@ fun PlayerProgressRow(
 }
 
 /**
- * Píldora de volumen M3E: porcentaje · slider fantasma · mute.
+ * Control de volumen del MiniPlayer: botón de mute + pista vertical al hover + tooltip del % .
+ *
+ * Sustituye a la antigua "píldora" (porcentaje + slider horizontal + mute en línea) que vivía aquí.
+ * Era cramped: 24dp de ancho para el número, 72dp de pista y tres elementos compitiendo en el alto
+ * de una barra estrecha, con tipografía ad-hoc de 10sp que se veía como maqueta.
+ *
+ * El layout no se mueve nunca porque la pista y el tooltip viven en un popup. Se unificó el
+ * componente para que MiniPlayer y Now Playing compartan implementación.
  */
 @Composable
 fun PlayerVolumeControl(
     modifier: Modifier = Modifier,
+    trackHeight: Dp = 132.dp,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
+    onBusyChange: ((Boolean) -> Unit)? = null,
 ) {
-    val volume by playerViewModel.volume.collectAsState()
-    val colorScheme = MaterialTheme.colorScheme
-    val volumeFloat = (volume.coerceIn(0, 100)) / 100f
-    val volumePercent = volume.coerceIn(0, 100)
-    var hovered by remember { mutableStateOf(false) }
-
-    Surface(
-        shape = AppShapes.extraLarge,
-        color = if (hovered) {
-            colorScheme.surfaceContainerHighest.copy(alpha = 0.85f)
-        } else {
-            colorScheme.surfaceContainerHighest.copy(alpha = 0.55f)
-        },
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (hovered) {
-                colorScheme.outlineVariant.copy(alpha = 0.35f)
-            } else {
-                Color.Transparent
-            },
-        ),
-        modifier = modifier.onHover { hovered = it },
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 10.dp, end = 2.dp, top = 2.dp, bottom = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = "$volumePercent",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFeatureSettings = "tnum",
-                ),
-                color = if (volumePercent == 0) {
-                    colorScheme.error
-                } else if (hovered) {
-                    colorScheme.primary
-                } else {
-                    colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
-                },
-                modifier = Modifier.width(24.dp),
-                textAlign = TextAlign.End,
-            )
-
-            SlimSlider(
-                value = volumeFloat,
-                onValueChange = { playerViewModel.setVolume((it * 100).toInt()) },
-                modifier = Modifier.width(72.dp),
-                activeColor = if (volumePercent == 0) colorScheme.error else colorScheme.primary,
-                inactiveColor = colorScheme.onSurface.copy(alpha = 0.16f),
-                trackHeight = 4.dp,
-                thumbSize = if (hovered) 10.dp else 8.dp,
-                draggedThumbSize = 14.dp,
-            )
-
-            IconButton(
-                onClick = { playerViewModel.toggleMute() },
-                modifier = Modifier
-                    .size(36.dp)
-                    .pointerHoverIcon(PointerIcon.Hand),
-            ) {
-                Icon(
-                    imageVector = when {
-                        volumeFloat == 0f -> Icons.AutoMirrored.Rounded.VolumeOff
-                        volumeFloat < 0.4f -> Icons.AutoMirrored.Rounded.VolumeDown
-                        else -> Icons.AutoMirrored.Rounded.VolumeUp
-                    },
-                    contentDescription = stringResource(Res.string.mp_volume),
-                    tint = if (volumePercent == 0) colorScheme.error else colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
-    }
+    PlayerVolumeTooltip(
+        modifier = modifier,
+        trackHeight = trackHeight,
+        playerViewModel = playerViewModel,
+        onBusyChange = onBusyChange,
+    )
 }
 
 /**
- * Posicionador personalizado de Popup que ubica la tarjeta flotante de volumen
- * exactamente por encima (arriba) del botón mute, centrada horizontalmente.
- */
-private class AboveAnchorPopupPositionProvider(
-    private val gapPx: Int = 8,
-) : PopupPositionProvider {
-    override fun calculatePosition(
-        anchorBounds: IntRect,
-        windowSize: IntSize,
-        layoutDirection: LayoutDirection,
-        popupContentSize: IntSize,
-    ): IntOffset {
-        val x = anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2
-        val y = anchorBounds.top - popupContentSize.height - gapPx
-
-        val clampedX = x.coerceIn(8, maxOf(8, windowSize.width - popupContentSize.width - 8))
-        val clampedY = y.coerceAtLeast(8)
-
-        return IntOffset(clampedX, clampedY)
-    }
-}
-
-/**
- * Volumen de Now Playing estilo flotante (Popup) con hover:
- * El botón se mantiene fijo en el layout sin desplazar a otros elementos.
- * Al pasar el ratón o arrastrar, despliega una tarjeta elegante con porcentaje
- * y pista vertical de volumen flotando sutilmente sobre el botón.
+ * Implementación única del volumen.
+ *
+ * Al pasar el ratón por el icono emerge **la pista vertical arrastrable** (una tarjeta con solo la
+ * pista, sin cápsula ni mute) y, justo encima, **un tooltip con el porcentaje**. El mute se queda en
+ * el icono, que es donde ya estaba y donde cabe bien.
+ *
+ * POR QUÉ [TooltipBox] Y NO UN `Popup` A MANO
+ * ------------------------------------------
+ * Antes esto era un `Popup` con dos `PopupPositionProvider` escritos a mano, un `AnimatedVisibility`
+ * con `tween` + `spring` a pulso y un `LaunchedEffect` que tenía que mantener tres estados de hover
+ * (botón, popup, arrastre) en sincronía con un periodo de gracia de 250 ms para que no parpadease al
+ * cruzar del icono a la tarjeta. Todo eso lo trae ya `TooltipBox`:
+ *
+ *  - **Posición**: `TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above, …)`
+ *    centra y además da la vuelta a "debajo" si no cabe arriba. Los dos posicionadores a mano solo
+ *    centtaban, y con la ventana estrecha la tarjeta se salía por arriba.
+ *  - **Aparición**: escala 0.8 -> 1 y alpha 0 -> 1 con los muelles del `MotionScheme`.
+ *  - **Cierre al hacer click fuera**, que el `Popup` a mano no tenía.
+ *
+ * LO ÚNICO QUE HAY QUE CONTROLAR A MANO
+ * -------------------------------------
+ * Al salir el ratón del icono, M3 cierra el tooltip **salvo que sea persistente**:
+ *
+ * ```kotlin
+ * PointerEventType.Exit -> if (!state.isPersistent) state.dismiss()
+ * ```
+ *
+ * Aquí hace falta persistente, porque el puntero tiene que poder **entrar** en la pista para
+ * arrastrar. Eso deja el cierre en nuestras manos y el periodo de gracia evita el parpadeo al
+ * cruzar del icono a la tarjeta.
+ *
+ * `focusable = false` para que no robe el foco ni cierre los menús que hubiera abiertos, y
+ * `hasAction = true` porque la pista es arrastrable.
+ *
+ * El tooltip lleva dentro las dos cosas apiladas (etiqueta + tarjeta) porque el ancla tiene que
+ * estar en la composición principal: si la pista fuera el ancla, se estaría posicionando respecto a
+ * algo que solo existe porque ella misma está visible.
  */
 @Composable
-fun PlayerVolumeVertical(
+fun PlayerVolumeTooltip(
     modifier: Modifier = Modifier,
-    trackHeight: Dp = 120.dp,
+    trackHeight: Dp = 132.dp,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
 ) {
@@ -415,199 +350,93 @@ fun PlayerVolumeVertical(
     val colorScheme = MaterialTheme.colorScheme
     val volumePercent = volume.coerceIn(0, 100)
     val fraction = volumePercent / 100f
+    val isMuted = volumePercent == 0
 
     var isButtonHovered by remember { mutableStateOf(false) }
-    var isPopupHovered by remember { mutableStateOf(false) }
+    var isCardHovered by remember { mutableStateOf(false) }
     var isDragging by remember { mutableStateOf(false) }
-    var showPopup by remember { mutableStateOf(false) }
 
-    // El popup abierto (o el arrastre) mantiene despierto el auto-hide de Now Playing
-    LaunchedEffect(showPopup) { onBusyChange?.invoke(showPopup) }
+    // Persistente a proposito: es lo que permite pasar el raton del icono a la pista sin que se
+    // cierre. El cierre lo hace el LaunchedEffect de abajo.
+    val tooltipState = rememberTooltipState(isPersistent = true)
+    val isVisible = tooltipState.isVisible
+
+    // El tooltip abierto (o el arrastre) mantiene despierto el auto-hide de Now Playing
+    LaunchedEffect(isVisible) { onBusyChange?.invoke(isVisible) }
     DisposableEffect(Unit) { onDispose { onBusyChange?.invoke(false) } }
 
-    // Periodo de gracia para evitar desvanecimientos repentinos al mover el puntero entre botón y popup
-    LaunchedEffect(isButtonHovered, isPopupHovered, isDragging) {
-        if (isButtonHovered || isPopupHovered || isDragging) {
-            showPopup = true
-        } else {
+    // El abrir lo hace M3 con el hover del ancla (enableUserInput = true). Aqui solo se decide
+    // cuando cerrar, con un periodo de gracia para que no parpadee al cruzar a la pista.
+    LaunchedEffect(isButtonHovered, isCardHovered, isDragging) {
+        if (!isButtonHovered && !isCardHovered && !isDragging) {
             delay(250.milliseconds)
-            if (!isButtonHovered && !isPopupHovered && !isDragging) {
-                showPopup = false
+            if (!isButtonHovered && !isCardHovered && !isDragging) {
+                tooltipState.dismiss()
             }
         }
     }
 
-    Box(
+    val positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+        positioning = TooltipAnchorPosition.Above,
+        spacingBetweenTooltipAndAnchor = 8.dp,
+    )
+
+    TooltipBox(
         modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        if (showPopup) {
-            Popup(
-                popupPositionProvider = remember { AboveAnchorPopupPositionProvider(gapPx = 6) },
-                onDismissRequest = { showPopup = false },
-                properties = PopupProperties(focusable = false),
+        positionProvider = positionProvider,
+        state = tooltipState,
+        focusable = false,
+        enableUserInput = true,
+        hasAction = true,
+        tooltip = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                AnimatedVisibility(
-                    visible = showPopup,
-                    enter = fadeIn(tween(150)) +
-                        slideInVertically(tween(180)) { it / 3 } +
-                        scaleIn(spring(), transformOrigin = TransformOrigin(0.5f, 1f)),
-                    exit = fadeOut(tween(100)) +
-                        slideOutVertically(tween(120)) { it / 3 } +
-                        scaleOut(transformOrigin = TransformOrigin(0.5f, 1f)),
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .onHover { isPopupHovered = it }
-                            .shadow(16.dp, RoundedCornerShape(22.dp))
-                            .border(
-                                width = 1.dp,
-                                color = colorScheme.outlineVariant.copy(alpha = 0.35f),
-                                shape = RoundedCornerShape(22.dp),
-                            ),
-                        shape = RoundedCornerShape(22.dp),
-                        color = colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
-                        tonalElevation = 8.dp,
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(horizontal = 12.dp, vertical = 12.dp)
-                                .width(36.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            // Indicator de porcentaje o mute
-                            Text(
-                                text = if (volumePercent == 0) "MUTE" else "$volumePercent%",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFeatureSettings = "tnum",
-                                ),
-                                color = if (volumePercent == 0) {
-                                    colorScheme.error
-                                } else {
-                                    colorScheme.primary
-                                },
-                                textAlign = TextAlign.Center,
-                                maxLines = 1,
-                            )
-
-                            // Pista vertical interactiva
-                            val density = LocalDensity.current
-                            val trackHeightPx = with(density) { trackHeight.toPx() }
-
-                            val thumbSize by animateDpAsState(
-                                targetValue = if (isDragging || isPopupHovered) 18.dp else 14.dp,
-                                animationSpec = rememberInteractionSpring(),
-                                label = "volumeThumbSize",
-                            )
-
-                            fun setFromPosition(y: Float) {
-                                val newFraction = (1f - y / trackHeightPx).coerceIn(0f, 1f)
-                                playerViewModel.setVolume((newFraction * 100).roundToInt())
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .width(28.dp)
-                                    .height(trackHeight)
-                                    .pointerHoverIcon(PointerIcon.Hand)
-                                    .pointerInput(playerViewModel) {
-                                        detectTapGestures { offset -> setFromPosition(offset.y) }
-                                    }
-                                    .pointerInput(playerViewModel) {
-                                        detectVerticalDragGestures(
-                                            onDragStart = { isDragging = true },
-                                            onDragEnd = { isDragging = false },
-                                            onDragCancel = { isDragging = false },
-                                        ) { change, _ ->
-                                            change.consume()
-                                            setFromPosition(change.position.y)
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                // Fondo inactivo (cápsula estilizada)
-                                Box(
-                                    modifier = Modifier
-                                        .width(8.dp)
-                                        .fillMaxHeight()
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (volumePercent == 0) {
-                                                colorScheme.errorContainer.copy(alpha = 0.4f)
-                                            } else {
-                                                colorScheme.onSurface.copy(alpha = 0.12f)
-                                            },
-                                        ),
-                                )
-
-                                // Relleno activo (desde el fondo)
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomCenter)
-                                        .width(8.dp)
-                                        .fillMaxHeight(fraction)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (volumePercent == 0) {
-                                                colorScheme.error
-                                            } else {
-                                                colorScheme.primary
-                                            },
-                                        ),
-                                )
-
-                                // Perilla flotante
-                                val thumbOffsetPx = with(density) {
-                                    val usableHeight = trackHeightPx - thumbSize.toPx()
-                                    (usableHeight * (1f - fraction)).roundToInt()
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopCenter)
-                                        .offset { IntOffset(0, thumbOffsetPx) }
-                                        .size(thumbSize)
-                                        .shadow(4.dp, CircleShape)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (volumePercent == 0) colorScheme.error else colorScheme.primary,
-                                        )
-                                        .border(
-                                            width = 2.dp,
-                                            color = colorScheme.surface,
-                                            shape = CircleShape,
-                                        ),
-                                )
-                            }
-                        }
-                    }
+                PlainTooltip {
+                    Text("$volumePercent%")
                 }
+                VolumeTrackCard(
+                    fraction = fraction,
+                    isMuted = isMuted,
+                    isHovered = isCardHovered,
+                    isDragging = isDragging,
+                    trackHeight = trackHeight,
+                    onHoverChange = { isCardHovered = it },
+                    onDragStateChange = { isDragging = it },
+                    onVolumeChange = { playerViewModel.setVolume(it) },
+                )
             }
-        }
-
-        // Botón Mute / Volumen fijo
+        },
+    ) {
         FilledTonalIconButton(
             onClick = { playerViewModel.toggleMute() },
             modifier = Modifier
                 .size(40.dp)
                 .onHover { isButtonHovered = it }
+                .pointerScrollToInt(
+                    value = volumePercent,
+                    range = 0..100,
+                    onValueChange = { playerViewModel.setVolume(it) },
+                )
                 .pointerHoverIcon(PointerIcon.Hand),
-            shape = RoundedCornerShape(12.dp),
+            shape = AppShapes.medium,
             colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = if (isButtonHovered || showPopup) {
-                    colorScheme.surfaceContainerHighest
+                containerColor = if (isButtonHovered || isVisible) {
+                    colorScheme.secondaryContainer
                 } else {
                     colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
                 },
-                contentColor = if (volumePercent == 0) colorScheme.error else colorScheme.onSurfaceVariant,
+                contentColor = when {
+                    isMuted -> colorScheme.error
+                    isButtonHovered || isVisible -> colorScheme.onSecondaryContainer
+                    else -> colorScheme.onSurfaceVariant
+                },
             ),
         ) {
             Icon(
                 imageVector = when {
-                    volumePercent == 0 -> Icons.AutoMirrored.Rounded.VolumeOff
+                    isMuted -> Icons.AutoMirrored.Rounded.VolumeOff
                     volumePercent < 40 -> Icons.AutoMirrored.Rounded.VolumeDown
                     else -> Icons.AutoMirrored.Rounded.VolumeUp
                 },
@@ -616,6 +445,147 @@ fun PlayerVolumeVertical(
             )
         }
     }
+}
+
+/**
+ * La tarjeta de la pista vertical arrastrable. Solo la pista: el porcentaje va en el tooltip de
+ * [PlayerVolumeTooltip] y el mute se quedó en el icono, así que aquí no cabe nada más.
+ *
+ * Va en su propio composable porque es la mitad "contenido" del tooltip, compartida por MiniPlayer
+ * y Now Playing; el contenedor, la etiqueta y el botón los aporta [PlayerVolumeTooltip].
+ *
+ * NO se usa `RichTooltip` como contenedor: fuerza `TooltipMinWidth` y `TooltipMinHeight`, que están
+ * calculados para un título y una línea de texto, y descuadrarían una pista vertical estrecha. Se
+ * usa `Surface` con los tokens del tema.
+ */
+@Composable
+private fun VolumeTrackCard(
+    fraction: Float,
+    isMuted: Boolean,
+    isHovered: Boolean,
+    isDragging: Boolean,
+    trackHeight: Dp,
+    onHoverChange: (Boolean) -> Unit,
+    onDragStateChange: (Boolean) -> Unit,
+    onVolumeChange: (Int) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Surface(
+        modifier = Modifier.onHover(onHoverChange),
+        shape = AppShapes.large,
+        color = colorScheme.surfaceContainerHigh,
+        tonalElevation = 6.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val density = LocalDensity.current
+            val trackHeightPx = with(density) { trackHeight.toPx() }
+
+            // La perilla crece con hover/arrastre (muelle), como pide M3 Expressive.
+            val thumbSize by animateDpAsState(
+                targetValue = when {
+                    isDragging -> 20.dp
+                    isHovered -> 18.dp
+                    else -> 14.dp
+                },
+                animationSpec = rememberInteractionSpring(),
+                label = "volumeThumbSize",
+            )
+
+            fun setFromPosition(y: Float) {
+                val newFraction = (1f - y / trackHeightPx).coerceIn(0f, 1f)
+                onVolumeChange((newFraction * 100).roundToInt())
+            }
+
+            Box(
+                modifier = Modifier
+                    // 24dp de zona tactil, no de pista visible: la guia de targets pide 32-48dp y
+                    // el resto se come el padding de la tarjeta.
+                    .width(24.dp)
+                    .height(trackHeight)
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .pointerInput(Unit) {
+                        detectTapGestures { offset -> setFromPosition(offset.y) }
+                    }
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragStart = { onDragStateChange(true) },
+                            onDragEnd = { onDragStateChange(false) },
+                            onDragCancel = { onDragStateChange(false) },
+                        ) { change, _ ->
+                            change.consume()
+                            setFromPosition(change.position.y)
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                // Carril inactivo
+                Box(
+                    modifier = Modifier
+                        .width(8.dp)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(
+                            if (isMuted) {
+                                colorScheme.errorContainer.copy(alpha = 0.5f)
+                            } else {
+                                colorScheme.onSurface.copy(alpha = 0.12f)
+                            },
+                        ),
+                )
+
+                // Relleno activo, desde abajo
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .width(8.dp)
+                        .fillMaxHeight(fraction)
+                        .clip(CircleShape)
+                        .background(if (isMuted) colorScheme.error else colorScheme.primary),
+                )
+
+                // Perilla. El offset se calcula con el hueco que deja la propia perilla, para que
+                // en 0 y en 100 quede entera dentro de la pista en vez de salirse media.
+                val thumbOffsetPx = with(density) {
+                    val usableHeight = trackHeightPx - thumbSize.toPx()
+                    (usableHeight * (1f - fraction)).roundToInt()
+                }
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset { IntOffset(0, thumbOffsetPx) }
+                        .size(thumbSize)
+                        .clip(CircleShape)
+                        .background(if (isMuted) colorScheme.error else colorScheme.primary),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Volumen de Now Playing: mismo control que el MiniPlayer.
+ *
+ * Se mantiene este nombre porque lo usan dos sitios en NowPlayingLayouts; la lógica vive toda en
+ * [PlayerVolumeTooltip], así que ambos sitios comparten implementación.
+ */
+@Composable
+fun PlayerVolumeVertical(
+    modifier: Modifier = Modifier,
+    trackHeight: Dp = 120.dp,
+    playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
+    onBusyChange: ((Boolean) -> Unit)? = null,
+) {
+    PlayerVolumeTooltip(
+        modifier = modifier,
+        trackHeight = trackHeight,
+        playerViewModel = playerViewModel,
+        onBusyChange = onBusyChange,
+    )
 }
 
 /**

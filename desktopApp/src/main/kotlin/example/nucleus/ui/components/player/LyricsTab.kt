@@ -28,9 +28,11 @@ import example.nucleus.generated.resources.lyrics_fetch_error_subtitle
 import example.nucleus.generated.resources.lyrics_loading
 import example.nucleus.generated.resources.lyrics_not_found
 import example.nucleus.generated.resources.lyrics_not_found_retry
+import example.nucleus.generated.resources.lyrics_provider_credit
 import example.nucleus.generated.resources.lyrics_retry
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.utils.LocalUserPreferences
@@ -49,6 +51,10 @@ fun LyricsContent(
     val progress by playerViewModel.progressState.collectAsState()
     val loading by playerViewModel.lyricsLoading.collectAsState()
     val fetchFailed by playerViewModel.lyricsFetchFailed.collectAsState()
+    // Proveedor que encontro las letras: se acredita al final del texto. "None"/"Unknown"
+    // son marcadores internos (sin letras / fallback), no fuentes que mencionar.
+    val lyricsProvider by playerViewModel.lyricsProvider.collectAsState()
+    val providerCredit = lyricsProvider?.takeIf { it.isNotBlank() && it != "None" && it != "Unknown" }
     // Global (Settings) + por canción (menú ⋮ Now Playing / DB).
     val globalOffsetMs by userPreferences.lyricsOffsetMs.collectAsState(0)
     val songOffsetMs by playerViewModel.currentSongLyricsOffsetMs.collectAsState()
@@ -87,6 +93,7 @@ fun LyricsContent(
                 },
                 modifier = Modifier.fillMaxSize(),
                 textAlign = textAlign == TextAlign.Start,
+                provider = providerCredit,
             )
         }
         loading -> {
@@ -130,7 +137,7 @@ fun LyricsContent(
                             .fillMaxWidth()
                             .widthIn(max = 920.dp)
                             .align(if (textAlign == TextAlign.Start) Alignment.Start else Alignment.CenterHorizontally),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = AppShapes.xLarge,
                         color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
                     ) {
@@ -139,6 +146,19 @@ fun LyricsContent(
                             modifier = Modifier.padding(24.dp),
                             style = immersiveLyricsStyle,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.94f),
+                            textAlign = textAlign,
+                        )
+                    }
+
+                    // Credito del proveedor de las letras, en tipografia de apoyo.
+                    providerCredit?.let { source ->
+                        Text(
+                            text = stringResource(Res.string.lyrics_provider_credit, source),
+                            modifier = Modifier
+                                .align(if (textAlign == TextAlign.Start) Alignment.Start else Alignment.CenterHorizontally)
+                                .padding(horizontal = 6.dp, vertical = 16.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                             textAlign = textAlign,
                         )
                     }

@@ -93,8 +93,8 @@ actual object DatabaseDriverFactory {
     }
 
     /**
-     * DDL de las tablas que se Incorporaron despues de que existiera la base. Todas son
-     * `IF NOT EXISTS`, asi que repetirlas en cada arranque no cuesta nada.
+     * DDL que se aplica en cada arranque sobre una base ya existente. Todas las sentencias
+     * son idempotentes (`IF [NOT] EXISTS`), asi que repetirlas no cuesta nada.
      */
     internal fun applyAdditiveSchema(driver: SqlDriver) {
         val statements = listOf(
@@ -108,7 +108,10 @@ actual object DatabaseDriverFactory {
                 thumbnail TEXT,
                 savedAt INTEGER NOT NULL
             )
-            """.trimIndent()
+            """.trimIndent(),
+            // Las letras ya no se persisten (viven solo en memoria durante la sesion, ver
+            // PlayerViewModel). Esto borra lo que versiones anteriores dejaron en disco.
+            "DROP TABLE IF EXISTS Lyrics"
         )
         for (sql in statements) {
             try {

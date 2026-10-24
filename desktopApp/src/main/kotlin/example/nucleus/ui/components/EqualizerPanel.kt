@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import example.nucleus.ui.themes.AppShapes
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -74,7 +75,7 @@ fun EqualizerDialog(
             modifier = Modifier
                 .fillMaxWidth(0.70f)
                 .padding(vertical = 24.dp),
-            shape = RoundedCornerShape(28.dp),
+            shape = AppShapes.extraLarge,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp
         ) {

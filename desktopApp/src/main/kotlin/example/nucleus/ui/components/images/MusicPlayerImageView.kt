@@ -49,6 +49,7 @@ fun MusicPlayerImage(
     alignment: Alignment = Alignment.Center,
     isLowRes: Boolean = false,
     coilSizeOverride: Int? = null,
+    onError: (() -> Unit)? = null,
 ) {
     val placeholderIcon: ImageVector = when (placeholderType) {
         PlaceholderType.SONG -> Icons.Default.MusicNote
@@ -106,7 +107,8 @@ fun MusicPlayerImage(
             contentScale = contentScale,
             alignment = alignment,
             placeholder = ColorPainter(Color.DarkGray),
-            error = ColorPainter(Color.LightGray)
+            error = ColorPainter(Color.LightGray),
+            onError = { onError?.invoke() },
         )
     }
 }

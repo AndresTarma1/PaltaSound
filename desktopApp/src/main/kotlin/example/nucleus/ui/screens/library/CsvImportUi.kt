@@ -45,6 +45,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.viewmodels.CsvImportState
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.generated.resources.Res
@@ -270,7 +271,7 @@ fun CsvImportTutorialBody() {
         }
         Spacer(Modifier.height(20.dp))
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = AppShapes.medium,
             color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
         ) {
             Text(

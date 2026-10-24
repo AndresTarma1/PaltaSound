@@ -128,7 +128,7 @@ internal fun <T> DropdownSelector(
                                         Box(
                                             modifier = Modifier
                                                 .size(20.dp)
-                                                .clip(RoundedCornerShape(4.dp))
+                                                .clip(AppShapes.extraSmall)
                                                 .background(Color(value.primary))
                                         )
                                     } else if (isSelected(value)) {
@@ -319,12 +319,12 @@ internal fun SeekBarStylePickerContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(AppShapes.large)
                     .border(
                         width = if (selected) 2.dp else 1.dp,
                         color = if (selected) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = AppShapes.large
                     )
                     .clickable { onSelect(style) }
                     .padding(horizontal = 16.dp, vertical = 12.dp),

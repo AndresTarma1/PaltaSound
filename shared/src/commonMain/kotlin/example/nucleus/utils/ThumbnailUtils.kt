@@ -49,6 +49,34 @@ fun String?.resize(width: Int, height: Int): String? {
 }
 
 /**
+ * Frame del vídeo en bruto: la única miniatura de YouTube que llega en 16:9 **sin barras negras**.
+ *
+ * POR QUÉ HACE FALTA
+ * ------------------
+ * La miniatura que da la API de YouTube Music para una canción normal es un **cuadrado**
+ * (`yt3.googleusercontent.com/...=w120-h120-l90-rj`, 120x120). Cuando el vídeo es 16:9, ese
+ * cuadrado lleva el frame **encajado con barras negras grabadas en el JPEG**: no son un letterbox
+ * de Compose, son píxeles de la imagen. Por eso `ContentScale.Crop` no las quita, y el cover se ve
+ * como un cuadro negro con una foto en medio y el recorte ya hecho por el servidor.
+ *
+ * `maxresdefault.jpg` (1280x720) y `mqdefault.jpg` (320x180) son las dos que dan el frame entero,
+ * sin barras. Se necesitan las dos porque no siempre existe la primera:
+ *
+ *  - `maxresdefault` (1280x720) solo está si el uploader subió un thumbnail de 720p o más, así que
+ *    **devuelve 404 en bastantes vídeos**. Por eso `CoverArt` cae a `mqdefault` si esta falla.
+ *  - `mqdefault` (320x180) está en todos los vídeos, pero es más pequeña: red de seguridad, no
+ *    primera opción.
+ *
+ * El recorte al cuadrado lo hace luego `ContentScale.Crop`, que sobre un 16:9 limpio recorta los
+ * lados y llena el marco entero. Se pierden los lados del frame, no la mitad de la imagen.
+ */
+fun videoThumbnailUrl(videoId: String?, maxRes: Boolean = true): String? {
+    if (videoId.isNullOrBlank()) return null
+    val name = if (maxRes) "maxresdefault" else "mqdefault"
+    return "https://i.ytimg.com/vi/$videoId/$name.jpg"
+}
+
+/**
  * Upscales a YouTube thumbnail URL to a target size.
  * Handles `w226-h226`, `=w120-h120` and `=s120` formats.
  */
