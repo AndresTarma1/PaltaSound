@@ -27,6 +27,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerButtons
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -98,6 +107,11 @@ val bottomTabs = listOf(
 @Composable
 fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPreferencesRepository) {
     val childStack by rootComponent.childStack.subscribeAsState()
+
+    // Retroceso global centralizado (Compose puro, sin AWT): botón "atrás" del ratón vía
+    // pointerInput + teclas Escape/Back vía onPreviewKeyEvent, ambos en el Surface raíz.
+    // Las pantallas NO deben poner su propio listener de Escape: el KeyDown lo consume el
+    // global y su KeyUp caería en la pantalla nueva produciendo doble back.
     val activeConfig = childStack.active.configuration
 
     val playerViewModel: PlayerViewModel = LocalPlayerViewModel.current
@@ -167,7 +181,24 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                 )
             }
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && (event.key == Key.Escape || event.key == Key.Back) && rootComponent.canGoBack()) {
+                        rootComponent.onBack()
+                        true
+                    } else false
+                }
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            if (event.type == PointerEventType.Press && event.buttons == PointerButtons(8) && rootComponent.canGoBack()) {
+                                rootComponent.onBack()
+                            }
+                        }
+                    }
+                },
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onBackground,
         ) {
@@ -573,4 +604,5 @@ fun ScreenRouter(
 fun createNavigator(rootComponent: RootComponent): (Route) -> Unit = { route ->
     rootComponent.navigateTo(route.toConfig())
 }
+
 

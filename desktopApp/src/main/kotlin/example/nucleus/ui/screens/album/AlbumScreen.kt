@@ -20,11 +20,6 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.unit.dp
 import example.nucleus.navigation.Route
 import example.nucleus.ui.components.AlbumScreenSkeleton
@@ -108,15 +103,7 @@ fun AlbumScreen(
         modifier = Modifier
             .fillMaxSize()
             .focusRequester(focusRequester)
-            .focusable()
-            .onPreviewKeyEvent {
-                if (it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
-                    actions.onBack()
-                    true
-                } else {
-                    false
-                }
-            },
+            .focusable(),
     ) {
         if (!isReady && uiState !is AlbumState.Error) {
             AlbumScreenSkeleton()
