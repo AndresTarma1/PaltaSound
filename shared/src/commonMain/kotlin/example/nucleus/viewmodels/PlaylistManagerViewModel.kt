@@ -448,6 +448,17 @@ class PlaylistManagerViewModel(
         }
     }
 
+    suspend fun isPlaylistEditable(playlistId: String): Boolean =
+        repository.isEditablePlaylist(playlistId)
+
+    /** Resultado del último cambio de portada (true/false, null = sin intento pendiente de mostrar). */
+    private val _coverResult = MutableStateFlow<Boolean?>(null)
+    val coverResult: StateFlow<Boolean?> = _coverResult.asStateFlow()
+
+    fun consumeCoverResult() {
+        _coverResult.value = null
+    }
+
     fun renamePlaylist(newTitle: String) {
         val playlistId = _currentPlaylistId.value ?: return
         val state = _uiState.value as? PlaylistState.Success ?: return
@@ -536,9 +547,11 @@ class PlaylistManagerViewModel(
                             copy(playlistPage = playlistPage.copy(playlist = updated))
                         }
                     }
+                    _coverResult.value = newThumbnailUrl != null
                 }
                 .onFailure {
                     Napier.e("Failed to upload playlist thumbnail: ${it.message}")
+                    _coverResult.value = false
                 }
         }
     }

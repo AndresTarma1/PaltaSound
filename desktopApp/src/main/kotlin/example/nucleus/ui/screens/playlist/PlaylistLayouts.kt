@@ -104,6 +104,8 @@ internal fun PlaylistLayout(
         autoSyncEnabled = state.autoSyncEnabled,
         showAutoSync = state.showAutoSync,
         onToggleAutoSync = actions.onToggleAutoSync,
+        canRename = state.canRename,
+        showSettings = state.showSettings,
     )
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -407,6 +409,8 @@ internal data class PlaylistInfoPanelControls(
     val autoSyncEnabled: Boolean? = null,
     val showAutoSync: Boolean = false,
     val onToggleAutoSync: ((Boolean) -> Unit)? = null,
+    val canRename: Boolean = false,
+    val showSettings: Boolean = false,
 )
 
 @Composable
@@ -494,8 +498,8 @@ internal fun PlaylistInfoPanel(
                 .fillMaxWidth()
                 .padding(horizontal = 40.dp),
         )
-        // Configurar: renombrar, portada y sincronización. Solo con algo que configurar.
-        if (controls.isSaved) {
+        // Configurar: renombrar, portada y sincronización. Solo si hay algo que ajustar.
+        if (controls.showSettings) {
             IconButton(
                 onClick = { showSettings = true },
                 modifier = Modifier
@@ -518,6 +522,7 @@ internal fun PlaylistInfoPanel(
             showAutoSync = controls.showAutoSync,
             autoSyncEnabled = controls.autoSyncEnabled,
             onToggleAutoSync = controls.onToggleAutoSync,
+            canRename = controls.canRename,
             onRename = { actions.onRenamePlaylist?.invoke(it) },
             onEditCover = actions.onEditCover,
             onDismiss = { showSettings = false },

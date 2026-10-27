@@ -143,6 +143,8 @@
     <string name="sync_badge_updating">Updating…</string>
     <string name="playlist_settings_title">Playlist settings</string>
     <string name="playlist_cover_change">Change cover</string>
+    <string name="cover_updated">Cover updated</string>
+    <string name="cover_update_failed">Couldn't change the cover</string>
     <string name="section_overlay">Game overlay</string>
     <string name="overlay_enable">Enable overlay with global shortcut</string>
     <string name="overlay_enable_subtitle">Shows a mini window over your games (windowed or borderless) to control music without leaving. Does not work in exclusive fullscreen.</string>

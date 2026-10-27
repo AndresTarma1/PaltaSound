@@ -604,7 +604,6 @@ fun LikeToggle(
         imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
         contentDescription = stringResource(Res.string.mp_like),
         modifier = modifier,
-        selectedContainer = colorScheme.errorContainer.copy(alpha = 0.55f),
         selectedContent = colorScheme.error,
         unselectedContent = colorScheme.onSurfaceVariant,
     )

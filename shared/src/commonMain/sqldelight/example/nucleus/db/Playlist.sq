@@ -38,6 +38,9 @@ WHERE id = ?;
 updatePlaylistName:
 UPDATE Playlist SET name = ? WHERE id = ?;
 
+mirrorBrowseIds:
+SELECT browseId FROM Playlist WHERE id LIKE 'LOCAL_%' AND browseId IS NOT NULL;
+
 updatePlaylistBookmark:
 UPDATE Playlist SET bookmarkedAt = ? WHERE id = ?;
 

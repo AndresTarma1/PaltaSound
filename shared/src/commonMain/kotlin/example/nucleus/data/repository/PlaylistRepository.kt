@@ -127,6 +127,39 @@ class PlaylistRepository(
             .map { it?.isAutoSync == 1L }
 
     /**
+     * Vincula una playlist local con su espejo remoto (creado por el mirror de ytm-sync).
+     * A partir de aquí la fila cuenta como vinculada: el push va directo al remoto y el
+     * job de auto-sync la incluye en el pull.
+     */
+    suspend fun linkLocalToRemote(localId: String, remoteId: String): Boolean = withContext(Dispatchers.IO) {
+        if (!localId.startsWith("LOCAL_")) return@withContext false
+        val saved = database.savedPlaylistQueries.selectById(localId).executeAsOneOrNull()
+        database.playlistQueries.insertPlaylist(
+            id = localId,
+            name = saved?.title ?: localId,
+            browseId = remoteId,
+            createdAt = saved?.savedAt,
+            lastUpdateTime = System.currentTimeMillis(),
+            isEditable = 1L,
+            bookmarkedAt = null,
+            remoteSongCount = 0L,
+            playEndpointParams = null,
+            thumbnailUrl = saved?.thumbnail,
+            shuffleEndpointParams = null,
+            radioEndpointParams = null,
+            isLocal = 1L,
+            isAutoSync = 1L
+        )
+        true
+    }
+
+    fun observeMirrorRemoteIds(): Flow<Set<String>> =
+        database.playlistQueries.mirrorBrowseIds()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { it.filterNotNull().toSet() }
+
+    /**
      * Activa/desactiva la sincronización automática de una playlist vinculada. Si aún no hay
      * fila `Playlist` (p. ej. guardada por marcador sin sincronización completa), la crea con
      * los datos del guardado para que el job de auto-sync la recoja. Devuelve false si la

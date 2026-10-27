@@ -53,6 +53,9 @@ fun PlaylistsTab(
 ) {
     val downloadViewModel = LocalDownloadViewModel.current
     val playlistsViewModel = org.koin.compose.koinInject<example.nucleus.viewmodels.LibraryPlaylistsViewModel>()
+    // Remotos que son espejo de una local ya mostrada arriba: ocultarlos para no duplicar
+    // (el mirror de ytm-sync crea la playlist remota con otro id).
+    val mirrorRemoteIds by playlistsViewModel.mirrorRemoteIds.collectAsState()
     val snackbar = example.nucleus.utils.LocalSnackbarHostState.current
     val scope = example.nucleus.utils.LocalSnackbarScope.current
     val downloadedSongs by downloadViewModel.downloadedSongs.collectAsState()
@@ -99,6 +102,7 @@ fun PlaylistsTab(
     val mergedPlaylists = remember(
         playlists,
         ytmPlaylists,
+        mirrorRemoteIds,
         downloadedSongs,
         downloadedCount,
         fullyDownloadedPlaylists,
@@ -158,7 +162,7 @@ fun PlaylistsTab(
             }
 
             ytmPlaylists.forEach { playlist ->
-                if (playlist.id !in seenIds) {
+                if (playlist.id !in seenIds && playlist.id !in mirrorRemoteIds) {
                     seenIds.add(playlist.id)
                     add(
                         PlaylistGridEntry(

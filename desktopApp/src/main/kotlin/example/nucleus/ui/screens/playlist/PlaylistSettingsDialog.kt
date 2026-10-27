@@ -58,6 +58,7 @@ fun PlaylistSettingsDialog(
     showAutoSync: Boolean,
     autoSyncEnabled: Boolean?,
     onToggleAutoSync: ((Boolean) -> Unit)?,
+    canRename: Boolean,
     onRename: (String) -> Unit,
     onEditCover: (() -> Unit)?,
     onDismiss: () -> Unit,
@@ -84,14 +85,23 @@ fun PlaylistSettingsDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(Res.string.playlist_name_label)) },
-                    singleLine = true,
-                    shape = AppShapes.medium,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (canRename) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(Res.string.playlist_name_label)) },
+                        singleLine = true,
+                        shape = AppShapes.medium,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Text(
+                        text = playlistTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
 
                 if (onEditCover != null) {
                     Spacer(Modifier.height(8.dp))
@@ -167,15 +177,17 @@ fun PlaylistSettingsDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                enabled = nameChanged,
-                onClick = {
-                    onRename(name.trim())
-                    onDismiss()
-                },
-                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-            ) {
-                Text(stringResource(Res.string.btn_save))
+            if (canRename) {
+                TextButton(
+                    enabled = nameChanged,
+                    onClick = {
+                        onRename(name.trim())
+                        onDismiss()
+                    },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
+                ) {
+                    Text(stringResource(Res.string.btn_save))
+                }
             }
         },
         dismissButton = {

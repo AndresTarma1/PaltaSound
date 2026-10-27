@@ -303,7 +303,9 @@ class SyncUtils(
                 pages++
                 delay(50.milliseconds)
             }
-            playlistRepository.savePlaylistWithSongs(first.playlist, allSongs)
+            // Guardar bajo el id con el que se abrió (puede diferir del browseId remoto,
+            // p. ej. espejos de playlists locales): si no, la caché se parte en dos filas.
+            playlistRepository.savePlaylistWithSongs(first.playlist.copy(id = playlistId), allSongs)
         } catch (e: Exception) {
             Napier.e("Failed syncing playlist $playlistId ($browseId)", e)
         }
@@ -324,10 +326,26 @@ class SyncUtils(
                     executeSinglePlaylist(playlist.id, playlist.browseId!!)
                     delay(50.milliseconds)
                 }
+            executeLikedPlaylistRefresh()
         } catch (e: Exception) {
             Napier.e("Failed syncing auto-sync playlists", e)
         } finally {
             updateState { copy(currentOperation = "") }
+        }
+    }
+
+    /**
+     * "Me gusta" no es una playlist con interruptor (es un estante del sistema), pero si el
+     * usuario la guardó debe mantenerse al día igual que las vinculadas: refresca sus
+     * canciones dentro de la sincronización global.
+     */
+    private suspend fun executeLikedPlaylistRefresh() {
+        try {
+            if (!playlistRepository.isPlaylistSavedOnce("LM")) return
+            updateState { copy(currentOperation = "Syncing liked songs playlist") }
+            executeSinglePlaylist("LM", "LM")
+        } catch (e: Exception) {
+            Napier.e("Failed syncing liked playlist", e)
         }
     }
 

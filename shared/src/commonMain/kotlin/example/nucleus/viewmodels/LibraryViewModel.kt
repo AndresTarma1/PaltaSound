@@ -464,6 +464,10 @@ class LibraryPlaylistsViewModel(
         playlists.filter { it.id.startsWith("LOCAL_") }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Remotos que son espejo de playlists locales: la biblioteca los oculta para no duplicar. */
+    val mirrorRemoteIds: StateFlow<Set<String>> = playlistRepository.observeMirrorRemoteIds()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+
     private val _csvImportState = MutableStateFlow<CsvImportState>(CsvImportState.Idle)
     val csvImportState: StateFlow<CsvImportState> = _csvImportState.asStateFlow()
 
@@ -591,10 +595,17 @@ class LibraryPlaylistsViewModel(
 
     /** La playlist remota de YTM que refleja [localPlaylistId], creándola en el primer uso. */
     private suspend fun resolveOrCreateRemotePlaylist(localPlaylistId: String): String? {
-        userPreferences.getRemotePlaylistId(localPlaylistId)?.let { return it }
+        val existingMapping = userPreferences.getRemotePlaylistId(localPlaylistId)
+        if (existingMapping != null) {
+            // Asegurar la fila de vínculo (instalaciones que mapearon antes de que existiera):
+            // sin ella el pull no la recoge y la biblioteca muestra local + remoto duplicados.
+            playlistRepository.linkLocalToRemote(localPlaylistId, existingMapping)
+            return existingMapping
+        }
         val name = playlistRepository.getCachedPlaylistItem(localPlaylistId)?.title ?: return null
         val remoteId = runCatching { YouTube.createPlaylist(name) }.getOrNull() ?: return null
         userPreferences.setRemotePlaylistId(localPlaylistId, remoteId)
+        playlistRepository.linkLocalToRemote(localPlaylistId, remoteId)
         return remoteId
     }
 

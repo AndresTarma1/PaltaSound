@@ -27,11 +27,15 @@ import example.nucleus.data.account.AccountManager
 import example.nucleus.navigation.Route
 import example.nucleus.ui.components.PlaylistScreenSkeleton
 import example.nucleus.ui.screens.playlist.PlaylistLayout
+import example.nucleus.utils.LocalSnackbarHostState
+import example.nucleus.utils.LocalSnackbarScope
 import example.nucleus.viewmodels.PlaylistState
 import example.nucleus.viewmodels.PlaylistManagerViewModel
 import com.metrolist.innertube.models.SongItem
 import example.nucleus.ui.components.artwork.ArtworkColors
 import example.nucleus.ui.components.artwork.rememberArtworkColors
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -47,6 +51,10 @@ data class PlaylistScreenState(
     /** Estado del toggle de auto-sync (null = no mostrar). */
     val autoSyncEnabled: Boolean? = null,
     val showAutoSync: Boolean = false,
+    /** Puede renombrar (solo propias). */
+    val canRename: Boolean = false,
+    /** Mostrar el engranaje de Configurar (hay algo que ajustar). */
+    val showSettings: Boolean = false,
 )
 
 
@@ -123,7 +131,20 @@ fun PlaylistScreenRoute(
 
     // La portada solo se puede subir a playlists reales de YouTube con sesión iniciada
     // (edit_playlist devuelve 403 en cualquier otro caso: locales, ajenas o sin login).
-    val canUploadCover = successState?.isSaved == true && linkedBrowseId != null && isLoggedIn
+    val canUploadCoverBase = successState?.isSaved == true && linkedBrowseId != null && isLoggedIn
+
+    // Solo se puede modificar lo propio: locales siempre; guardadas solo si YouTube o la fila
+    // sincronizada dicen que son editables. "Me gusta" y estanterías del sistema quedan fuera
+    // (LM mantiene eliminar→unlike por separado).
+    var rowEditable by remember(currentPlaylistId) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(currentPlaylistId) {
+        rowEditable = currentPlaylistId?.let { viewModel.isPlaylistEditable(it) }
+    }
+    val pageEditable = successState?.playlistPage?.playlist?.isEditable == true
+    val canModifyPlaylist = !isNonEditableAutoPlaylist &&
+        (currentPlaylistId?.startsWith("LOCAL_") == true ||
+            (successState?.isSaved == true && (pageEditable || rowEditable == true)))
+    val canUploadCover = canUploadCoverBase && canModifyPlaylist
 
     val actions = remember(viewModel, successState != null, canEditPlaylist, canUploadCover) {
         PlaylistActions(
@@ -135,10 +156,10 @@ fun PlaylistScreenRoute(
             onShuffle = { viewModel.playAllSongs(shuffle = true) },
             onDownloadPlaylist = { viewModel.downloadPlaylist() },
             onPlaySong = { index -> viewModel.playSongFromPlaylist(index) },
-            onRemoveSongFromPlaylist = if (canEditPlaylist) {
+            onRemoveSongFromPlaylist = if (canModifyPlaylist || currentPlaylistId == "LM") {
                 { songId -> viewModel.removeSongFromPlaylist(songId) }
             } else null,
-            onEditCover = if (canUploadCover) {
+            onEditCover = if (canModifyPlaylist && canUploadCover) {
                 { viewModel.pickAndSetCustomThumbnail() }
             } else null,
             // También es cierto para una lista de YouTube guardada (marcada): sus canciones se
@@ -148,10 +169,23 @@ fun PlaylistScreenRoute(
             onToggleAutoSync = { enabled ->
                 currentPlaylistId?.let { viewModel.setAutoSync(it, enabled) }
             },
-            onRenamePlaylist = { name ->
+            onRenamePlaylist = if (canModifyPlaylist) { name ->
                 viewModel.renamePlaylist(name)
-            },
+            } else null,
         )
+    }
+
+    val coverResult by viewModel.coverResult.collectAsState()
+    val snackbar = LocalSnackbarHostState.current
+    val snackbarScope = LocalSnackbarScope.current
+    LaunchedEffect(coverResult) {
+        val ok = coverResult ?: return@LaunchedEffect
+        viewModel.consumeCoverResult()
+        snackbarScope.launch {
+            snackbar.showSnackbar(
+                getString(if (ok) Res.string.cover_updated else Res.string.cover_update_failed)
+            )
+        }
     }
 
     val showAutoSync = (successState?.isSaved == true) && linkedBrowseId != null
@@ -179,6 +213,9 @@ fun PlaylistScreenRoute(
         syncBadge = syncBadge,
         autoSyncEnabled = autoSyncEnabled,
         showAutoSync = showAutoSync,
+        canRename = canModifyPlaylist,
+        showSettings = (successState?.isSaved == true) &&
+            (canModifyPlaylist || canUploadCover || (showAutoSync && autoSyncEnabled != null)),
     )
 
 
