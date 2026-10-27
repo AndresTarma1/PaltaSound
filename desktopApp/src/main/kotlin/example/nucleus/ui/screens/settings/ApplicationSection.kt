@@ -97,6 +97,7 @@ fun ApplicationSettingsGroup() {
             title = { Text(stringResource(Res.string.taskbar_widget)) },
             subtitle = { Text(stringResource(Res.string.taskbar_widget_subtitle)) },
             shapes = ListItemDefaults.segmentedShapes(index = 5, count = 6),
+            enabled = false,
             colors = colors,
             state = taskbarWidgetEnabled,
             onCheckedChange = { viewModel.setTaskbarWidgetEnabled(it) }

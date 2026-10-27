@@ -7,6 +7,8 @@
 
   Streaming en alta calidad, letras sincronizadas y escucha compartida — en una interfaz limpia con temas que se adaptan a cada carátula.
 
+  **100 % código abierto (GPL-3.0)**, inspirado en [Metrolist](https://github.com/MetrolistGroup/Metrolist) y construido con la comunidad: sin cuentas, sin rastreo, sin servidores propios. Tus datos viven en tu máquina.
+
 
 
   ![Plataforma](https://img.shields.io/badge/Windows-10%2F11-0078D6?logo=windows&logoColor=white)
@@ -130,10 +132,24 @@ El cliente de YouTube Music (`innertube/`) se sincroniza como subtree desde [Met
 
 ---
 
+## 💚 Código abierto
+
+PaltaSound es software libre de principio a fin: cada línea de este repositorio (app, reproductor, sincronización, instaladores) se publica bajo **GPL-3.0**, sin telemetría ni cuentas obligatorias. Solo necesitas tu propia cuenta de YouTube Music; todo lo demás (biblioteca, descargas, ajustes) se guarda localmente en tu equipo.
+
+- 🐛 ¿Encontraste un error? Abre un [issue](../../issues) con los pasos para reproducirlo.
+- 💡 ¿Tienes una idea? Los [issues](../../issues) también sirven como foro de propuestas.
+- 🔧 ¿Quieres contribuir? Haz fork, crea una rama y manda tu PR — revisamos todo lo que llegue con tests o capturas cuando aplique.
+
+### Relación con Metrolist
+
+PaltaSound nace inspirado en [Metrolist](https://github.com/MetrolistGroup/Metrolist) (reproductor de YouTube Music para Android): comparte su cliente de API (`innertube/`, sincronizado como subtree) y la filosofía de app ligera centrada en la música. Todo lo demás es propio y de escritorio: ventana nativa con Tao, reproducción con MPV/libmpv, letras sincronizadas multi-fuente, escucha compartida en tiempo real, temas dinámicos por carátula, auto-actualización y empaquetado NSIS/DEB/RPM. Si te gusta este proyecto, pásate también por el original.
+
+---
+
 ## 📄 Licencia
 
 Distribuido bajo la licencia **GPL-3.0**. Consulta el archivo [LICENSE](LICENSE) para más detalles.
 
 <div align="center">
-<sub>Inspirado en <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>.</sub>
+<sub>Inspirado en <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a> · hecho con Kotlin y Compose Multiplatform.</sub>
 </div>
