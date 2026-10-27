@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
+import example.nucleus.data.account.AccountManager
 import example.nucleus.navigation.Route
 import example.nucleus.ui.components.PlaylistScreenSkeleton
 import example.nucleus.ui.screens.playlist.PlaylistLayout
@@ -107,7 +108,24 @@ fun PlaylistScreenRoute(
     val canEditPlaylist = !isNonEditableAutoPlaylist &&
         (currentPlaylistId?.startsWith("LOCAL_") == true || successState?.isSaved == true)
 
-    val actions = remember(viewModel, successState != null, canEditPlaylist) {
+    val songs by viewModel.songs.collectAsState()
+    val hasMoreSongs by viewModel.hasMoreSongs.collectAsState()
+    val lastSyncedAt by viewModel.lastSyncedAt.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isLoggedIn by AccountManager.loginState.collectAsState()
+
+    // La pantalla de playlist solo muestra el toggle de auto-sync si está guardada y
+    // vinculada a una playlist real de YouTube (LM y locales quedan fuera).
+    var linkedBrowseId by remember(currentPlaylistId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentPlaylistId) {
+        linkedBrowseId = currentPlaylistId?.let { viewModel.getBrowseId(it) }
+    }
+
+    // La portada solo se puede subir a playlists reales de YouTube con sesión iniciada
+    // (edit_playlist devuelve 403 en cualquier otro caso: locales, ajenas o sin login).
+    val canUploadCover = successState?.isSaved == true && linkedBrowseId != null && isLoggedIn
+
+    val actions = remember(viewModel, successState != null, canEditPlaylist, canUploadCover) {
         PlaylistActions(
             onBack = onBack,
             onNavigate = onNavigate,
@@ -120,7 +138,9 @@ fun PlaylistScreenRoute(
             onRemoveSongFromPlaylist = if (canEditPlaylist) {
                 { songId -> viewModel.removeSongFromPlaylist(songId) }
             } else null,
-            onEditCover = { viewModel.pickAndSetCustomThumbnail() },
+            onEditCover = if (canUploadCover) {
+                { viewModel.pickAndSetCustomThumbnail() }
+            } else null,
             // También es cierto para una lista de YouTube guardada (marcada): sus canciones se
             // almacenan localmente en caché también, y la eliminación se envía a la lista real
             // (ver PlaylistViewModel.removeSongFromPlaylist).
@@ -134,17 +154,6 @@ fun PlaylistScreenRoute(
         )
     }
 
-    val songs by viewModel.songs.collectAsState()
-    val hasMoreSongs by viewModel.hasMoreSongs.collectAsState()
-    val lastSyncedAt by viewModel.lastSyncedAt.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-
-    // La pantalla de playlist solo muestra el toggle de auto-sync si está guardada y
-    // vinculada a una playlist real de YouTube (LM y locales quedan fuera).
-    var linkedBrowseId by remember(currentPlaylistId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(currentPlaylistId) {
-        linkedBrowseId = currentPlaylistId?.let { viewModel.getBrowseId(it) }
-    }
     val showAutoSync = (successState?.isSaved == true) && linkedBrowseId != null
     val autoSyncEnabled by remember(currentPlaylistId) {
         if (currentPlaylistId != null) viewModel.observeAutoSync(currentPlaylistId)
