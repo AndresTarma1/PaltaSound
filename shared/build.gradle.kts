@@ -71,8 +71,6 @@ kotlin {
         // correr tambien cuando se compila con -PjsEngines=false.
         jvmTest.dependencies {
             implementation(libs.quickjs)
-            implementation("org.graalvm.js:js-scriptengine:25.0.3")
-            implementation("org.graalvm.js:js:25.0.3")
         }
         jvmMain.dependencies {
             api(libs.sqldelight.driver.jvm)
@@ -108,12 +106,8 @@ kotlin {
             // degradado en nativo; la reproducción tira de otros clientes/yt-dlp.
             if (!jsEnginesOff) {
                 implementation(libs.quickjs)
-                implementation("org.graalvm.js:js-scriptengine:25.0.3")
-                implementation("org.graalvm.js:js:25.0.3")
-            } else {
+                    } else {
                 compileOnly(libs.quickjs)
-                compileOnly("org.graalvm.js:js-scriptengine:25.0.3")
-                compileOnly("org.graalvm.js:js:25.0.3")
             }
         }
     }
@@ -131,3 +125,4 @@ sqldelight {
         }
     }
 }
+

@@ -11,7 +11,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -19,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppScrollbarGutter
@@ -28,7 +28,6 @@ import example.nucleus.ui.screens.settings.*
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.expressiveFadeTween
-import example.nucleus.ui.themes.screenTitle
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -38,8 +37,9 @@ private enum class SettingsCategory(
     val titleRes: org.jetbrains.compose.resources.StringResource,
     val subtitleRes: org.jetbrains.compose.resources.StringResource,
 ) {
-    AUDIO(Icons.Rounded.GraphicEq, Res.string.section_audio, Res.string.section_audio_subtitle),
     APPEARANCE(Icons.Rounded.Palette, Res.string.section_appearance, Res.string.section_appearance_subtitle),
+    ACCESSIBILITY(Icons.Rounded.Accessibility, Res.string.section_accessibility, Res.string.section_accessibility_subtitle),
+    AUDIO(Icons.Rounded.GraphicEq, Res.string.section_audio, Res.string.section_audio_subtitle),
     PLAYBACK(Icons.Rounded.PlayCircle, Res.string.section_playback, Res.string.section_playback_subtitle),
     LIBRARY(Icons.Rounded.LibraryMusic, Res.string.section_library, Res.string.section_library_subtitle),
     SYSTEM(Icons.Rounded.Settings, Res.string.section_system, Res.string.section_system_subtitle),
@@ -50,24 +50,22 @@ private enum class SettingsCategory(
 @Composable
 fun SettingsScreen() {
     var activeDialog by remember { mutableStateOf<SettingsDialog?>(null) }
-    var selected by remember { mutableStateOf(SettingsCategory.AUDIO) }
+    var selected by remember { mutableStateOf(SettingsCategory.APPEARANCE) }
 
     CompositionLocalProvider(LocalSettingsColors provides rememberSettingsListItemColors()) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val isNarrow = maxWidth < 720.dp
+            val isNarrow = maxWidth < 900.dp
 
             if (isNarrow) {
                 NarrowSettingsLayout(
                     selected = selected,
                     onSelect = { selected = it },
-                    activeDialog = activeDialog,
                     onDialog = { activeDialog = it },
                 )
             } else {
                 WideSettingsLayout(
                     selected = selected,
                     onSelect = { selected = it },
-                    activeDialog = activeDialog,
                     onDialog = { activeDialog = it },
                 )
             }
@@ -99,7 +97,6 @@ private fun settingsCategoryTransition(animationsEnabled: Boolean): ContentTrans
 private fun WideSettingsLayout(
     selected: SettingsCategory,
     onSelect: (SettingsCategory) -> Unit,
-    activeDialog: SettingsDialog?,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
@@ -184,25 +181,35 @@ private fun SettingsCategoryTabs(
 private fun NarrowSettingsLayout(
     selected: SettingsCategory,
     onSelect: (SettingsCategory) -> Unit,
-    activeDialog: SettingsDialog?,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     Column(modifier = Modifier.fillMaxSize()) {
+        val selectedTabIndex = SettingsCategory.entries.indexOf(selected)
         // Top tabs para narrow
-        SecondaryScrollableTabRow(
-            selectedTabIndex = SettingsCategory.entries.indexOf(selected),
+        SecondaryTabRow(
+            selectedTabIndex = selectedTabIndex,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
             divider = {},
-            edgePadding = 8.dp,
-            indicator = {},
-        ){
+            indicator = {
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(selectedTabIndex, matchContentSize = false),
+                )
+            },
+        ) {
             SettingsCategory.entries.forEach { cat ->
                 Tab(
                     selected = cat == selected,
                     onClick = { onSelect(cat) },
-                    text = { Text(stringResource(cat.titleRes), style = MaterialTheme.typography.labelLargeEmphasized) },
+                    text = {
+                        Text(
+                            stringResource(cat.titleRes),
+                            style = MaterialTheme.typography.labelLargeEmphasized,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
                     icon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp)) },
                 )
             }
@@ -256,11 +263,14 @@ private fun SettingsCategoryDetail(
         ) {
             // Contenido desacoplado por categoría — solo se compone la activa
             when (category) {
-                SettingsCategory.AUDIO -> item {
-                    AudioSettingsGroup(onOpenEqualizer = { onDialog(SettingsDialog.EQUALIZER) })
-                }
                 SettingsCategory.APPEARANCE -> item {
                     AppearanceSettingsGroup()
+                }
+                SettingsCategory.ACCESSIBILITY -> item {
+                    AccessibilitySettingsGroup()
+                }
+                SettingsCategory.AUDIO -> item {
+                    AudioSettingsGroup(onOpenEqualizer = { onDialog(SettingsDialog.EQUALIZER) })
                 }
                 SettingsCategory.PLAYBACK -> {
                     item { MiniPlayerSettingsGroup(onOpenSeekBarStyleDialog = { onDialog(SettingsDialog.SEEK_BAR_STYLE) }) }
@@ -294,3 +304,4 @@ private fun SettingsCategoryDetail(
         )
     }
 }
+

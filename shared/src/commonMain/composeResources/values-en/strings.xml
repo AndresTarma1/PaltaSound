@@ -747,4 +747,13 @@
     <!-- Full screen player -->
     <string name="full_screen_player">Fullscreen player</string>
     <string name="full_screen_player_subtitle">Hide the navigation rail and mini player when Now Playing is expanded</string>
+    <string name="section_accessibility">Accessibility</string>
+    <string name="section_accessibility_subtitle">Scale, font and animations</string>
+    <string name="appearance_theme">Theme and color</string>
+    <string name="appearance_design">Design</string>
+    <string name="appearance_typography">Typography and scale</string>
+    <string name="appearance_motion">Motion</string>
+    <string name="preset_compact">Compact</string>
+    <string name="preset_comfortable">Comfortable</string>
+    <string name="preset_accessible">Accessible</string>
 </resources>

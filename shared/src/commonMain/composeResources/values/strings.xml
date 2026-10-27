@@ -318,7 +318,7 @@
     <string name="title_fallback">Explorar</string>
 
     <!-- Queue / Now Playing -->
-    <string name="queue_title">Cola de reproducción</string>
+    <string name="queue_title">Cola</string>
     <string name="queue_empty">La cola está vacía</string>
     <string name="queue_empty_hint">Reproduce una canción, álbum o playlist para empezar</string>
     <string name="queue_songs_count">%1$d canciones</string>
@@ -495,7 +495,7 @@
     <string name="settings_corner_style">Esquinas de los componentes</string>
     <string name="corner_style_rounded">Muy redondeadas</string>
     <string name="corner_style_soft">Redondeadas</string>
-    <string name="corner_style_sharp">Almost rectas</string>
+    <string name="corner_style_sharp">Casi rectas</string>
     <string name="corner_style_rectangular">Rectas</string>
 
     <!-- Theme palettes -->
@@ -754,4 +754,13 @@
     <!-- Full screen player -->
     <string name="full_screen_player">Reproductor a pantalla completa</string>
     <string name="full_screen_player_subtitle">Oculta la barra de navegación y el mini reproductor al expandir Now Playing</string>
+    <string name="section_accessibility">Accesibilidad</string>
+    <string name="section_accessibility_subtitle">Escala, fuente y animaciones</string>
+    <string name="appearance_theme">Tema y color</string>
+    <string name="appearance_design">Diseño</string>
+    <string name="appearance_typography">Tipografía y escala</string>
+    <string name="appearance_motion">Movimiento</string>
+    <string name="preset_compact">Compacto</string>
+    <string name="preset_comfortable">Cómodo</string>
+    <string name="preset_accessible">Accesible</string>
 </resources>

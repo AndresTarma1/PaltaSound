@@ -59,6 +59,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.onHover
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
+import example.nucleus.ui.components.images.MusicPlayerImage
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -221,11 +222,10 @@ fun AddToPlaylistDialog(
                                 .padding(vertical = 12.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.PlaylistAdd,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
+                            MusicPlayerImage(
+                                url = playlist.thumbnail,
+                                contentDescription = playlist.description,
+                                modifier = Modifier.size(32.dp)
                             )
                             Spacer(Modifier.width(16.dp))
                             Text(

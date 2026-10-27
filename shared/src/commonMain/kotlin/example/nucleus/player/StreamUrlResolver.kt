@@ -2,7 +2,6 @@ package example.nucleus.player
 
 import example.nucleus.network.AppHttpClient
 import example.nucleus.utils.cipher.CipherDeobfuscator
-import com.metrolist.innertube.NewPipeExtractor
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.response.PlayerResponse
 import io.github.aakira.napier.Napier
@@ -34,17 +33,9 @@ object StreamUrlResolver {
             Napier.i("[RESOLVE_URL] URL analysis: hasN=${"n=" in formatUrl} hasPot=${"pot=" in formatUrl} urlLength=${formatUrl.length}")
         }
 
-        if (formatUrl != null || format.signatureCipher != null || format.cipher != null) {
-            val deobfuscatedUrl = NewPipeExtractor.getStreamUrl(format, videoId)
-            if (deobfuscatedUrl != null) {
-                // Keep the n-param intact; YTPlayerutils transforms it via the EJS solver.
-                Napier.d("Using NewPipe-deobfuscated stream URL for $videoId itag=${format.itag} (hasN=${"n=" in deobfuscatedUrl})")
-                return deobfuscatedUrl
-            }
-            if (formatUrl != null) {
-                Napier.d("NewPipe deobfuscation failed, falling back to raw URL for $videoId itag=${format.itag} (hasN=${"n=" in formatUrl})")
-                return formatUrl
-            }
+        if (formatUrl != null) {
+            Napier.d("Using raw format URL for $videoId itag=${format.itag} (hasN=${"n=" in formatUrl})")
+            return formatUrl
         }
 
         val signatureCipher = format.signatureCipher ?: format.cipher
@@ -93,7 +84,7 @@ object StreamUrlResolver {
      * @param url The stream URL to transform.
      * @return The stream URL with the `n` parameter transformed.
      */
-    suspend fun applyNTransform(url: String): String {
+    suspend fun applyNTransform(url: String): String? {
         return CipherDeobfuscator.transformNParamInUrl(url)
     }
 
@@ -127,3 +118,5 @@ object StreamUrlResolver {
         }
     }
 }
+
+

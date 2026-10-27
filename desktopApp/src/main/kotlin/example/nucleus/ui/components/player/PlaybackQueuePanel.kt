@@ -86,9 +86,6 @@ fun PlaybackQueuePanel(
         playerViewModel.moveQueueItem(from.index, to.index)
     }
 
-    // Auto-scroll SOLO si el actual quedó fuera de pantalla: avanzar no debe
-    // mover la lista si el tema actual ya es visible. La primera posición
-    // (al abrir el panel) es instantánea para evitar el rebote animado.
     var previousIndex by remember { mutableStateOf(state.currentIndex) }
     var firstPositioning by remember { mutableStateOf(true) }
     LaunchedEffect(state.currentIndex, state.isShuffled) {
@@ -245,13 +242,6 @@ private fun QueueHeader(
 
 
 
-    val sourceLabel = when (val source = state.queueSource) {
-        is QueueSource.Album -> stringResource(Res.string.from_album, source.title)
-        is QueueSource.Playlist -> stringResource(Res.string.from_playlist, source.title)
-        is QueueSource.Single -> null
-        QueueSource.Custom -> null
-        null -> null
-    }
 
     Row(
         modifier = Modifier

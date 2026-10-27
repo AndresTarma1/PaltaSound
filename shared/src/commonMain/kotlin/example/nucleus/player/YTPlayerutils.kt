@@ -111,13 +111,10 @@ object YTPlayerutils {
             }
 
             if (streamPlayerResponse?.playabilityStatus?.status == "OK") {
-                val newPipeResponse = withContext(Dispatchers.IO) {
-                    YouTube.newPipePlayer(videoId, streamPlayerResponse)
-                }
-                val responseToUse = newPipeResponse ?: streamPlayerResponse
+                val responseToUse = streamPlayerResponse
                 var clientName = client?.clientName
                     ?: FallbackClients.mainClient.clientName
-                Napier.d("Trying playback client $clientName for $videoId; newPipeResponse=${newPipeResponse != null}")
+                Napier.d("Trying playback client $clientName for $videoId")
 
                 format = FormatSelector.findFormat(responseToUse, audioQuality)
                 if (format == null) {
@@ -127,19 +124,13 @@ object YTPlayerutils {
 
                 clientName = client?.clientName ?: FallbackClients.mainClient.clientName
                 val cacheKey = "$videoId|${format.itag}|$clientName"
-                streamUrl = StreamCache.get(cacheKey)
+                val cachedFinal = StreamCache.get(cacheKey)
+                val fromCache = cachedFinal != null
+                streamUrl = cachedFinal
 
                 if (streamUrl == null) {
                     streamUrl = withContext(Dispatchers.IO) {
                         StreamUrlResolver.resolveUrl(format, videoId, responseToUse)
-                    }
-                    if (streamUrl != null) {
-                        val ttl = minOf(
-                            streamPlayerResponse.streamingData?.expiresInSeconds?.times(1000L)
-                                ?: 300_000L,
-                            300_000L,
-                        )
-                        StreamCache.put(cacheKey, streamUrl, ttl)
                     }
                 }
 
@@ -152,18 +143,35 @@ object YTPlayerutils {
                 val effectiveClient = client ?: FallbackClients.mainClient
                 val streamingPot = poTokenResult?.streamingDataPoToken
 
-                // Transformación de n solo para clientes web (igual que Metrolist). Los clientes no-web (VISIONOS,
-                // IOS, ANDROID_VR, ...) obtienen URLs cuya n está ausente o ya es manejada por NewPipe;
-                // transformarlas con la función n del reproductor web las rompería.
-                val needsNTransform = effectiveClient.useWebPoTokens ||
-                    effectiveClient.clientName in listOf("WEB", "WEB_REMIX", "WEB_CREATOR", "TVHTML5")
-                if (needsNTransform) {
-                    streamUrl = StreamUrlResolver.applyNTransform(streamUrl)
-                }
-                if (effectiveClient.useWebPoTokens && streamingPot != null) {
-                    val separator = if (streamUrl.contains('?')) "&" else "?"
-                    // El token es base64url ([A-Za-z0-9_-]); solo el padding '=' requiere escape.
-                    streamUrl = streamUrl + separator + "pot=" + streamingPot.replace("=", "%3D")
+                // Si vino de caché, la URL ya es final (n + pot); no re-transformar.
+                if (!fromCache) {
+                    // Transformación de n solo para clientes web (igual que Metrolist). Los clientes no-web (VISIONOS,
+                    // IOS, ANDROID_VR, ...) obtienen URLs cuya n está ausente o ya es manejada por NewPipe;
+                    // transformarlas con la función n del reproductor web las rompería.
+                    val needsNTransform = effectiveClient.useWebPoTokens ||
+                        effectiveClient.clientName in listOf("WEB", "WEB_REMIX", "WEB_CREATOR", "TVHTML5")
+                    if (needsNTransform) {
+                        val transformed = StreamUrlResolver.applyNTransform(streamUrl)
+                        if (transformed == null) {
+                            Napier.w("N-transform failed for $videoId itag=${format.itag}; trying fallback client")
+                            if (effectiveClient.useWebPoTokens && streamingPot != null) sawWeb403 = true
+                            continue
+                        }
+                        streamUrl = transformed
+                    }
+                    if (effectiveClient.useWebPoTokens && streamingPot != null) {
+                        val separator = if (streamUrl.contains('?')) "&" else "?"
+                        // El token es base64url ([A-Za-z0-9_-]); solo el padding '=' requiere escape.
+                        streamUrl = streamUrl + separator + "pot=" + streamingPot.replace("=", "%3D")
+                    }
+
+                    // Cachear la URL FINAL (n + pot).
+                    val ttl = minOf(
+                        streamPlayerResponse.streamingData?.expiresInSeconds?.times(1000L)
+                            ?: 300_000L,
+                        300_000L,
+                    )
+                    StreamCache.put(cacheKey, streamUrl, ttl)
                 }
 
                 streamExpiresInSeconds = streamPlayerResponse.streamingData?.expiresInSeconds

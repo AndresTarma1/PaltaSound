@@ -250,7 +250,13 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                         // MiniPlayer ya usaba RectangleShape). Ahora manda `dimens`, una sola fuente.
                         val contentShape: Shape =
                             if (dimens.surfaceCorner > 0.dp) {
-                                RoundedCornerShape(topStart = dimens.surfaceCorner, bottomStart = dimens.surfaceCorner)
+                                val roundedFullContent = if (isQueueVisible) dimens.surfaceCorner else 0.dp
+                                RoundedCornerShape(
+                                    topStart = dimens.surfaceCorner,
+                                    bottomStart = dimens.surfaceCorner,
+                                    topEnd = roundedFullContent,
+                                    bottomEnd = roundedFullContent
+                                )
                             } else {
                                 RectangleShape
                             }
