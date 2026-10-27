@@ -64,6 +64,7 @@ fun QueueItem(
     onClick: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    positionNumber: Int? = null,
 ) {
     val downloadViewModel = LocalDownloadViewModel.current
     val downloadState by rememberSongDownloadState(song.id, downloadViewModel)
@@ -101,6 +102,20 @@ fun QueueItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            // Número de posición en la cola (solo cuando el llamador lo provee).
+            if (positionNumber != null) {
+                Text(
+                    text = "%02d".format(positionNumber),
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFeatureSettings = "tnum",
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = if (isCurrent) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                    maxLines = 1,
+                    modifier = Modifier.width(30.dp),
+                )
+            }
+
             // Indicador de arrastre: espacio reservado, solo visible en hover o arrastrando
             if (!queueLocked) {
                 Box(
