@@ -143,6 +143,8 @@
     <string name="sync_badge_hours">Sincronizada hace %1$d h</string>
     <string name="sync_badge_days">Sincronizada hace %1$d d</string>
     <string name="sync_badge_updating">Actualizando…</string>
+    <string name="playlist_settings_title">Configurar playlist</string>
+    <string name="playlist_cover_change">Cambiar portada</string>
     <string name="section_overlay">Overlay en juegos</string>
     <string name="overlay_enable">Activar overlay con atajo global</string>
     <string name="overlay_enable_subtitle">Muestra una mini ventana sobre tus juegos (en modo ventana o ventana completa) para controlar la música sin salir. No funciona en pantalla completa exclusiva.</string>

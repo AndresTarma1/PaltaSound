@@ -76,6 +76,13 @@ class PlaylistDao(private val database: MusicPlayerDatabase) {
         database.playlistQueries.updateAutoSync(if (enabled) 1L else 0L, id)
     }
 
+    suspend fun renamePlaylist(id: String, newTitle: String) = withContext(Dispatchers.IO) {
+        database.transaction {
+            database.savedPlaylistQueries.updateTitle(newTitle, id)
+            database.playlistQueries.updatePlaylistName(newTitle, id)
+        }
+    }
+
     fun observePlaylist(id: String): Flow<PlaylistEntity?> =
         database.playlistQueries.playlistById(id, ::mapPlaylist)
             .asFlow()

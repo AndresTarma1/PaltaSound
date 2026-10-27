@@ -448,6 +448,24 @@ class PlaylistManagerViewModel(
         }
     }
 
+    fun renamePlaylist(newTitle: String) {
+        val playlistId = _currentPlaylistId.value ?: return
+        val state = _uiState.value as? PlaylistState.Success ?: return
+        val title = newTitle.trim()
+        if (title.isBlank() || title == state.playlistPage.playlist.title) return
+        viewModelScope.launch {
+            repository.renamePlaylist(playlistId, title)
+            updateSuccess { copy(playlistPage = playlistPage.copy(playlist = playlistPage.playlist.copy(title = title))) }
+            // Empujar a la playlist real si está vinculada y hay sesión; mejor esfuerzo.
+            val browseId = repository.getBrowseId(playlistId)
+            if (browseId != null && AccountManager.loginState.value) {
+                runCatching { YouTube.renamePlaylist(browseId, title) }
+                    .onFailure { log.warning("Failed to rename remote playlist $browseId: ${it.message}") }
+            }
+            log.info("Playlist renombrada: $playlistId -> $title")
+        }
+    }
+
     suspend fun getBrowseId(playlistId: String): String? = repository.getBrowseId(playlistId)
 
     fun downloadPlaylist() {

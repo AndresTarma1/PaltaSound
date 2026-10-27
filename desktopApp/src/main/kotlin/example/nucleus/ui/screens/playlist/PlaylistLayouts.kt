@@ -477,14 +477,52 @@ internal fun PlaylistInfoPanel(
 
     Spacer(Modifier.height(22.dp))
 
-    Text(
-        text = playlistPage.playlist.title,
-        style = MaterialTheme.typography.collectionTitle,
-        textAlign = TextAlign.Center,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        color = MaterialTheme.colorScheme.onSurface
-    )
+    var showSettings by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = playlistPage.playlist.title,
+            style = MaterialTheme.typography.collectionTitle,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 40.dp),
+        )
+        // Configurar: renombrar, portada y sincronización. Solo con algo que configurar.
+        if (controls.isSaved) {
+            IconButton(
+                onClick = { showSettings = true },
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .pointerHoverIcon(PointerIcon.Hand),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = stringResource(Res.string.playlist_settings_title),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+
+    if (showSettings) {
+        PlaylistSettingsDialog(
+            playlistTitle = playlistPage.playlist.title,
+            coverUrl = playlistPage.playlist.thumbnail,
+            showAutoSync = controls.showAutoSync,
+            autoSyncEnabled = controls.autoSyncEnabled,
+            onToggleAutoSync = controls.onToggleAutoSync,
+            onRename = { actions.onRenamePlaylist?.invoke(it) },
+            onEditCover = actions.onEditCover,
+            onDismiss = { showSettings = false },
+        )
+    }
 
     Spacer(Modifier.height(6.dp))
 
@@ -520,44 +558,6 @@ internal fun PlaylistInfoPanel(
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-
-    // Interruptor de sincronización automática (solo playlists guardadas y vinculadas).
-    if (controls.showAutoSync && controls.autoSyncEnabled != null) {
-        Spacer(Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Sync,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(Res.string.auto_sync_playlist),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.width(8.dp))
-            Switch(
-                checked = controls.autoSyncEnabled,
-                onCheckedChange = { controls.onToggleAutoSync?.invoke(it) },
-                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-            )
-        }
-        Text(
-            text = stringResource(Res.string.auto_sync_playlist_subtitle),
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth(),
         )

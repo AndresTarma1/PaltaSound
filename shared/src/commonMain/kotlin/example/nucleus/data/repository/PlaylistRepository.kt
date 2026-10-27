@@ -110,6 +110,16 @@ class PlaylistRepository(
         database.savedPlaylistQueries.selectById(playlistId).executeAsOneOrNull()?.savedAt
     }
 
+    /**
+     * Renombra localmente (caché + fila vinculada si existe).
+     */
+    suspend fun renamePlaylist(playlistId: String, newTitle: String) = withContext(Dispatchers.IO) {
+        database.transaction {
+            database.savedPlaylistQueries.updateTitle(newTitle, playlistId)
+            database.playlistQueries.updatePlaylistName(newTitle, playlistId)
+        }
+    }
+
     fun observeAutoSync(playlistId: String): Flow<Boolean> =
         database.playlistQueries.playlistById(playlistId)
             .asFlow()

@@ -35,6 +35,9 @@ updatePlaylist:
 UPDATE Playlist SET name = ?, browseId = ?, lastUpdateTime = ?, isEditable = ?, bookmarkedAt = ?, remoteSongCount = ?, thumbnailUrl = ?
 WHERE id = ?;
 
+updatePlaylistName:
+UPDATE Playlist SET name = ? WHERE id = ?;
+
 updatePlaylistBookmark:
 UPDATE Playlist SET bookmarkedAt = ? WHERE id = ?;
 

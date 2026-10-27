@@ -62,6 +62,7 @@ data class PlaylistActions(
     val onEditCover: (() -> Unit)? = null,
     val isLocalPlaylist: Boolean = false,
     val onToggleAutoSync: ((Boolean) -> Unit)? = null,
+    val onRenamePlaylist: ((String) -> Unit)? = null,
 )
 
 @Composable
@@ -126,6 +127,9 @@ fun PlaylistScreenRoute(
             isLocalPlaylist = canEditPlaylist,
             onToggleAutoSync = { enabled ->
                 currentPlaylistId?.let { viewModel.setAutoSync(it, enabled) }
+            },
+            onRenamePlaylist = { name ->
+                viewModel.renamePlaylist(name)
             },
         )
     }

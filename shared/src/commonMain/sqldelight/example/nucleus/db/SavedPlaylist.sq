@@ -30,6 +30,9 @@ UPDATE SavedPlaylist SET songCountText = ? WHERE id = ?;
 updateSongCountTextAndThumbnail:
 UPDATE SavedPlaylist SET songCountText = ?, thumbnail = ? WHERE id = ?;
 
+updateTitle:
+UPDATE SavedPlaylist SET title = ? WHERE id = ?;
+
 deleteAll:
 DELETE FROM SavedPlaylist;
 
