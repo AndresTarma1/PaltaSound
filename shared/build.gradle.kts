@@ -66,9 +66,7 @@ kotlin {
             implementation(libs.kotlin.test)
         }
         // Los motores JS van en tests SIEMPRE, haya o no flag: el classpath de test no se
-        // empaqueta, asi que no afecta a ninguna de las dos variantes de instalacion, y los
-        // tests del cipher (EjsCipherSolverSmokeTest, QuickJs4jEjsTest) los necesitan para
-        // correr tambien cuando se compila con -PjsEngines=false.
+        // empaqueta, asi que no afecta a ninguna de las dos variantes de instalacion.
         jvmTest.dependencies {
             implementation(libs.quickjs)
         }
@@ -93,17 +91,22 @@ kotlin {
             // mpv-resources/windows). Ver PoTokenGenerator.jvm para el historial.
             //
             // ── Motores JS por variante de instalación ──────────────────────────
-            // - JVM (defecto, instaladores Nsis/Deb/Rpm y `run`): `implementation`, los
-            //   motores viajan en el paquete y el cipher web funciona completo.
+            // - JVM (defecto, instaladores Nsis/Deb/Rpm y `run`): `implementation`, el
+            //   motor viaja en el paquete y el cipher web funciona completo.
             // - GraalVM nativo (`-PjsEngines=false`): `compileOnly`, el código compila
-            //   (las referencias directas resuelven) pero los jars NO entran ni en el
-            //   runtimeClasspath ni en el análisis de native-image. Sin esto, el runtime
-            //   Truffle exige module-path y rompe el uber-jar (errores ForceOnModulePath
-            //   y JNI$JNIEnv, verificados en GraalVM 25.2.4 y 25.3.4.1).
-            // En runtime la ausencia se detecta sola: `getEngineByName("graal.js")`
-            // devuelve null (CipherException, ya capturada) y `QuickJs.create()` lanza
-            // LinkageError (capturado en ParsedScriptSolver.create). El cipher web queda
-            // degradado en nativo; la reproducción tira de otros clientes/yt-dlp.
+            //   (las referencias directas resuelven) pero el jar NO entra ni en el
+            //   runtimeClasspath ni en el análisis de native-image.
+            // El único motor actual es QuickJS (GraalJS/Truffle, que era lo que rompía
+            // el uber-jar con module-path y JNI$JNIEnv en GraalVM 25.2.4/25.3.4.1, ya no
+            // está en el proyecto). QuickJS trae sus propios metadatos GraalVM
+            // (META-INF/native-image en quickjs-kt-jvm) que Nucleus fusiona, así que
+            // `-PjsEngines=false` es hoy una precaución pendiente de validar con un
+            // native-image real (ver .github/workflows/graalvm-check.yml), no un
+            // bloqueo verificado.
+            // En runtime la ausencia se detecta sola: `QuickJs.create()` lanza
+            // LinkageError (capturado en ParsedScriptSolver.create). Sin motores, el
+            // cipher web queda degradado en nativo y la reproducción tira de otros
+            // clientes/yt-dlp.
             if (!jsEnginesOff) {
                 implementation(libs.quickjs)
                     } else {

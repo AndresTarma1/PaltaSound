@@ -11,8 +11,9 @@ name: Build & Release
 #
 # Los instaladores se compilan en 2 formas:
 #   - Windows GraalVM nativo (NSIS, SIN runtimes JS) con packageGraalvmNsis -PjsEngines=false.
-#     Los runtimes JS (GraalJS/QuickJS) se excluyen porque el runtime Truffle exige
-#     module-path y rompe native-image; en nativo el cipher web queda degradado.
+#     QuickJS (único motor actual) se excluye porque aún no está validado en
+#     native-image; en nativo el cipher web queda degradado. Si graalvm-check.yml
+#     valida el nativo CON motores, se retira el flag para que el tag ya lleve cipher web.
 #     Es la variante que se auto-actualiza: latest.yml solo lista a ella.
 #     OJO: ambas variantes generan el MISMO basename (plantilla artifactName
 #     compartida), asi que el JVM se renombra a *-nsis-jvm.exe antes de publicar

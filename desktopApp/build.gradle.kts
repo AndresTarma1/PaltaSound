@@ -206,13 +206,13 @@ nucleus.application {
 
     // ── GraalVM Native Image ──────────────────────────────────────────
     // Segunda forma de instalación (Windows): binario nativo SIN runtimes JS.
-    // Los motores JS (GraalJS/QuickJS) se excluyen compilando con `-PjsEngines=false`,
-    // que los deja en `compileOnly`: el código compila pero los jars no entran en el
-    // análisis de native-image. Ese era el bloqueo verificado antes (el runtime Truffle
-    // exige module-path y rompía el uber-jar con ForceOnModulePath y JNI$JNIEnv en
-    // GraalVM 25.2.4/25.3.4.1). En nativo el cipher web queda degradado (ver el bloque
-    // de motores JS en shared/build.gradle.kts); la primera forma de instalación, la
-    // distribución JVM (Nsis/Deb/Rpm, con motores), no cambia.
+    // QuickJS (único motor actual; GraalJS/Truffle ya no está en el proyecto) se excluye
+    // compilando con `-PjsEngines=false`, que lo deja en `compileOnly`: el código compila
+    // pero el jar no entra en el análisis de native-image. En nativo el cipher web queda
+    // degradado (ver el bloque de motores JS en shared/build.gradle.kts); la primera forma
+    // de instalación, la distribución JVM (Nsis/Deb/Rpm, con motores), no cambia.
+    // Si graalvm-check.yml valida el nativo CON motores, se puede retirar el flag aquí
+    // y en build-release.yml para que el 0.8.3 (o el siguiente tag) ya lleve cipher web.
     // Nucleus genera los metadatos de reflexión/recursos/JNI automáticamente (5 niveles) y descarga GraalVM CE.
     // Tareas: packageGraalvmNative, runGraalvmNative, runWithNativeAgent.
     graalvm {

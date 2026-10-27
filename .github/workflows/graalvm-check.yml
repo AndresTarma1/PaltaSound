@@ -1,0 +1,99 @@
+name: GraalVM native check
+
+# Puerta de calidad para el binario nativo, SIN publicar nada:
+#   - pull_request (solo rutas que afectan al nativo) -> valida que la imagen
+#     nativa compila antes de mergear.
+#   - workflow_dispatch -> validación manual. Úsalo sobre `main` justo antes de
+#     crear el tag vX.Y.Z (ej: v0.8.3): si esto está verde, el job nativo del
+#     release no te va a sorprender.
+#
+# Compila SOLO el binario (`nativeImageCompile`), no el instalador: los fallos
+# de metadata/init salen en el image build, que es ~el 95% del problema, y es
+# más rápido que empaquetar NSIS. El instalador se sigue validando en los tags.
+# Se compila CON motores JS: GraalJS ya no existe en el proyecto (era el que
+# rompía el uber-jar con Truffle/module-path) y QuickJS trae sus propios
+# metadatos GraalVM que Nucleus fusiona. Si este check está verde, el release
+# puede dejar de pasar `-PjsEngines=false`.
+
+on:
+  pull_request:
+    paths:
+      - 'shared/**'
+      - 'desktopApp/**'
+      - 'innertube/**'
+      - 'lrclib/**'
+      - 'kugou/**'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'settings.gradle.kts'
+      - 'mpv-resources/**'
+      - '.github/workflows/graalvm-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: graalvm-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-compile:
+    name: Native image (windows)
+    # Solo Windows: el native-image falla en runners de GitHub por memoria en
+    # Linux (ver cabecera de build-release.yml) y Windows es la variante que
+    # se publica como nativa.
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout (con Git LFS para libmpv-2.dll)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify libmpv LFS asset
+        shell: pwsh
+        run: |
+          $file = "mpv-resources/windows/libmpv-2.dll"
+          if (!(Test-Path -LiteralPath $file)) {
+            throw "Missing $file after checkout"
+          }
+          $size = (Get-Item -LiteralPath $file).Length
+          if ($size -lt 100000000) {
+            throw "$file is only $size bytes; Git LFS pointer was not materialized"
+          }
+          Write-Host ("{0}: {1} bytes" -f $file, $size)
+
+      - name: Download latest yt-dlp (runtime del app-image)
+        shell: bash
+        run: |
+          set -eux
+          mkdir -p mpv-resources/windows
+          curl -fL -o mpv-resources/windows/yt-dlp.exe \
+            "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+
+      - name: Download rustypipe-botguard
+        shell: bash
+        run: |
+          set -eux
+          mkdir -p mpv-resources/windows
+          rm -rf /tmp/rustypipe && mkdir -p /tmp/rustypipe
+          curl -fL -o /tmp/rustypipe.zip \
+            "https://codeberg.org/ThetaDev/rustypipe-botguard/releases/download/v0.1.2/rustypipe-botguard-v0.1.2-x86_64-pc-windows-msvc.zip"
+          unzip -o /tmp/rustypipe.zip -d /tmp/rustypipe
+          find /tmp/rustypipe -name "rustypipe-botguard*" -type f -exec cp {} "mpv-resources/windows/rustypipe-botguard.exe" \;
+          ls -lh "mpv-resources/windows/rustypipe-botguard.exe"
+
+      - name: Compile native image (con motores JS)
+        shell: bash
+        run: |
+          ./gradlew :desktopApp:nativeImageCompile --stacktrace
