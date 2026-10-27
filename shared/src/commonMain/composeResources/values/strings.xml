@@ -135,6 +135,14 @@
     <string name="sync_now">Sincronizar ahora</string>
     <string name="sync_now_subtitle">Actualiza me gusta, álbumes, artistas y playlists desde tu cuenta de YouTube Music.</string>
     <string name="sync_now_syncing">Sincronizando…</string>
+    <string name="auto_sync_playlist">Sincronización automática</string>
+    <string name="auto_sync_playlist_subtitle">Mantiene esta playlist actualizada con YouTube Music</string>
+    <string name="sync_badge_local">Copia local</string>
+    <string name="sync_badge_just_now">Sincronizada ahora mismo</string>
+    <string name="sync_badge_minutes">Sincronizada hace %1$d min</string>
+    <string name="sync_badge_hours">Sincronizada hace %1$d h</string>
+    <string name="sync_badge_days">Sincronizada hace %1$d d</string>
+    <string name="sync_badge_updating">Actualizando…</string>
     <string name="section_overlay">Overlay en juegos</string>
     <string name="overlay_enable">Activar overlay con atajo global</string>
     <string name="overlay_enable_subtitle">Muestra una mini ventana sobre tus juegos (en modo ventana o ventana completa) para controlar la música sin salir. No funciona en pantalla completa exclusiva.</string>
@@ -319,6 +327,7 @@
 
     <!-- Queue / Now Playing -->
     <string name="queue_title">Cola</string>
+    <string name="queue_up_next">A continuación</string>
     <string name="queue_empty">La cola está vacía</string>
     <string name="queue_empty_hint">Reproduce una canción, álbum o playlist para empezar</string>
     <string name="queue_songs_count">%1$d canciones</string>
@@ -666,6 +675,8 @@
     <string name="add_n_to_playlist">Añadir %1$d a playlist</string>
     <string name="no_playlists_yet">No tienes playlists guardadas todavía.</string>
     <string name="added_to_playlist">Añadido%1$s a «%2$s»</string>
+    <string name="added_to_liked">Añadido%1$s a Me gusta</string>
+    <string name="no_editable_playlists">Solo tienes listas del sistema (Me gusta, mixes…). Crea una playlist local para añadir canciones.</string>
     <string name="playlist_created_with">Playlist «%1$s» creada con %2$d canciones</string>
     <string name="create_and_add">Crear y añadir</string>
     <string name="new_playlist">Nueva playlist</string>

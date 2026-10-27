@@ -263,7 +263,9 @@ class SyncUtils(
                         shuffleEndpointParams = playlist.shuffleEndpoint?.params,
                         radioEndpointParams = playlist.radioEndpoint?.params,
                         isLocal = existing?.isLocal ?: false,
-                        isAutoSync = existing?.isAutoSync ?: false
+                        // Por defecto las playlists vinculadas sincronizan (comportamiento histórico
+                        // del job); el usuario puede excluirlas una a una con el toggle de la pantalla.
+                        isAutoSync = existing?.isAutoSync ?: true
                     )
                     database.insertPlaylist(entity)
                 } catch (e: Exception) {
@@ -278,37 +280,46 @@ class SyncUtils(
     }
 
     /**
-     * Obtiene la lista completa de canciones de una playlist y sobrescribe la copia local. Esta es la
+     * Obtiene la lista completa de canciones de una playlist (paginando hasta agotar la
+     * continuación, con tope de seguridad) y sobrescribe la copia local. Esta es la
      * contraparte de [PlaylistRepository.addSongToPlaylist]/`removeSongFromPlaylist`, que envían las
      * ediciones locales a YouTube inmediatamente — para cuando esto se ejecuta, YouTube ya debería
      * reflejar cualquier cambio local, por lo que una obtención y reemplazo completos aquí es segura
      * (no una sobrescritura con pérdida de ediciones locales pendientes).
-     *
-     * Limitación: solo se obtiene la primera página de canciones (coincide con el resto de la carga
-     * de playlists de la aplicación); una playlist con más canciones de las que caben en una página
-     * no se reflejará completamente.
      */
     private suspend fun executeSinglePlaylist(playlistId: String, browseId: String) = withContext(Dispatchers.IO) {
         try {
-            val page = YouTube.playlist(browseId).getOrNull() ?: return@withContext
-            playlistRepository.savePlaylistWithSongs(page.playlist, page.songs)
+            val first = YouTube.playlist(browseId).getOrNull() ?: return@withContext
+            val allSongs = first.songs.toMutableList()
+            var token = first.songsContinuation?.takeIf { it.isNotBlank() }
+            // Paginar hasta completar (tope de seguridad): antes solo se guardaba la primera
+            // página y las playlists grandes quedaban parcialmente sincronizadas.
+            var pages = 1
+            while (token != null && pages < 20) {
+                val next = YouTube.playlistContinuation(token).getOrNull()
+                if (next == null) break
+                allSongs.addAll(next.songs)
+                token = next.continuation?.takeIf { it.isNotBlank() }
+                pages++
+                delay(50.milliseconds)
+            }
+            playlistRepository.savePlaylistWithSongs(first.playlist, allSongs)
         } catch (e: Exception) {
             Napier.e("Failed syncing playlist $playlistId ($browseId)", e)
         }
     }
 
     /**
-     * Vuelve a obtener cada playlist que está vinculada a una playlist real de YouTube (tiene un `browseId`),
-     * reconciliando cualquier edición hecha desde la aplicación/sitio de YouTube desde que MusicPlayer la vio
-     * por última vez. Los llamadores controlan esto con la configuración "Sincronizar con YouTube Music" —
-     * no hay un interruptor separado por playlist (la columna `isAutoSync` existe en el esquema pero nada
-     * la establece; esto opera en TODAS las playlists vinculadas en lugar de requerir una por una).
+     * Vuelve a obtener cada playlist vinculada con auto-sync activado, reconciliando cualquier
+     * edición hecha desde la aplicación/sitio de YouTube desde que MusicPlayer la vio por última
+     * vez. El interruptor por playlist vive en la pantalla de playlist; por defecto las
+     * vinculadas sincronizan (se excluyen con el toggle).
      */
     private suspend fun executeAutoSyncPlaylists() = withContext(Dispatchers.IO) {
         updateState { copy(currentOperation = "Syncing auto-sync playlists") }
         try {
             database.allPlaylists().first()
-                .filter { it.browseId != null }
+                .filter { it.browseId != null && it.isAutoSync }
                 .forEach { playlist ->
                     executeSinglePlaylist(playlist.id, playlist.browseId!!)
                     delay(50.milliseconds)

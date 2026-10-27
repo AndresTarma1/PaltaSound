@@ -511,12 +511,38 @@ class LibraryPlaylistsViewModel(
     }
 
     fun addSongToLocalPlaylist(playlistId: String, song: SongItem) {
+        // "Me gusta" no es una playlist con elementos: añadir ahí equivale a dar like,
+        // espejo del mapeo eliminar→unlike de PlaylistManagerViewModel.removeSongFromPlaylist.
+        if (playlistId == "LM") {
+            likeSongs(listOf(song))
+            return
+        }
         viewModelScope.launch {
             val resolvedSong = withContext(Dispatchers.IO){ song.withMissingMetadataResolved()}
             playlistRepository.addSongToPlaylist(playlistId, resolvedSong)
             mirrorAddToYtm(playlistId, resolvedSong)
         }
     }
+
+    /** Marca Me gusta (local + YouTube si hay sesión). Es la vía de "añadir a Me gusta". */
+    fun likeSongs(songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        viewModelScope.launch {
+            songs.forEach { song ->
+                val resolved = withContext(Dispatchers.IO) { song.withMissingMetadataResolved() }
+                playlistRepository.setSongLiked(resolved, true)
+            }
+            if (AccountManager.loginState.value) {
+                songs.forEach { song ->
+                    runCatching { YouTube.likeVideo(song.id, true) }
+                        .onFailure { Napier.w("Failed to like ${song.id}: ${it.message}") }
+                }
+            }
+        }
+    }
+
+    suspend fun isEditablePlaylist(playlistId: String): Boolean =
+        playlistRepository.isEditablePlaylist(playlistId)
 
     fun removeSongFromLocalPlaylist(playlistId: String, songId: String) {
         viewModelScope.launch {

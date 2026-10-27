@@ -17,6 +17,7 @@ import com.metrolist.innertube.pages.PlaylistPage
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,6 +73,14 @@ class PlaylistManagerViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
         )
+
+    /** Ultima sincronización con YouTube de la playlist abierta (null si nunca / es local). */
+    private val _lastSyncedAt = MutableStateFlow<Long?>(null)
+    val lastSyncedAt: StateFlow<Long?> = _lastSyncedAt.asStateFlow()
+
+    /** Hay un refresco en segundo plano en curso (stale-while-revalidate al abrir). */
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     /** Actualiza un campo de PlaylistState.Success de forma segura; no-op si el estado no es Success */
     private inline fun updateSuccess(transform: PlaylistState.Success.() -> PlaylistState.Success) {
@@ -170,6 +179,7 @@ class PlaylistManagerViewModel(
                 _songs.value = cachedSongs
                 _continuation.value = null
                 val saved = repository.isPlaylistSavedOnce(playlistId)
+                _lastSyncedAt.value = repository.getSavedAt(playlistId)
                 _uiState.value = PlaylistState.Success(
                     playlistPage = PlaylistPage(
                         playlist = cachedPlaylist,
@@ -180,6 +190,11 @@ class PlaylistManagerViewModel(
                     isFromCache = true,
                     isSaved = saved,
                 )
+                // Stale-while-revalidate: la caché se muestra al instante, pero si la playlist
+                // está vinculada a una real de YouTube se refresca en segundo plano para que
+                // "guardar" no signifique "congelar". LM se refresca por su propio id.
+                val refreshId = if (playlistId == "LM") "LM" else repository.getBrowseId(playlistId)
+                if (refreshId != null) refreshFromNetwork(playlistId, refreshId)
                 return@launch
             }
 
@@ -381,6 +396,7 @@ class PlaylistManagerViewModel(
                         playlist = state.playlistPage.playlist,
                         songs = allSongs
                     )
+                    _lastSyncedAt.value = repository.getSavedAt(playlistId)
                     updateSuccess { copy(isSaved = true) }
                     log.info("Playlist guardada localmente: $playlistId (${allSongs.size} canciones)")
                 } finally {
@@ -389,6 +405,50 @@ class PlaylistManagerViewModel(
             }
         }
     }
+
+    /**
+     * Refresca en segundo plano una playlist vinculada: primera página de YouTube, actualiza la
+     * vista y la copia local (y con ella la marca de sincronización). Mejor esfuerzo y
+     * silencioso: si falla, la caché sigue mandando.
+     */
+    private fun refreshFromNetwork(playlistId: String, remoteId: String) {
+        viewModelScope.launch {
+            if (_currentPlaylistId.value != playlistId) return@launch
+            _isRefreshing.value = true
+            try {
+                YouTube.playlist(remoteId)
+                    .onSuccess { page ->
+                        if (_currentPlaylistId.value != playlistId) return@onSuccess
+                        _songs.value = page.songs
+                        _continuation.value = page.songsContinuation?.takeIf { it.isNotBlank() }
+                        // Guardar bajo el id con el que se abrió (no el browseId remoto), para
+                        // no partir la caché cuando difieren.
+                        repository.savePlaylistWithSongs(
+                            playlist = page.playlist.copy(id = playlistId),
+                            songs = page.songs
+                        )
+                        _lastSyncedAt.value = repository.getSavedAt(playlistId)
+                        updateSuccess { copy(isFromCache = false) }
+                        log.info("Playlist refrescada desde YouTube: $playlistId (${page.songs.size} canciones)")
+                    }
+                    .onFailure {
+                        log.warning("Refresh de $playlistId falló, se mantiene caché: ${it.message}")
+                    }
+            } finally {
+                if (_currentPlaylistId.value == playlistId) _isRefreshing.value = false
+            }
+        }
+    }
+
+    fun observeAutoSync(playlistId: String): Flow<Boolean> = repository.observeAutoSync(playlistId)
+
+    fun setAutoSync(playlistId: String, enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setAutoSync(playlistId, enabled)
+        }
+    }
+
+    suspend fun getBrowseId(playlistId: String): String? = repository.getBrowseId(playlistId)
 
     fun downloadPlaylist() {
         viewModelScope.launch(Dispatchers.IO) {

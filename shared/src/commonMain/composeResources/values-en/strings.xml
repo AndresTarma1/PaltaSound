@@ -133,6 +133,14 @@
     <string name="sync_now">Sync now</string>
     <string name="sync_now_subtitle">Refreshes likes, albums, artists and playlists from your YouTube Music account.</string>
     <string name="sync_now_syncing">Syncing…</string>
+    <string name="auto_sync_playlist">Auto-sync</string>
+    <string name="auto_sync_playlist_subtitle">Keeps this playlist updated from YouTube Music</string>
+    <string name="sync_badge_local">Local copy</string>
+    <string name="sync_badge_just_now">Synced just now</string>
+    <string name="sync_badge_minutes">Synced %1$d min ago</string>
+    <string name="sync_badge_hours">Synced %1$d h ago</string>
+    <string name="sync_badge_days">Synced %1$d d ago</string>
+    <string name="sync_badge_updating">Updating…</string>
     <string name="section_overlay">Game overlay</string>
     <string name="overlay_enable">Enable overlay with global shortcut</string>
     <string name="overlay_enable_subtitle">Shows a mini window over your games (windowed or borderless) to control music without leaving. Does not work in exclusive fullscreen.</string>
@@ -311,6 +319,7 @@
 
     <!-- Queue / Now Playing -->
     <string name="queue_title">Play queue</string>
+    <string name="queue_up_next">Up next</string>
     <string name="queue_empty">The queue is empty</string>
     <string name="queue_empty_hint">Play a song, album or playlist to get started</string>
     <string name="queue_songs_count">%1$d songs</string>
@@ -643,6 +652,8 @@
     <string name="add_n_to_playlist">Add %1$d to playlist</string>
     <string name="no_playlists_yet">You have no saved playlists yet.</string>
     <string name="added_to_playlist">Added%1$s to \"%2$s\"</string>
+    <string name="added_to_liked">Added%1$s to Liked songs</string>
+    <string name="no_editable_playlists">You only have system shelves (Liked, mixes…). Create a local playlist to add songs.</string>
     <string name="playlist_created_with">Playlist \"%1$s\" created with %2$d songs</string>
     <string name="create_and_add">Create and add</string>
     <string name="new_playlist">New playlist</string>

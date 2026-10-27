@@ -23,6 +23,34 @@ class PlaylistRepository(
     private val userPreferences: UserPreferencesRepository,
 ) {
 
+    companion object {
+        /**
+         * Estanterías del sistema que YouTube no permite editar manualmente: "LM" (Me gusta, se
+         * maneja con likes), "SE" (episodios guardados), mezclas/radios ("RD...") y podcasts
+         * ("MPSP..."). Nunca son destino válido para añadir canciones.
+         */
+        fun isSystemShelf(playlistId: String): Boolean =
+            playlistId == "LM" || playlistId == "SE" ||
+                playlistId.startsWith("RD") || playlistId.startsWith("MPSP")
+
+        /** Subconjunto que además invalida el `browseId` para operaciones remotas (comportamiento histórico). */
+        private fun hasNoBrowseId(playlistId: String): Boolean =
+            playlistId.startsWith("LOCAL_") ||
+                playlistId == "LM" || playlistId == "SE" || playlistId.startsWith("RD")
+    }
+
+    /**
+     * ¿Puede el usuario añadir canciones a esta playlist? Locales siempre; estanterías del
+     * sistema nunca; playlists de YouTube solo si la fila sincronizada dice que son editables
+     * (sin fila conocida se asume editable para no bloquear listas propias aún no sincronizadas).
+     */
+    suspend fun isEditablePlaylist(playlistId: String): Boolean = withContext(Dispatchers.IO) {
+        if (playlistId.startsWith("LOCAL_")) return@withContext true
+        if (isSystemShelf(playlistId)) return@withContext false
+        return@withContext database.playlistQueries.playlistById(playlistId)
+            .executeAsOneOrNull()?.isEditable != 0L
+    }
+
     /**
      * El `browseId` de YouTube para una playlist local, o null si no está vinculada a una playlist
      * real de YT. Dos rutas independientes llegan aquí: la extracción de SavedPlaylists de [SyncUtils]
@@ -38,9 +66,87 @@ class PlaylistRepository(
      */
     suspend fun getBrowseId(playlistId: String): String? = withContext(Dispatchers.IO) {
         database.playlistQueries.playlistById(playlistId).executeAsOneOrNull()?.browseId
-            ?: playlistId.takeIf {
-                !it.startsWith("LOCAL_") && it != "LM" && it != "SE" && !it.startsWith("RD")
-            }
+            ?: playlistId.takeIf { !hasNoBrowseId(it) }
+    }
+
+    /** Marca/desmarca Me gusta a nivel local (bandera `liked`), creando la fila si no existe. */
+    suspend fun setSongLiked(song: SongItem, liked: Boolean) = withContext(Dispatchers.IO) {
+        if (!database.songQueries.songExists(song.id).executeAsOne()) {
+            database.songQueries.insertSongIfNotExists(
+                id = song.id,
+                title = song.title,
+                duration = song.duration?.toLong() ?: -1L,
+                thumbnailUrl = song.thumbnail,
+                albumId = song.album?.id,
+                albumName = song.album?.name,
+                explicit = if (song.explicit) 1L else 0L,
+                year = null,
+                date = null,
+                dateModified = null,
+                liked = if (liked) 1L else 0L,
+                likedDate = if (liked) System.currentTimeMillis() else null,
+                totalPlayTime = 0L,
+                inLibrary = null,
+                dateDownload = null,
+                isLocal = 0L,
+                libraryAddToken = null,
+                libraryRemoveToken = null,
+                lyricsOffset = 0L,
+                romanizeLyrics = 1L,
+                isAgeRestricted = 0L,
+                isDownloaded = 0L,
+                isUploaded = 0L,
+                isVideo = 0L
+            )
+        }
+        database.songQueries.updateSongLike(
+            if (liked) 1L else 0L,
+            if (liked) System.currentTimeMillis() else null,
+            song.id
+        )
+    }
+
+    suspend fun getSavedAt(playlistId: String): Long? = withContext(Dispatchers.IO) {
+        database.savedPlaylistQueries.selectById(playlistId).executeAsOneOrNull()?.savedAt
+    }
+
+    fun observeAutoSync(playlistId: String): Flow<Boolean> =
+        database.playlistQueries.playlistById(playlistId)
+            .asFlow()
+            .mapToOneOrNull(Dispatchers.IO)
+            .map { it?.isAutoSync == 1L }
+
+    /**
+     * Activa/desactiva la sincronización automática de una playlist vinculada. Si aún no hay
+     * fila `Playlist` (p. ej. guardada por marcador sin sincronización completa), la crea con
+     * los datos del guardado para que el job de auto-sync la recoja. Devuelve false si la
+     * playlist no está vinculada a ninguna real de YouTube.
+     */
+    suspend fun setAutoSync(playlistId: String, enabled: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val existing = database.playlistQueries.playlistById(playlistId).executeAsOneOrNull()
+        if (existing != null) {
+            database.playlistQueries.updateAutoSync(if (enabled) 1L else 0L, playlistId)
+            return@withContext true
+        }
+        val browseId = getBrowseId(playlistId) ?: return@withContext false
+        val saved = database.savedPlaylistQueries.selectById(playlistId).executeAsOneOrNull()
+        database.playlistQueries.insertPlaylist(
+            id = playlistId,
+            name = saved?.title ?: playlistId,
+            browseId = browseId,
+            createdAt = saved?.savedAt,
+            lastUpdateTime = System.currentTimeMillis(),
+            isEditable = 1L,
+            bookmarkedAt = null,
+            remoteSongCount = 0L,
+            playEndpointParams = null,
+            thumbnailUrl = saved?.thumbnail,
+            shuffleEndpointParams = null,
+            radioEndpointParams = null,
+            isLocal = 0L,
+            isAutoSync = if (enabled) 1L else 0L
+        )
+        true
     }
 
     suspend fun createPlaylist(playlist: Playlist) {
@@ -171,6 +277,11 @@ class PlaylistRepository(
     }
 
     suspend fun addSongToPlaylist(playlistId: String, song: SongItem) = withContext(Dispatchers.IO) {
+        // Las estanterías del sistema no admiten añadidos manuales ("LM" va por likes, ver
+        // LibraryPlaylistsViewModel). Salir sin escribir evita snapshots locales fantasma que
+        // nunca se sincronizarían.
+        if (isSystemShelf(playlistId)) return@withContext
+
         val alreadyExists = database.playlistSongMapQueries.selectByPlaylist(playlistId).executeAsList()
             .any { it.songId == song.id }
         if (alreadyExists) return@withContext

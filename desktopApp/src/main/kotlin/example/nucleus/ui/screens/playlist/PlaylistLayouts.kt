@@ -100,6 +100,10 @@ internal fun PlaylistLayout(
         isSaved = state.isSaved,
         isSaving = state.isSaving,
         isLoadingForPlay = state.isLoadingForPlay,
+        syncBadge = state.syncBadge,
+        autoSyncEnabled = state.autoSyncEnabled,
+        showAutoSync = state.showAutoSync,
+        onToggleAutoSync = actions.onToggleAutoSync,
     )
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -399,6 +403,10 @@ internal data class PlaylistInfoPanelControls(
     val isSaved: Boolean,
     val isSaving: Boolean,
     val isLoadingForPlay: Boolean,
+    val syncBadge: String? = null,
+    val autoSyncEnabled: Boolean? = null,
+    val showAutoSync: Boolean = false,
+    val onToggleAutoSync: ((Boolean) -> Unit)? = null,
 )
 
 @Composable
@@ -501,6 +509,58 @@ internal fun PlaylistInfoPanel(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+
+    // Estado de sincronización: copia local vs última actualización con YouTube.
+    if (controls.syncBadge != null) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = controls.syncBadge,
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    // Interruptor de sincronización automática (solo playlists guardadas y vinculadas).
+    if (controls.showAutoSync && controls.autoSyncEnabled != null) {
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Sync,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(Res.string.auto_sync_playlist),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.width(8.dp))
+            Switch(
+                checked = controls.autoSyncEnabled,
+                onCheckedChange = { controls.onToggleAutoSync?.invoke(it) },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
+            )
+        }
+        Text(
+            text = stringResource(Res.string.auto_sync_playlist_subtitle),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 
     Spacer(Modifier.height(28.dp))

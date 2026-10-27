@@ -14,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -39,6 +41,11 @@ data class PlaylistScreenState(
     val isSaved: Boolean = false,
     val isSaving: Boolean = false,
     val isLoadingForPlay: Boolean = false,
+    /** Texto del badge de sincronización (null = no mostrar). */
+    val syncBadge: String? = null,
+    /** Estado del toggle de auto-sync (null = no mostrar). */
+    val autoSyncEnabled: Boolean? = null,
+    val showAutoSync: Boolean = false,
 )
 
 
@@ -53,8 +60,20 @@ data class PlaylistActions(
     val onPlaySong: (Int) -> Unit,
     val onRemoveSongFromPlaylist: ((String) -> Unit)? = null,
     val onEditCover: (() -> Unit)? = null,
-    val isLocalPlaylist: Boolean = false
+    val isLocalPlaylist: Boolean = false,
+    val onToggleAutoSync: ((Boolean) -> Unit)? = null,
 )
+
+@Composable
+private fun syncAgoText(syncedAt: Long): String {
+    val diffMin = ((System.currentTimeMillis() - syncedAt) / 60000).coerceAtLeast(0)
+    return when {
+        diffMin < 1 -> stringResource(Res.string.sync_badge_just_now)
+        diffMin < 60 -> stringResource(Res.string.sync_badge_minutes, diffMin.toInt())
+        diffMin < 1440 -> stringResource(Res.string.sync_badge_hours, (diffMin / 60).toInt())
+        else -> stringResource(Res.string.sync_badge_days, (diffMin / 1440).toInt())
+    }
+}
 
 @Composable
 fun PlaylistScreenRoute(
@@ -104,12 +123,38 @@ fun PlaylistScreenRoute(
             // También es cierto para una lista de YouTube guardada (marcada): sus canciones se
             // almacenan localmente en caché también, y la eliminación se envía a la lista real
             // (ver PlaylistViewModel.removeSongFromPlaylist).
-            isLocalPlaylist = canEditPlaylist
+            isLocalPlaylist = canEditPlaylist,
+            onToggleAutoSync = { enabled ->
+                currentPlaylistId?.let { viewModel.setAutoSync(it, enabled) }
+            },
         )
     }
 
     val songs by viewModel.songs.collectAsState()
     val hasMoreSongs by viewModel.hasMoreSongs.collectAsState()
+    val lastSyncedAt by viewModel.lastSyncedAt.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+
+    // La pantalla de playlist solo muestra el toggle de auto-sync si está guardada y
+    // vinculada a una playlist real de YouTube (LM y locales quedan fuera).
+    var linkedBrowseId by remember(currentPlaylistId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentPlaylistId) {
+        linkedBrowseId = currentPlaylistId?.let { viewModel.getBrowseId(it) }
+    }
+    val showAutoSync = (successState?.isSaved == true) && linkedBrowseId != null
+    val autoSyncEnabled by remember(currentPlaylistId) {
+        if (currentPlaylistId != null) viewModel.observeAutoSync(currentPlaylistId)
+        else kotlinx.coroutines.flow.flowOf<Boolean?>(null)
+    }.collectAsState(initial = null)
+
+    val syncedAt = lastSyncedAt
+    val syncBadge = when {
+        successState?.isSaved != true -> null
+        isRefreshing -> stringResource(Res.string.sync_badge_updating)
+        currentPlaylistId?.startsWith("LOCAL_") == true -> stringResource(Res.string.sync_badge_local)
+        syncedAt == null -> null
+        else -> syncAgoText(syncedAt)
+    }
 
 
     val state = PlaylistScreenState(
@@ -118,6 +163,9 @@ fun PlaylistScreenRoute(
         isSaved = successState?.isSaved ?: false,
         isSaving = successState?.isSaving ?: false,
         isLoadingForPlay = successState?.isLoadingForPlay ?: false,
+        syncBadge = syncBadge,
+        autoSyncEnabled = autoSyncEnabled,
+        showAutoSync = showAutoSync,
     )
 
 

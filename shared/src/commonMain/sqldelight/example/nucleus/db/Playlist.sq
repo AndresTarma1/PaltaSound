@@ -38,6 +38,9 @@ WHERE id = ?;
 updatePlaylistBookmark:
 UPDATE Playlist SET bookmarkedAt = ? WHERE id = ?;
 
+updateAutoSync:
+UPDATE Playlist SET isAutoSync = ? WHERE id = ?;
+
 deletePlaylist:
 DELETE FROM Playlist WHERE id = ?;
 

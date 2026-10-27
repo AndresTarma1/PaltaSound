@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -22,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
@@ -162,9 +164,16 @@ fun AddToPlaylistDialog(
     playlistsViewModel: LibraryPlaylistsViewModel,
     onDismiss: () -> Unit
 ) {
-    // Todas las playlists guardadas (locales + guardadas de YouTube) — añadir a una playlist de
-    // YouTube envía el cambio a la playlist real de la cuenta (PlaylistRepository.addSongToPlaylist).
+    // Solo destinos editables (locales + propias de la cuenta). Las estanterías del sistema
+    // (mixes, episodios, podcasts…) se ocultan: YouTube no permite añadir ahí. "Me gusta"
+    // se ofrece aparte porque añadir ahí equivale a dar like, no a insertar en una lista.
     val savedPlaylists by playlistsViewModel.savedPlaylists.collectAsState()
+    var editablePlaylists by remember { mutableStateOf<List<com.metrolist.innertube.models.PlaylistItem>>(emptyList()) }
+    var likedPlaylist by remember { mutableStateOf<com.metrolist.innertube.models.PlaylistItem?>(null) }
+    LaunchedEffect(savedPlaylists) {
+        editablePlaylists = savedPlaylists.filter { playlistsViewModel.isEditablePlaylist(it.id) }
+        likedPlaylist = savedPlaylists.firstOrNull { it.id == "LM" }
+    }
     var newPlaylistName by remember { mutableStateOf("") }
     var isCreatingNew by remember { mutableStateOf(false) }
     val snackbar = LocalSnackbarHostState.current
@@ -190,17 +199,23 @@ fun AddToPlaylistDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-            } else if (savedPlaylists.isEmpty()) {
+            } else if (editablePlaylists.isEmpty() && likedPlaylist == null) {
                 Text(
-                    stringResource(Res.string.no_playlists_yet),
+                    text = stringResource(
+                        if (savedPlaylists.isEmpty()) Res.string.no_playlists_yet
+                        else Res.string.no_editable_playlists
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
+                // "Me gusta" primero (dar like), luego los destinos editables.
+                val rows = listOfNotNull(likedPlaylist) + editablePlaylists
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp, max = 260.dp)
                 ) {
-                    items(savedPlaylists) { playlist ->
+                    items(rows) { playlist ->
+                        val isLikedRow = playlist.id == "LM"
                         var isHovered by remember { mutableStateOf(false) }
                         Row(
                             modifier = Modifier
@@ -212,21 +227,37 @@ fun AddToPlaylistDialog(
                                 .onHover{ isHovered = it}
                                 .clip(AppShapes.small)
                                 .clickable {
-                                    songs.forEach { playlistsViewModel.addSongToLocalPlaylist(playlist.id, it) }
-                                    scope.launch {
-                                        val addedMsg = getString(Res.string.added_to_playlist, addSuffix, playlist.title)
-                                        snackbar.showSnackbar(addedMsg)
+                                    if (isLikedRow) {
+                                        playlistsViewModel.likeSongs(songs)
+                                        scope.launch {
+                                            snackbar.showSnackbar(getString(Res.string.added_to_liked, addSuffix))
+                                        }
+                                    } else {
+                                        songs.forEach { playlistsViewModel.addSongToLocalPlaylist(playlist.id, it) }
+                                        scope.launch {
+                                            val addedMsg = getString(Res.string.added_to_playlist, addSuffix, playlist.title)
+                                            snackbar.showSnackbar(addedMsg)
+                                        }
                                     }
                                     onDismiss()
                                 }
                                 .padding(vertical = 12.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            MusicPlayerImage(
-                                url = playlist.thumbnail,
-                                contentDescription = playlist.description,
-                                modifier = Modifier.size(32.dp)
-                            )
+                            if (isLikedRow) {
+                                Icon(
+                                    imageVector = Icons.Filled.Favorite,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp).padding(4.dp)
+                                )
+                            } else {
+                                MusicPlayerImage(
+                                    url = playlist.thumbnail,
+                                    contentDescription = playlist.description,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
                             Spacer(Modifier.width(16.dp))
                             Text(
                                 text = playlist.title,

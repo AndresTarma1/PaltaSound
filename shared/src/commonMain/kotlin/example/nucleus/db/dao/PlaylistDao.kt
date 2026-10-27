@@ -72,6 +72,15 @@ class PlaylistDao(private val database: MusicPlayerDatabase) {
         database.playlistQueries.deletePlaylist(id)
     }
 
+    suspend fun setAutoSync(id: String, enabled: Boolean) = withContext(Dispatchers.IO) {
+        database.playlistQueries.updateAutoSync(if (enabled) 1L else 0L, id)
+    }
+
+    fun observePlaylist(id: String): Flow<PlaylistEntity?> =
+        database.playlistQueries.playlistById(id, ::mapPlaylist)
+            .asFlow()
+            .mapToOneOrNull(Dispatchers.IO)
+
     /** Removes bookmarked remote playlists (isLocal = 0); keeps the user's local playlists. */
     suspend fun deleteRemotePlaylists() = withContext(Dispatchers.IO) {
         database.playlistQueries.deleteRemotePlaylists()
