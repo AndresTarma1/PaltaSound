@@ -142,7 +142,7 @@ PaltaSound es software libre de principio a fin: cada línea de este repositorio
 
 ### Relación con Metrolist
 
-PaltaSound nace inspirado en [Metrolist](https://github.com/MetrolistGroup/Metrolist) (reproductor de YouTube Music para Android): comparte su cliente de API (`innertube/`, sincronizado como subtree) y la filosofía de app ligera centrada en la música. Todo lo demás es propio y de escritorio: ventana nativa con Tao, reproducción con MPV/libmpv, letras sincronizadas multi-fuente, escucha compartida en tiempo real, temas dinámicos por carátula, auto-actualización y empaquetado NSIS/DEB/RPM. Si te gusta este proyecto, pásate también por el original.
+PaltaSound nace inspirado en [Metrolist](https://github.com/MetrolistGroup/Metrolist) (reproductor de YouTube Music para Android): comparte su cliente de API (`innertube/`, sincronizado como subtree) y la filosofía de app ligera centrada en la música. Todo lo demás es propio y de escritorio: ventana nativa con Tao (NucleusFramework), reproducción con MPV/libmpv, letras sincronizadas multi-fuente, escucha compartida en tiempo real, temas dinámicos por carátula, auto-actualización y empaquetado NSIS/DEB/RPM. Si te gusta este proyecto, pásate también por el original.
 
 ---
 
