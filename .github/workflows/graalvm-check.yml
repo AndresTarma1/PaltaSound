@@ -12,8 +12,8 @@ name: GraalVM native check
 # más rápido que empaquetar NSIS. El instalador se sigue validando en los tags.
 # Se compila CON motores JS: GraalJS ya no existe en el proyecto (era el que
 # rompía el uber-jar con Truffle/module-path) y QuickJS trae sus propios
-# metadatos GraalVM que Nucleus fusiona. Si este check está verde, el release
-# puede dejar de pasar `-PjsEngines=false`.
+# metadatos GraalVM que Nucleus fusiona. Desde que validó en verde, el release
+# también compila el nativo con motores (sin `-PjsEngines=false`).
 
 on:
   pull_request:

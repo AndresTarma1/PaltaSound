@@ -99,10 +99,9 @@ kotlin {
             // El único motor actual es QuickJS (GraalJS/Truffle, que era lo que rompía
             // el uber-jar con module-path y JNI$JNIEnv en GraalVM 25.2.4/25.3.4.1, ya no
             // está en el proyecto). QuickJS trae sus propios metadatos GraalVM
-            // (META-INF/native-image en quickjs-kt-jvm) que Nucleus fusiona, así que
-            // `-PjsEngines=false` es hoy una precaución pendiente de validar con un
-            // native-image real (ver .github/workflows/graalvm-check.yml), no un
-            // bloqueo verificado.
+            // (META-INF/native-image en quickjs-kt-jvm) que Nucleus fusiona, y
+            // graalvm-check.yml ya validó el nativo con motores: `-PjsEngines=false`
+            // queda como vía de escape si alguna versión futura de QuickJS lo rompiera.
             // En runtime la ausencia se detecta sola: `QuickJs.create()` lanza
             // LinkageError (capturado en ParsedScriptSolver.create). Sin motores, el
             // cipher web queda degradado en nativo y la reproducción tira de otros
