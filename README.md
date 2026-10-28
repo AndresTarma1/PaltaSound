@@ -15,7 +15,7 @@
   ![Plataforma](https://img.shields.io/badge/Linux-alpha-FCC624?logo=linux&logoColor=black)
   ![UI](https://img.shields.io/badge/Compose-Multiplatform-4285F4?logo=jetpackcompose&logoColor=white)
   ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?logo=kotlin&logoColor=white)
-  ![Versión](https://img.shields.io/badge/versión-0.8.2-orange)
+  ![Versión](https://img.shields.io/badge/versión-0.9.0-orange)
   ![Licencia](https://img.shields.io/badge/licencia-GPL--3.0-blue)
 
   [Descargar](../../releases) · [Reportar un problema](../../issues)

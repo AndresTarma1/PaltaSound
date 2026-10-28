@@ -176,7 +176,7 @@ nucleus.application {
         enableAotCache = findProperty("aotCache") != "false"
         appName = "PaltaSound"
         packageName = "PaltaSound"
-        packageVersion = "0.8.2"
+        packageVersion = "0.9.0"
         vendor = "Tarma"
         homepage = "https://github.com/AndresTarma1/PaltaSound"
 

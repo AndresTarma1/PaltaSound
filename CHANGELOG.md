@@ -2,6 +2,41 @@
 
 Todas las versiones de PaltaSound. Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [0.9.0] - 2026-10-27
+
+### Añadido
+
+- **Cola "Up Next" expresiva fuera del Now Playing**: hero "Sonando ahora" (cover 56dp con ecualizador vivo + título con morph al cambiar de tema, sin controles), sección "A continuación" con conteo, filas numeradas tabulares y degradado ambiental del `vibrant` de la carátula (animado). Contenedor unificado en ambos modos (`PlaybackQueuePanel.kt:51`, `QueueItem.kt:57`).
+- **Sincronización real al guardar playlists**: stale-while-revalidate al abrir (muestra caché al instante y refresca en segundo plano) + badge de estado ("Actualizando…", "Sincronizada hace X", "Copia local") (`PlaylistManagerViewModel.kt:184`, `PlaylistScreen.kt:162`).
+- **Modal "Configurar playlist"** (engranaje en el hero): renombrar (local + push remoto si hay vínculo y sesión), cambiar portada y toggle de sincronización automática (`PlaylistSettingsDialog.kt:1`, `PlaylistScreen.kt:110`).
+- **Auto-sync por playlist**: columna `isAutoSync` cableada (toggle en el modal), job filtrado por flag con valor por defecto ON para vinculadas (comportamiento previo) y refresco **paginado** hasta 20 páginas; "Me gusta" se refresca en la sincronización global si está guardada (`SyncUtils.kt:302`, `Playlist.sq:41`).
+- **Diálogo "Añadir a playlist" honesto**: solo destinos editables (locales + propias, regla central `isEditablePlaylist`); "Me gusta" aparece como acción de like (mapeo añadir→like, espejo del eliminar→unlike) y aviso si solo hay estanterías del sistema (`SongDownloadComponents.kt:160`, `LibraryViewModel.kt:513`).
+- **Solver de cipher nativo hint-free con QuickJS** (`NativePlayerCipher.kt:1`, `NativePlayerScriptAnalyzer.kt:1`): evalúa el player.js con stubs, resuelve firma + `n` y se valida con probe. Tolera señuelos `set("alr","yes")` previos a la función real (player `6b2fce74`) y llamadas computadas `a[ba[19]]`. Se eliminan EjsCipherSolver y sus tests; GraalJS/Truffle salen del proyecto.
+- **CI `graalvm-check.yml`**: compila `nativeImageCompile` con motores en PRs (paths relevantes) y manual pre-tag, para no romper el nativo al taggear (`.github/workflows/graalvm-check.yml:1`).
+- **Espejo ytm-sync con fila de vínculo**: `linkLocalToRemote` + `mirrorRemoteIds`; la biblioteca oculta el remoto espejo en vez de mostrar duplicados, y el refresh guarda bajo el id con el que se abrió (`PlaylistRepository.kt:244`, `PlaylistsTab.kt:107`).
+
+### Cambiado
+
+- **Migración a backend Tao único (nucleus-3.0-dev)**: fuera `NucleusBackend`, AWT/Swing (`EventQueue`, `SwingUtilities`, `GraphicsEnvironment`, `Toolkit`), propiedad `compose.swing.render.on.graphics` y flag `-Djava.awt.headless`; portapapeles vía `LocalClipboardManager`, fuentes del sistema vía Skia `FontMgr`, thread helpers a `Dispatchers.Main`; `TaskBarMediaWidget` deshabilitado (requería `ComposeWindow`/EDT) y dependencias `kotlinx-coroutines-swing`/`jbr` eliminadas (`main.kt:16`, `desktopApp/build.gradle.kts:8`).
+- **Back global único sin AWT**: eliminado el `AWTEventListener` global (el botón 4 ya lo cubre `pointerInput` con `PointerButtons(8)`); un solo listener de Escape/Back en `KeyDown` en la raíz — se acabó el doble-back de playlist→artista (`Navigation.kt:106`).
+- **AppUserModelID delegado en Nucleus** y puente SMTC propio retirado (`smtc-bridge/` y su DLL eliminados; el `.lnk` ya lleva el AUMID de Nucleus).
+- **Propiedad de playlists**: renombrar/quitar/portada solo en lo propio (locales siempre; guardadas solo si YouTube o la fila sincronizada dicen editable). "Me gusta" y estanterías quedan fuera salvo quitar→unlike (`PlaylistScreen.kt:158`).
+- **README**: historia open source (GPL-3.0, sin telemetría, datos locales), relación con Metrolist ampliada y capturas al día.
+
+### Corregido
+
+- Añadir a "Me gusta" creaba una entrada local fantasma que nunca se sincronizaba; ahora da like de verdad (local + `YouTube.likeVideo`).
+- El diálogo de añadir ofrecía estanterías no editables (LM/SE/RD/MPSP); ahora se filtran con aviso para crear una local.
+- Guardar dejaba un snapshot muerto; ahora refresca al abrir y en la sincronización global.
+- Cambiar portada fallaba en silencio (403 de `edit_playlist` en listas ajenas/locales/sin login): solo se ofrece donde puede funcionar y avisa con snackbar de éxito/error.
+- `Native analyzer: signature expression not found` con el player rotado (señuelos `alr` delante de la firma real).
+- Guardar una playlist remota con continuación partía la caché entre ids; el refresh persiste bajo el id abierto.
+
+### Optimizado
+
+- Cliente HTTP auxiliar unificado (`AppHttpClient`, 4 instancias CIO → 1), `AccountManager.fetchYtCfg` sin churn de clientes, `MediaSessionCoverCache` LRU de 256, eliminado `NetworkConfig` muerto; flags de memoria (`-XX:-UsePerfData`, `skiko.gpu.resourceCacheLimit` unificado en 32M en arranque y reinicio).
+- Hover de filas de biblioteca restaurado sin la escala (`DesktopInteraction.kt:1`).
+
 ## [0.8.2] - 2026-10-03
 
 ### Añadido
