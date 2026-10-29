@@ -148,11 +148,13 @@ fun NucleusApplicationScope.App(
     userPreferences: UserPreferencesRepository,
     onExit: () -> Unit,
     windowState: WindowState,
+    /** Arrancar con la ventana oculta (lanzamiento al iniciar sesión → directo a la bandeja). */
+    startHidden: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
-    var isVisible by remember { mutableStateOf(true) }
+    var isVisible by remember { mutableStateOf(!startHidden) }
     val minimizeToTray by remember { userPreferences.minimizeToTray }.collectAsState(false)
     val trimMemoryOnTray by remember(userPreferences) { userPreferences.trimMemoryOnTray }.collectAsState(true)
 

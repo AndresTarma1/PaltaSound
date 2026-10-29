@@ -55,8 +55,15 @@ import org.koin.core.context.GlobalContext.startKoin
  * muta el mundo ocurre antes, una sola vez, en el cuerpo de `main`.
  */
 @OptIn(ExperimentalDecomposeApi::class)
-fun main() {
+fun main(args: Array<String>) {
     // ─────────── Fase 1: arranque, una sola vez, FUERA de composicion ───────────
+
+    // Si el SO nos lanzó al iniciar sesión (AutoLaunch escribe `--nucleus-autostart`
+    // en la entrada de Run), arrancamos directo en la bandeja: sin ventana y sin
+    // botón en la barra de tareas. En dev siempre es false (no hay falsos positivos).
+    val startedAtLogin = runCatching {
+        dev.nucleusframework.autolaunch.AutoLaunch.wasStartedAtLogin(args)
+    }.getOrDefault(false)
 
     // Configuración inicial
     DecomposeSettings.update { DecomposeSettings(mainThreadCheckEnabled = false) }
@@ -150,6 +157,7 @@ fun main() {
             userPreferences = userPreferencesRepository,
             windowState = windowState,
             onExit = { lifecycleManager.cleanUpAndExit() },
+            startHidden = startedAtLogin,
         )
     }
 }
