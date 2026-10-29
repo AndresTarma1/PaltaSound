@@ -81,6 +81,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          # Sin esto, setup-java reutiliza el JDK del tool-cache del runner
+          # (en el 0.9.0 cogió el 25.0.4, anterior al parche eMudhra). Con esto
+          # siempre baja el último parche disponible.
 
       - name: Setup Gradle (cache)
         uses: gradle/actions/setup-gradle@v4
