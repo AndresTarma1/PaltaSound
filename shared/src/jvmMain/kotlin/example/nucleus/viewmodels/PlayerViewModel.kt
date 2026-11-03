@@ -677,6 +677,11 @@ class PlayerViewModel(
         playerService.togglePlayPause()
     }
 
+    /** Pausa la música sin alterar la cola (usado al abrir un vídeo de YouTube). */
+    fun pause() {
+        if (playerService.hasLoadedMedia()) playerService.pause()
+    }
+
     fun seekTo(millis: Long) {
         playerService.seekTo(millis)
         _seekEvents.tryEmit(millis)

@@ -59,6 +59,7 @@ import dev.nucleusframework.window.styling.TitleBarStyle
 import example.nucleus.bootstrap.CrashReportDialog
 import example.nucleus.data.account.AccountManager
 import example.nucleus.data.repository.AppLocale
+import example.nucleus.data.repository.AppMode
 import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.CrashReport
 import example.nucleus.data.repository.CrashReportRepository
@@ -72,6 +73,7 @@ import example.nucleus.navigation.ScreenConfig
 import example.nucleus.overlay.GlobalHotkeyManager
 import example.nucleus.overlay.HotkeyCombo
 import example.nucleus.player.PlaybackState
+import example.nucleus.player.YouTubePlayerService
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.ui.components.CoilSetup
@@ -248,8 +250,11 @@ fun NucleusApplicationScope.App(
         ArtworkColors.Default
     }
     val themeMode by remember(userPreferences) { userPreferences.themeMode }.collectAsState(ThemeMode.SYSTEM)
+    val appMode by remember(userPreferences) { userPreferences.appMode }.collectAsState(AppMode.MUSIC)
     val youtubeRegion by remember(userPreferences) { userPreferences.youtubeRegion }.collectAsState(YouTubeRegion.SYSTEM)
     val animationsEnabled by remember(userPreferences) { userPreferences.animationsEnabled }.collectAsState(true)
+    val youtubePlayerService: YouTubePlayerService = koinInject()
+    val youtubeFullscreen by youtubePlayerService.fullscreen.collectAsState()
 
     if (!isVisible || minimizeToTray) {
         TrayCustom(
@@ -427,10 +432,15 @@ fun NucleusApplicationScope.App(
                                         style = titleBarStyle
                                     ) {
                                         DesktopTitleBar(
-                                            currentSong = currentSong?.title,
-                                            isPlaying = isPlaying,
+                                            currentSong = currentSong?.title
+                                                ?.takeIf { appMode == AppMode.MUSIC },
+                                            isPlaying = isPlaying && appMode == AppMode.MUSIC,
                                             isLoggedIn = isLoggedIn,
                                             accountInfo = accountInfo,
+                                            appMode = appMode,
+                                            onModeChange = { mode ->
+                                                scope.launch { userPreferences.setAppMode(mode) }
+                                            },
                                             ytmSyncEnabled = ytmSyncEnabled,
                                             isSyncing = syncState.overallStatus is example.nucleus.utils.SyncStatus.Syncing,
                                             isOfflineMode = offlineMode,
@@ -457,7 +467,9 @@ fun NucleusApplicationScope.App(
 
                                         // Fuera de Now Playing la barra va APILADA arriba, dentro de la
                                         // columna: reserva su alto y el contenido empieza debajo.
-                                        if (!isOnNowPlaying) {
+                                        // En fullscreen de vídeo tampoco se compone: el contenido
+                                        // llena la ventana y se sale con Esc o con el botón del vídeo.
+                                        if (!isOnNowPlaying && !youtubeFullscreen) {
                                             titleBar()
                                             if (isSquareLayout) {
                                                 HorizontalDivider(
@@ -489,7 +501,8 @@ fun NucleusApplicationScope.App(
                                         key(appLocale) {
                                             NavigationDesktop(
                                                 rootComponent = rootComponent,
-                                                userPreferences = userPreferences
+                                                userPreferences = userPreferences,
+                                                appMode = appMode,
                                             )
                                         }
                                     }

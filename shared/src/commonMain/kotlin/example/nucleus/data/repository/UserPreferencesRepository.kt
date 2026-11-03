@@ -31,6 +31,14 @@ enum class ThemeMode {
     SYSTEM, DARK, LIGHT
 }
 
+/**
+ * Modo principal de la aplicación: música (YouTube Music) o vídeo (YouTube).
+ * Cada uno tiene su propia barra de navegación y su pantalla inicial.
+ */
+enum class AppMode {
+    MUSIC, YOUTUBE
+}
+
 /** Qué tan oscuras son las superficies del tema oscuro. DIM = gris oscuro teñido, BLACK = negro puro (AMOLED). */
 enum class DarkLevel {
     DIM, BLACK
@@ -212,6 +220,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
     private object PreferencesKeys {
         val AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val APP_MODE = stringPreferencesKey("app_mode")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val HIGH_RES_COVER = booleanPreferencesKey("high_res_cover")
         val CROSSFADE = booleanPreferencesKey("crossfade")
@@ -656,6 +665,19 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         } catch (e: Exception) {
             ThemeMode.DARK
         }
+    }
+
+    /** Música o YouTube principal; se conserva entre reinicios. */
+    val appMode: Flow<AppMode> = dataStore.data.map { preferences ->
+        try {
+            AppMode.valueOf(preferences[PreferencesKeys.APP_MODE] ?: AppMode.MUSIC.name)
+        } catch (_: Exception) {
+            AppMode.MUSIC
+        }
+    }
+
+    suspend fun setAppMode(mode: AppMode) {
+        dataStore.edit { it[PreferencesKeys.APP_MODE] = mode.name }
     }
 
     val dynamicColorFromArtwork: Flow<Boolean> = dataStore.data.map { it[PreferencesKeys.DYNAMIC_COLOR] ?: false }

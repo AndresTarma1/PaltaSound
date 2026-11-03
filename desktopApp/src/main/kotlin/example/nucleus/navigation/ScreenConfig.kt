@@ -39,4 +39,13 @@ sealed class ScreenConfig {
 
     @Serializable
     data class YouTubeBrowse(val browseId: String, val params: String? = null) : ScreenConfig()
+
+    @Serializable
+    data object YouTubeHome : ScreenConfig()
+
+    @Serializable
+    data object YouTubeShorts : ScreenConfig()
+
+    @Serializable
+    data class YouTubeWatch(val videoId: String) : ScreenConfig()
 }

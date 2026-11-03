@@ -38,6 +38,9 @@ class RootComponent(
             is ScreenConfig.Playlist -> Child.Playlist(PlaylistComponent(componentContext, config.playlistId, get()))
             is ScreenConfig.Artist -> Child.Artist(ArtistComponent(componentContext, config.artistId, get()))
             is ScreenConfig.YouTubeBrowse -> Child.YouTubeBrowse(YouTubeBrowseComponent(componentContext, config.browseId, config.params, get()))
+            is ScreenConfig.YouTubeHome -> Child.YouTubeHome(YouTubeHomeComponent(componentContext, get()))
+            is ScreenConfig.YouTubeShorts -> Child.YouTubeShorts(YouTubeHomeComponent(componentContext, get()))
+            is ScreenConfig.YouTubeWatch -> Child.YouTubeWatch(YouTubeWatchComponent(componentContext, config.videoId, get()))
         }
     }
 
@@ -70,6 +73,9 @@ class RootComponent(
             is ScreenConfig.Home -> get<HomeViewModel>().forceReload()
             is ScreenConfig.Search -> get<SearchViewModel>().refresh()
             is ScreenConfig.Library -> get<LibraryViewModel>().refreshYtmLibrary()
+            is ScreenConfig.YouTubeHome,
+            is ScreenConfig.YouTubeShorts,
+            -> get<YouTubeHomeViewModel>().refreshHome(force = true)
             else -> {
                 navigation.navigate { stack ->
                     val dropped = stack.dropLast(1)
@@ -96,6 +102,9 @@ class RootComponent(
         data class Playlist(val component: PlaylistComponent) : Child()
         data class Artist(val component: ArtistComponent) : Child()
         data class YouTubeBrowse(val component: YouTubeBrowseComponent) : Child()
+        data class YouTubeHome(val component: YouTubeHomeComponent) : Child()
+        data class YouTubeShorts(val component: YouTubeHomeComponent) : Child()
+        data class YouTubeWatch(val component: YouTubeWatchComponent) : Child()
     }
 }
 
@@ -174,6 +183,29 @@ class YouTubeBrowseComponent(
         viewModel.load(browseId, params)
         lifecycle.subscribe(object : Lifecycle.Callbacks {
             override fun onDestroy() { viewModel.dispose() }
+        })
+    }
+}
+
+class YouTubeHomeComponent(
+    componentContext: ComponentContext,
+    val viewModel: YouTubeHomeViewModel,
+) : ComponentContext by componentContext
+
+class YouTubeWatchComponent(
+    componentContext: ComponentContext,
+    val videoId: String,
+    val viewModel: YouTubeWatchViewModel,
+) : ComponentContext by componentContext {
+    init {
+        viewModel.load(videoId)
+        lifecycle.subscribe(object : Lifecycle.Callbacks {
+            override fun onDestroy() {
+                // Shared singleton ViewModel: stop playback, but keep it alive for
+                // the next watch screen. Pass the id so a late teardown cannot
+                // cancel the next video.
+                viewModel.stopPlayback(videoId)
+            }
         })
     }
 }

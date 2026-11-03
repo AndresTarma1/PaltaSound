@@ -75,4 +75,19 @@ sealed class Route {
         override val label = null
         override val icon = null
     }
+
+    object YouTubeHome : Route() {
+        override val label = "YouTube"
+        override val icon = null
+    }
+
+    object YouTubeShorts : Route() {
+        override val label = "Shorts"
+        override val icon = null
+    }
+
+    data class YouTubeWatch(val videoId: String) : Route() {
+        override val label = null
+        override val icon = null
+    }
 }

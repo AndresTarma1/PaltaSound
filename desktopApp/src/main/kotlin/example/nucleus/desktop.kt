@@ -16,6 +16,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
@@ -52,6 +56,7 @@ import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.AccountInfo
 import dev.nucleusframework.composenativetray.tray.api.Tray
+import example.nucleus.data.repository.AppMode
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -94,6 +99,8 @@ fun TitleBarScope.DesktopTitleBar(
     isPlaying: Boolean,
     isLoggedIn: Boolean,
     accountInfo: AccountInfo?,
+    appMode: AppMode,
+    onModeChange: (AppMode) -> Unit,
     ytmSyncEnabled: Boolean,
     isSyncing: Boolean,
     isOfflineMode: Boolean,
@@ -129,14 +136,14 @@ fun TitleBarScope.DesktopTitleBar(
         )
     }
 
-    // El menú de sincronización/cuenta solo tiene sentido con sesión iniciada: sin login no hay
-    // nada que sincronizar (la cuenta es una cookie de YouTube Music).
-    if (isLoggedIn) {
-        Box(modifier = Modifier.align(Alignment.End).padding(end = 4.dp)) {
+    // Cuenta + selector de modo. Sin sesión el menú sigue disponible para
+    // cambiar entre Música y YouTube; el bloque de sincronización se oculta.
+    Box(modifier = Modifier.align(Alignment.End).padding(end = 4.dp)) {
         var showMenu by remember { mutableStateOf(false) }
         IconButton(
             modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-            onClick = { showMenu = true }) {
+            onClick = { showMenu = true },
+        ) {
             if (isSyncing) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
             } else if (accountInfo?.thumbnailUrl != null) {
@@ -147,10 +154,16 @@ fun TitleBarScope.DesktopTitleBar(
                     shape = CircleShape,
                     placeholderType = PlaceholderType.ARTIST,
                 )
-            } else {
+            } else if (isLoggedIn) {
                 Icon(
                     if (ytmSyncEnabled) Icons.Rounded.CloudSync else Icons.Rounded.CloudOff,
                     contentDescription = stringResource(Res.string.ytm_sync),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Icon(
+                    Icons.Filled.Person,
+                    contentDescription = stringResource(Res.string.nav_account),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -189,26 +202,50 @@ fun TitleBarScope.DesktopTitleBar(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             }
             DropdownMenuItem(
-                text = { Text(stringResource(Res.string.ytm_sync)) },
-                trailingIcon = { Switch(checked = ytmSyncEnabled, onCheckedChange = null) },
-                onClick = { onToggleSync(!ytmSyncEnabled) },
+                text = { Text(stringResource(Res.string.mode_music)) },
+                leadingIcon = { Icon(Icons.Filled.MusicNote, contentDescription = null) },
+                trailingIcon = {
+                    if (appMode == AppMode.MUSIC) Icon(Icons.Filled.Check, contentDescription = null)
+                },
+                onClick = {
+                    onModeChange(AppMode.MUSIC)
+                    showMenu = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.mode_youtube)) },
+                leadingIcon = { Icon(Icons.Filled.PlayCircle, contentDescription = null) },
+                trailingIcon = {
+                    if (appMode == AppMode.YOUTUBE) Icon(Icons.Filled.Check, contentDescription = null)
+                },
+                onClick = {
+                    onModeChange(AppMode.YOUTUBE)
+                    showMenu = false
+                },
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            DropdownMenuItem(
-                text = { Text(stringResource(if (isSyncing) Res.string.sync_now_syncing else Res.string.sync_now)) },
-                leadingIcon = {
-                    if (isSyncing) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    else Icon(Icons.Rounded.Sync, contentDescription = null)
-                },
-                enabled = !isSyncing,
-                onClick = { onSyncNow(); showMenu = false },
-            )
+            if (isLoggedIn && appMode == AppMode.MUSIC) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.ytm_sync)) },
+                    trailingIcon = { Switch(checked = ytmSyncEnabled, onCheckedChange = null) },
+                    onClick = { onToggleSync(!ytmSyncEnabled) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(if (isSyncing) Res.string.sync_now_syncing else Res.string.sync_now)) },
+                    leadingIcon = {
+                        if (isSyncing) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        else Icon(Icons.Rounded.Sync, contentDescription = null)
+                    },
+                    enabled = !isSyncing,
+                    onClick = { onSyncNow(); showMenu = false },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.offline_mode)) },
                 trailingIcon = { Switch(checked = isOfflineMode, onCheckedChange = null) },
                 onClick = { onToggleOfflineMode(!isOfflineMode) },
             )
-        }
         }
     }
 
