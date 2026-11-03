@@ -328,7 +328,7 @@ fun MiniPlayer(
                     if (useHazeDocked) {
                         val style = HazeMaterials.ultraThin(containerColor = colorScheme.surfaceContainer)
                         Modifier.hazeBlur(
-                            input = HazeInput.Sources(hazeState!!),
+                            input = HazeInput.Sources(hazeState),
                             style = style,
                         )
                     } else Modifier
