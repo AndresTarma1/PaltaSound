@@ -41,6 +41,8 @@ import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AccountInfo
 import com.metrolist.innertube.models.YouTubeLocale
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.application.NucleusDecoratedWindowScope
@@ -281,6 +283,9 @@ fun NucleusApplicationScope.App(
 
     val uiScaleFactor by userPreferences.uiScale.collectAsState(1f)
     val backgroundAppStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
+    // Fuente propia para el Glass de la navegación (BETA): muestrea solo el fondo
+    // de la ventana (cover desenfocado / degradado / color), no el contenido.
+    val railHazeState = rememberHazeState()
 
     AppTheme(artworkColors = artworkColors, userPreferences = userPreferences) {
 
@@ -412,7 +417,8 @@ fun NucleusApplicationScope.App(
 
                         BackgroundStyle(
                             imageUrl = playerUiState.currentSong?.thumbnailUrl,
-                            backgroundStyle = backgroundAppStyle
+                            backgroundStyle = backgroundAppStyle,
+                            backgroundModifier = Modifier.hazeSource(railHazeState),
                         ) {
 
                             // Definida UNA vez y reutilizada por las dos ramas de abajo. No es que haya dos
@@ -489,7 +495,8 @@ fun NucleusApplicationScope.App(
                                         key(appLocale) {
                                             NavigationDesktop(
                                                 rootComponent = rootComponent,
-                                                userPreferences = userPreferences
+                                                userPreferences = userPreferences,
+                                                railHazeState = railHazeState,
                                             )
                                         }
                                     }

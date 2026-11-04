@@ -77,6 +77,8 @@
     <string name="theme">Theme</string>
     <string name="color_palette">Color palette</string>
     <string name="dynamic_colors">Dynamic colors from artwork</string>
+    <string name="liquid_glass_beta">Liquid Glass (Beta)</string>
+    <string name="liquid_glass_beta_subtitle">Glass on mini player, rail and buttons</string>
     <string name="section_player">Player</string>
     <string name="section_mini_player">Mini player</string>
     <string name="section_now_playing">Now Playing</string>

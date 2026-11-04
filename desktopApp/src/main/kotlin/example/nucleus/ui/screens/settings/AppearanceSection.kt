@@ -30,6 +30,7 @@ fun AppearanceSettingsGroup() {
     val dynamicColor by viewModel.dynamicColorFromArtwork.collectAsState()
     val navigationRailStyle by viewModel.navigationRailStyle.collectAsState()
     val appBackgroundStyle by viewModel.appBackgroundStyle.collectAsState()
+    val liquidGlassEnabled by viewModel.liquidGlassEnabled.collectAsState()
 
     var showThemeDropdown by remember { mutableStateOf(false) }
     var showDarkLevelDropdown by remember { mutableStateOf(false) }
@@ -124,7 +125,7 @@ fun AppearanceSettingsGroup() {
             icon = Icons.Rounded.Dashboard,
             currentValue = layoutMode.displayName(),
             expanded = showLayoutDropdown,
-            segmentedShape = ListItemDefaults.segmentedShapes(index = 0, count = 4),
+            segmentedShape = ListItemDefaults.segmentedShapes(index = 0, count = 5),
             onExpandedChange = { showLayoutDropdown = it },
             options = listOf(LayoutMode.ATTACHED, LayoutMode.SQUARE).map { it to it.displayName() },
             isSelected = { it == layoutMode },
@@ -135,7 +136,7 @@ fun AppearanceSettingsGroup() {
             icon = Icons.Rounded.RoundedCorner,
             currentValue = cornerStyle.displayName(),
             expanded = showCornerStyleDropdown,
-            segmentedShape = ListItemDefaults.segmentedShapes(index = 1, count = 4),
+            segmentedShape = ListItemDefaults.segmentedShapes(index = 1, count = 5),
             onExpandedChange = { showCornerStyleDropdown = it },
             options = CornerStyle.entries.map { it to it.displayName() },
             isSelected = { it == cornerStyle },
@@ -146,7 +147,7 @@ fun AppearanceSettingsGroup() {
             icon = Icons.Rounded.Wallpaper,
             currentValue = appBackgroundStyle.displayName(),
             expanded = showAppBackgroundDropdown,
-            segmentedShape = ListItemDefaults.segmentedShapes(index = 2, count = 4),
+            segmentedShape = ListItemDefaults.segmentedShapes(index = 2, count = 5),
             onExpandedChange = { showAppBackgroundDropdown = it },
             options = BackgroundStyle.entries.map { it to it.displayName() },
             isSelected = { it == appBackgroundStyle },
@@ -157,11 +158,20 @@ fun AppearanceSettingsGroup() {
             icon = Icons.Rounded.Menu,
             currentValue = navigationRailStyle.displayName(),
             expanded = showNavigationRailStyle,
-            segmentedShape = ListItemDefaults.segmentedShapes(index = 3, count = 4),
+            segmentedShape = ListItemDefaults.segmentedShapes(index = 3, count = 5),
             onExpandedChange = { showNavigationRailStyle = it },
             options = NavigationRailStyle.entries.map { it to it.displayName() },
             isSelected = { it == navigationRailStyle },
             onSelect = { viewModel.setNavigationRailStyle(it); showNavigationRailStyle = false },
+        )
+        SettingsSwitch(
+            icon = { Icon(Icons.Rounded.BlurOn, null) },
+            title = { Text(stringResource(Res.string.liquid_glass_beta)) },
+            subtitle = { Text(stringResource(Res.string.liquid_glass_beta_subtitle)) },
+            shapes = ListItemDefaults.segmentedShapes(index = 4, count = 5),
+            colors = colors,
+            state = liquidGlassEnabled,
+            onCheckedChange = { viewModel.setLiquidGlassEnabled(it) }
         )
     }
 }

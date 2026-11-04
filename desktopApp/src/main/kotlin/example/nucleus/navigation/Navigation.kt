@@ -105,7 +105,11 @@ val bottomTabs = listOf(
 
 @OptIn(ExperimentalDecomposeApi::class)
 @Composable
-fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPreferencesRepository) {
+fun NavigationDesktop(
+    rootComponent: RootComponent,
+    userPreferences: UserPreferencesRepository,
+    railHazeState: HazeState,
+) {
     val childStack by rootComponent.childStack.subscribeAsState()
 
     // Retroceso global centralizado (Compose puro, sin AWT): botón "atrás" del ratón vía
@@ -122,6 +126,7 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
     val navigationRailStyle by userPreferences.navigationRailStyle.collectAsState(NavigationRailStyle.DEFAULT)
     val miniPlayerStyle by userPreferences.miniPlayerStyle.collectAsState(MiniPlayerStyle.BAR)
     val miniPlayerBackgroundStyle by userPreferences.miniPlayerBackgroundStyle.collectAsState(MiniPlayerBackgroundStyle.TRANSLUCENT)
+    val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(false)
 
     val playerState by playerViewModel.uiState.collectAsState()
     var isQueueVisible by remember { mutableStateOf(false) }
@@ -178,6 +183,7 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                     isDocked = dockedMiniPlayer,
                     backgroundStyle = miniPlayerBackgroundStyle,
                     hazeState = hazeState,
+                    liquidGlass = liquidGlassEnabled,
                 )
             }
         Surface(
@@ -226,6 +232,8 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                                         activeConfig = activeConfig,
                                         changeQueueVisible = { isQueueVisible = it },
                                         rootComponent = rootComponent,
+                                        liquidGlass = liquidGlassEnabled,
+                                        hazeState = railHazeState,
                                     )
                                 }
 
@@ -234,6 +242,8 @@ fun NavigationDesktop(rootComponent: RootComponent, userPreferences: UserPrefere
                                         activeConfig = activeConfig,
                                         changeQueueVisible = { isQueueVisible = it },
                                         rootComponent = rootComponent,
+                                        liquidGlass = liquidGlassEnabled,
+                                        hazeState = railHazeState,
                                     )
                                 }
                             }
@@ -474,6 +484,7 @@ private fun MiniPlayerHost(
     isDocked: Boolean = false,
     backgroundStyle: MiniPlayerBackgroundStyle = MiniPlayerBackgroundStyle.TRANSLUCENT,
     hazeState: HazeState? = null,
+    liquidGlass: Boolean = false,
 ) {
     MiniPlayer(
         isOnNowPlaying = isOnNowPlaying,
@@ -486,6 +497,7 @@ private fun MiniPlayerHost(
         isDocked = isDocked,
         backgroundStyle = backgroundStyle,
         hazeState = hazeState,
+        liquidGlass = liquidGlass,
     )
 }
 

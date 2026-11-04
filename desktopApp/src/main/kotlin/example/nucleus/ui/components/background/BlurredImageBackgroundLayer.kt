@@ -28,6 +28,7 @@ fun BackgroundStyle(
     imageUrl: String?,
     modifier: Modifier = Modifier,
     backgroundStyle: BackgroundStyle?,
+    backgroundModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     // Solo extrae paleta cuando realmente se necesita (GRADIENT). Evita decode+quantization
@@ -42,15 +43,18 @@ fun BackgroundStyle(
         BackgroundStyle.GRADIENT -> BackgroundWithGradient(
             artworkColors = artworkColors,
             modifier = modifier,
+            backgroundModifier = backgroundModifier,
             content = content
         )
         BackgroundStyle.BLURRED_COVER -> BackgroundWithBlur(
             imageUrl = imageUrl,
             modifier = modifier,
+            backgroundModifier = backgroundModifier,
             content = content
         )
         BackgroundStyle.SOLID_COLOR -> BackgroundWithSolidColor(
             modifier = modifier,
+            backgroundModifier = backgroundModifier,
             content = content
         )
         else -> content
@@ -60,13 +64,17 @@ fun BackgroundStyle(
 @Composable
 fun BackgroundWithSolidColor(
     modifier: Modifier,
+    backgroundModifier: Modifier = Modifier,
     content: @Composable (BoxScope.() -> Unit)
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        // Capa de fondo aislada: es la fuente que consume el Glass del rail (BETA).
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(MaterialTheme.colorScheme.background)
+                .then(backgroundModifier),
+        )
         val rememberedContent = remember(content) { content }
         rememberedContent()
     }
@@ -78,6 +86,7 @@ fun BackgroundWithSolidColor(
 fun BackgroundWithGradient(
     artworkColors: ArtworkColors,
     modifier: Modifier = Modifier,
+    backgroundModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
@@ -97,12 +106,14 @@ fun BackgroundWithGradient(
         )
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(surfaceColor)
-            .background(ambientGradient) // Una sola pasada de dibujo nativo
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(surfaceColor)
+                .background(ambientGradient) // Una sola pasada de dibujo nativo
+                .then(backgroundModifier),
+        )
         val rememberedContent = remember(content) { content }
         rememberedContent()
     }
@@ -114,34 +125,39 @@ fun BackgroundWithGradient(
 fun BackgroundWithBlur(
     imageUrl: String?,
     modifier: Modifier = Modifier,
+    backgroundModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     val background = MaterialTheme.colorScheme.background
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(background)
-    ) {
-        // Capa de la imagen de fondo borrosa y semitransparente
-        if (!imageUrl.isNullOrBlank()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    // Rectangle acota el layer; 32.dp mantiene el ambiente sin el costo de 99.dp
-                    // (offscreen render-target del tamaño de la ventana por frame).
-                    .blur(radius = 32.dp, edgeTreatment = BlurredEdgeTreatment.Rectangle)
-                    .alpha(0.25f)
-            ) {
-                MusicPlayerImage(
-                    url = imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    // El blur de 99dp suaviza todo detalle: decodificar a 192px ahorra memoria
-                    // nativa (192^2x4 = 144 KB) sin pérdida visual apreciable en el fondo.
-                    coilSizeOverride = 192,
-                )
+    Box(modifier = modifier.fillMaxSize()) {
+        // Capa de fondo aislada: color base + cover desenfocado. Es la fuente
+        // que consume el Glass del rail (BETA).
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(background)
+                .then(backgroundModifier),
+        ) {
+            if (!imageUrl.isNullOrBlank()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        // Rectangle acota el layer; 32.dp mantiene el ambiente sin el costo de 99.dp
+                        // (offscreen render-target del tamaño de la ventana por frame).
+                        .blur(radius = 32.dp, edgeTreatment = BlurredEdgeTreatment.Rectangle)
+                        .alpha(0.25f)
+                ) {
+                    MusicPlayerImage(
+                        url = imageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        // El blur de 99dp suaviza todo detalle: decodificar a 192px ahorra memoria
+                        // nativa (192^2x4 = 144 KB) sin pérdida visual apreciable en el fondo.
+                        coilSizeOverride = 192,
+                    )
+                }
             }
         }
 

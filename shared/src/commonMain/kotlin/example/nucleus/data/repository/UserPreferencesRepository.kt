@@ -274,6 +274,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val LOG_TO_FILE = booleanPreferencesKey("log_to_file")
         val LOG_VERBOSE = booleanPreferencesKey("log_verbose")
         val SABR_ENABLED = booleanPreferencesKey("sabr_enabled")
+        val LIQUID_GLASS_ENABLED = booleanPreferencesKey("liquid_glass_enabled")
     }
 
 
@@ -648,6 +649,13 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setSabrEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.SABR_ENABLED] = enabled }
+    }
+
+    /** Efecto Liquid Glass (Haze Glass, BETA) en mini reproductor, barra y botones. Default off. */
+    val liquidGlassEnabled: Flow<Boolean> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_ENABLED] ?: false }
+
+    suspend fun setLiquidGlassEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_ENABLED] = enabled }
     }
 
     val themeMode: Flow<ThemeMode> = dataStore.data.map { preferences ->

@@ -22,7 +22,7 @@ jna= "5.19.1"
 jewel = "0.40.0-262.10315.125"
 jbr = "1.10.1"
 reorderable = "3.1.0"
-heze = "2.0.0-beta02"
+heze = "2.1.0"
 compose-settings = "3.2.0"
 quickjs = "1.0.14"
 
@@ -99,6 +99,7 @@ reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reo
 heze = { module = "dev.chrisbanes.haze:haze", version.ref = "heze"}
 heze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "heze"}
 heze-blur-materials = { module = "dev.chrisbanes.haze:haze-blur-materials", version.ref = "heze"}
+heze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "heze"}
 
 #Design
 compose-native-tray = {module= "io.github.kdroidfilter:composenativetray", version.ref= "composeNativeTray"}

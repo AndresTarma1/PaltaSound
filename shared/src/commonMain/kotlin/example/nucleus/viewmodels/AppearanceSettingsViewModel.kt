@@ -54,6 +54,9 @@ class AppearanceSettingsViewModel(
     val animationsEnabled: StateFlow<Boolean> = preferencesRepository.animationsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val liquidGlassEnabled: StateFlow<Boolean> = preferencesRepository.liquidGlassEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { preferencesRepository.setThemeMode(mode) }
     }
@@ -103,5 +106,9 @@ fun setIslandStyle(style: IslandStyle) {
 
     fun setAnimationsEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setAnimationsEnabled(enabled) }
+    }
+
+    fun setLiquidGlassEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassEnabled(enabled) }
     }
 }
