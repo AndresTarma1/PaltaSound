@@ -48,6 +48,7 @@ import com.metrolist.innertube.pages.HomePage
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
+import example.nucleus.ui.components.glass.GlassFilterChip
 import example.nucleus.ui.screens.shared.SectionGridItem
 import example.nucleus.ui.screens.shared.SectionListItem
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -245,7 +246,7 @@ private fun ChipFilterRow(
             items(chips.size) { index ->
                 val chip = chips[index]
                 val isSelected = chip.endpoint?.params == selectedParams
-                FilterChip(
+                GlassFilterChip(
                     selected = isSelected,
                     onClick = { onChipClick(chip.endpoint?.params) },
                     shape = AppShapes.extraLarge,

@@ -68,6 +68,8 @@ import example.nucleus.ui.screens.library.StatsScreen
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
 import example.nucleus.viewmodels.PlayerViewModel
 import org.koin.compose.koinInject
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.screens.*
 import example.nucleus.ui.screens.album.AlbumScreenRoute
 import example.nucleus.ui.screens.home.HomeScreenRoute
@@ -158,6 +160,12 @@ fun NavigationDesktop(
     }
 
 
+    // Estado del Liquid Glass BETA para los componentes que lo consumen vía
+    // CompositionLocal (transporte de Now Playing, likes, chips).
+    CompositionLocalProvider(
+        LocalLiquidGlass provides liquidGlassEnabled,
+        LocalGlassHaze provides railHazeState,
+    ) {
     CompositionLocalProvider(LocalMiniPlayerInset provides floatingBottomInset) {
         SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
             val sharedTransitionScope = this
@@ -468,6 +476,7 @@ fun NavigationDesktop(
                 )
             }
         }
+    }
     }
     }
 }

@@ -49,8 +49,11 @@ import example.nucleus.generated.resources.mp_volume
 import example.nucleus.generated.resources.tray_pause
 import example.nucleus.generated.resources.tray_play
 import example.nucleus.player.PlaybackState
+import dev.chrisbanes.haze.HazeState
 import example.nucleus.ui.components.PlayerSeekBar
 import example.nucleus.ui.components.TimeText
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.helpers.onHover
 import example.nucleus.ui.helpers.pointerScrollToInt
 import example.nucleus.ui.themes.AppShapes
@@ -122,6 +125,8 @@ fun PlayerIconToggle(
 fun PlayerTransportRow(
     modifier: Modifier = Modifier,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalGlassHaze.current,
 ) {
     val state by playerViewModel.uiState.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
@@ -134,27 +139,51 @@ fun PlayerTransportRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
     ) {
-        PlayerIconToggle(
-            selected = state.isShuffled,
-            onClick = { playerViewModel.toggleShuffle() },
-            imageVector = Icons.Rounded.Shuffle,
-            contentDescription = stringResource(Res.string.mp_shuffle),
-            size = 36.dp,
-            iconSize = 20.dp,
-        )
-
-        IconButton(
-            onClick = { playerViewModel.previous() },
-            modifier = Modifier
-                .size(44.dp)
-                .pointerHoverIcon(PointerIcon.Hand),
-        ) {
-            Icon(
-                Icons.Rounded.SkipPrevious,
-                contentDescription = stringResource(Res.string.mp_previous),
-                tint = colorScheme.onSurface,
-                modifier = Modifier.size(28.dp),
+        val useGlass = liquidGlass && hazeState != null
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.toggleShuffle() },
+                imageVector = Icons.Rounded.Shuffle,
+                contentDescription = stringResource(Res.string.mp_shuffle),
+                hazeState = hazeState,
+                selected = state.isShuffled,
+                size = 36.dp,
+                iconSize = 20.dp,
             )
+        } else {
+            PlayerIconToggle(
+                selected = state.isShuffled,
+                onClick = { playerViewModel.toggleShuffle() },
+                imageVector = Icons.Rounded.Shuffle,
+                contentDescription = stringResource(Res.string.mp_shuffle),
+                size = 36.dp,
+                iconSize = 20.dp,
+            )
+        }
+
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.previous() },
+                imageVector = Icons.Rounded.SkipPrevious,
+                contentDescription = stringResource(Res.string.mp_previous),
+                hazeState = hazeState,
+                size = 44.dp,
+                iconSize = 28.dp,
+            )
+        } else {
+            IconButton(
+                onClick = { playerViewModel.previous() },
+                modifier = Modifier
+                    .size(44.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+            ) {
+                Icon(
+                    Icons.Rounded.SkipPrevious,
+                    contentDescription = stringResource(Res.string.mp_previous),
+                    tint = colorScheme.onSurface,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
 
         // Play pill con acento Expressive principal
@@ -187,33 +216,60 @@ fun PlayerTransportRow(
             }
         }
 
-        IconButton(
-            onClick = { playerViewModel.next() },
-            modifier = Modifier
-                .size(44.dp)
-                .pointerHoverIcon(PointerIcon.Hand),
-        ) {
-            Icon(
-                Icons.Rounded.SkipNext,
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.next() },
+                imageVector = Icons.Rounded.SkipNext,
                 contentDescription = stringResource(Res.string.mp_next),
-                tint = colorScheme.onSurface,
-                modifier = Modifier.size(28.dp),
+                hazeState = hazeState,
+                size = 44.dp,
+                iconSize = 28.dp,
             )
+        } else {
+            IconButton(
+                onClick = { playerViewModel.next() },
+                modifier = Modifier
+                    .size(44.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+            ) {
+                Icon(
+                    Icons.Rounded.SkipNext,
+                    contentDescription = stringResource(Res.string.mp_next),
+                    tint = colorScheme.onSurface,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
 
         val repeatOn = state.repeatMode != RepeatMode.OFF
-        PlayerIconToggle(
-            selected = repeatOn,
-            onClick = { playerViewModel.toggleRepeat() },
-            imageVector = if (state.repeatMode == RepeatMode.ONE) {
-                Icons.Rounded.RepeatOne
-            } else {
-                Icons.Rounded.Repeat
-            },
-            contentDescription = stringResource(Res.string.mp_repeat),
-            size = 36.dp,
-            iconSize = 20.dp,
-        )
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.toggleRepeat() },
+                imageVector = if (state.repeatMode == RepeatMode.ONE) {
+                    Icons.Rounded.RepeatOne
+                } else {
+                    Icons.Rounded.Repeat
+                },
+                contentDescription = stringResource(Res.string.mp_repeat),
+                hazeState = hazeState,
+                selected = repeatOn,
+                size = 36.dp,
+                iconSize = 20.dp,
+            )
+        } else {
+            PlayerIconToggle(
+                selected = repeatOn,
+                onClick = { playerViewModel.toggleRepeat() },
+                imageVector = if (state.repeatMode == RepeatMode.ONE) {
+                    Icons.Rounded.RepeatOne
+                } else {
+                    Icons.Rounded.Repeat
+                },
+                contentDescription = stringResource(Res.string.mp_repeat),
+                size = 36.dp,
+                iconSize = 20.dp,
+            )
+        }
     }
 }
 
@@ -596,15 +652,29 @@ fun LikeToggle(
     liked: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalGlassHaze.current,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    PlayerIconToggle(
-        selected = liked,
-        onClick = onToggle,
-        imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-        contentDescription = stringResource(Res.string.mp_like),
-        modifier = modifier,
-        selectedContent = colorScheme.error,
-        unselectedContent = colorScheme.onSurfaceVariant,
-    )
+    if (liquidGlass && hazeState != null) {
+        GlassIconButton(
+            onClick = onToggle,
+            imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = stringResource(Res.string.mp_like),
+            hazeState = hazeState,
+            modifier = modifier,
+            selected = liked,
+            selectedTint = colorScheme.error,
+        )
+    } else {
+        PlayerIconToggle(
+            selected = liked,
+            onClick = onToggle,
+            imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = stringResource(Res.string.mp_like),
+            modifier = modifier,
+            selectedContent = colorScheme.error,
+            unselectedContent = colorScheme.onSurfaceVariant,
+        )
+    }
 }

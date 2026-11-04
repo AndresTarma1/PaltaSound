@@ -31,7 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
+import example.nucleus.ui.components.glass.GlassFilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -623,7 +623,7 @@ private fun LibraryTabRow(
         tabs.forEach { (tab, label) ->
             val isSelected = selectedTab == tab
             item {
-                FilterChip(
+                GlassFilterChip(
                     selected = isSelected,
                     leadingIcon = { if(isSelected)Icon(Icons.Default.Check,  contentDescription = null) },
                     onClick = { onTabSelected(if (isSelected) LibraryTab.LIBRARY else tab) },
@@ -634,7 +634,7 @@ private fun LibraryTabRow(
                         )
                     },
                     shape = RoundedCornerShape(50.dp),
-                    border = null,
+                    showBorder = false,
                     modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
                 )
             }

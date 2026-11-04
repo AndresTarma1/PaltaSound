@@ -575,6 +575,8 @@ private fun MiniPlayerCompactRow(
         LikeToggle(
             liked = song.liked,
             onToggle = { playerViewModel.toggleLike() },
+            liquidGlass = liquidGlass,
+            hazeState = hazeState,
         )
 
         if (liquidGlass && hazeState != null) {
@@ -788,6 +790,8 @@ private fun MiniPlayerWideRow(
                 LikeToggle(
                     liked = song.liked,
                     onToggle = { playerViewModel.toggleLike() },
+                    liquidGlass = liquidGlass,
+                    hazeState = hazeState,
                 )
             }
         }
@@ -798,7 +802,10 @@ private fun MiniPlayerWideRow(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
         ) {
-            PlayerTransportRow()
+            PlayerTransportRow(
+                liquidGlass = liquidGlass,
+                hazeState = hazeState,
+            )
             PlayerProgressRow()
         }
 

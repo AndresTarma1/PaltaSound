@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -38,6 +39,8 @@ fun GlassIconButton(
     hazeState: HazeState,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    selectedTint: Color = MaterialTheme.colorScheme.onSurface,
+    contentTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     size: Dp = 40.dp,
     iconSize: Dp = 22.dp,
 ) {
@@ -70,11 +73,7 @@ fun GlassIconButton(
             Icon(
                 imageVector = imageVector,
                 contentDescription = contentDescription,
-                tint = if (selected) {
-                    colorScheme.onSurface
-                } else {
-                    colorScheme.onSurfaceVariant
-                },
+                tint = if (selected) selectedTint else contentTint,
                 modifier = Modifier.size(iconSize),
             )
         }
