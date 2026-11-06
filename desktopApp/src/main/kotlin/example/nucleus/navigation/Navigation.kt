@@ -62,6 +62,8 @@ import example.nucleus.data.repository.MiniPlayerStyle
 import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.UserPreferencesRepository
 import example.nucleus.ui.components.MiniPlayer
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.dialogs.SnackBar
 import example.nucleus.ui.components.player.PlaybackQueuePanel
 import example.nucleus.ui.screens.library.CsvImportProgressOverlay
@@ -115,6 +117,7 @@ fun NavigationDesktop(
     rootComponent: RootComponent,
     userPreferences: UserPreferencesRepository,
     appMode: AppMode,
+    railHazeState: HazeState,
 ) {
     val childStack by rootComponent.childStack.subscribeAsState()
 
@@ -182,6 +185,12 @@ fun NavigationDesktop(
     }
 
 
+    // Estado del Liquid Glass BETA para los componentes que lo consumen vía
+    // CompositionLocal (transporte de Now Playing, likes, chips).
+    CompositionLocalProvider(
+        LocalLiquidGlass provides liquidGlassEnabled,
+        LocalGlassHaze provides railHazeState,
+    ) {
     CompositionLocalProvider(LocalMiniPlayerInset provides floatingBottomInset) {
         SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
             val sharedTransitionScope = this
@@ -539,6 +548,7 @@ fun NavigationDesktop(
     }
     }
 }
+    }
     }
 
 

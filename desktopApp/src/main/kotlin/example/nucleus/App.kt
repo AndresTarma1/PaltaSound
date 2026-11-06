@@ -512,6 +512,7 @@ fun NucleusApplicationScope.App(
                                                 rootComponent = rootComponent,
                                                 userPreferences = userPreferences,
                                                 appMode = appMode,
+                                                railHazeState = railHazeState,
                                             )
                                         }
                                     }
