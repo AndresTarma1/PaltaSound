@@ -49,7 +49,10 @@ import example.nucleus.generated.resources.mp_volume
 import example.nucleus.generated.resources.tray_pause
 import example.nucleus.generated.resources.tray_play
 import example.nucleus.player.PlaybackState
+import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.hazeGlass
 import example.nucleus.ui.components.PlayerSeekBar
 import example.nucleus.ui.components.TimeText
 import example.nucleus.ui.components.glass.LocalGlassHaze
@@ -498,6 +501,8 @@ fun PlayerVolumeTooltip(
                     onHoverChange = { isCardHovered = it },
                     onDragStateChange = { isDragging = it },
                     onVolumeChange = { playerViewModel.setVolume(it) },
+                    liquidGlass = liquidGlass,
+                    hazeState = hazeState,
                 )
             }
         },
@@ -577,14 +582,40 @@ private fun VolumeTrackCard(
     onHoverChange: (Boolean) -> Unit,
     onDragStateChange: (Boolean) -> Unit,
     onVolumeChange: (Int) -> Unit,
+    liquidGlass: Boolean = false,
+    hazeState: HazeState? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val useGlass = liquidGlass && hazeState != null
+    val cardShape = AppShapes.large
+    val glassStyle = if (useGlass) {
+        remember(colorScheme.surfaceContainer, isMuted, cardShape) {
+            GlassStyle.regular.then {
+                backgroundColor(colorScheme.surfaceContainer.copy(alpha = 0.35f))
+                tint(colorScheme.surfaceContainer.copy(alpha = 0.12f))
+                shape(cardShape)
+                specularIntensity(0.25f)
+                ambientResponse(0.1f)
+            }
+        }
+    } else null
 
     Surface(
-        modifier = Modifier.onHover(onHoverChange),
-        shape = AppShapes.large,
-        color = colorScheme.surfaceContainerHigh,
-        tonalElevation = 6.dp,
+        modifier = Modifier
+            .onHover(onHoverChange)
+            .then(
+                if (useGlass) {
+                    Modifier.hazeGlass(
+                        input = HazeInput.Sources(hazeState!!),
+                        style = glassStyle!!,
+                    )
+                } else {
+                    Modifier
+                },
+            ),
+        shape = cardShape,
+        color = if (useGlass) Color.Transparent else colorScheme.surfaceContainerHigh,
+        tonalElevation = if (useGlass) 0.dp else 6.dp,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
