@@ -17,16 +17,13 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.innertube.models.MediaInfo
 import example.nucleus.generated.resources.*
 import example.nucleus.models.MediaMetadata
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.themes.expressiveFadeTween
 import example.nucleus.ui.themes.expressiveLayoutTween
 import example.nucleus.ui.themes.expressiveTween
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.viewmodels.PlayerUiState
 
-/**
- * Contenido animado de cada pestaña dentro de Now Playing.
- */
 @Composable
 internal fun NowPlayingTabContent(
     tab: NowPlayingTab,
@@ -35,7 +32,7 @@ internal fun NowPlayingTabContent(
     lyrics: String?,
     mediaInfo: MediaInfo?,
     lyricsTextStyle: androidx.compose.ui.text.TextStyle,
-    onNavigate: ((Route) -> Unit)?,
+    onNavigate: ((ScreenConfig) -> Unit)?,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     AnimatedContent(

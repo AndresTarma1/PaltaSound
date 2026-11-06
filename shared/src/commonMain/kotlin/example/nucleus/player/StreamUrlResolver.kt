@@ -70,14 +70,6 @@ object StreamUrlResolver {
         return null
     }
 
-    // Every googlevideo stream URL carries a throttling n-param regardless of client,
-    /**
- * Determines whether to apply the n-parameter transformation to stream URLs.
- *
- * @return `true` to indicate the transformation should be applied.
- */
-    fun shouldApplyNTransform(clientName: String?): Boolean = true
-
     /**
      * Transforms the `n` parameter in a stream URL.
      *

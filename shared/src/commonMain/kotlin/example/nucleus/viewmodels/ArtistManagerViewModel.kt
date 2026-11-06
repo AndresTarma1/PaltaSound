@@ -11,6 +11,8 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.pages.ArtistPage
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +38,8 @@ class ArtistManagerViewModel(
 
     private val log = Logger.getLogger("ArtistViewModel")
 
+    private var loadJob: Job? = null
+
     private val _uiState = MutableStateFlow<ArtistState>(ArtistState.Loading)
     val uiState = _uiState.asStateFlow()
 
@@ -49,10 +53,13 @@ class ArtistManagerViewModel(
 
     fun loadArtist(browseId: String) {
         _currentBrowseId.value = browseId
+        loadJob?.cancel()
 
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             _uiState.value = ArtistState.Loading
-            YouTube.artist(browseId)
+            val result = YouTube.artist(browseId)
+            if (!isActive) return@launch
+            result
                 .onSuccess {
                     _uiState.value = ArtistState.Success(it)
                 }

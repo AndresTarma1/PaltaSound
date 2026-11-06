@@ -79,7 +79,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import example.nucleus.db.entities.SearchHistoryEntry
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.components.layout.AppScrollbarGutter
@@ -133,7 +133,7 @@ data class SearchActions(
     val onSearch: () -> Unit,
     val onFilterChange: (YouTube.SearchFilter?) -> Unit,
     val onLoadMore: () -> Unit,
-    val onNavigate: (Route) -> Unit,
+    val onNavigate: (ScreenConfig) -> Unit,
     val onDeleteHistoryEntry: (String) -> Unit,
     val onClearHistory: () -> Unit,
 )
@@ -141,7 +141,7 @@ data class SearchActions(
 @Composable
 fun SearchScreenRoute(
     viewModel: SearchViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
 
@@ -227,7 +227,7 @@ fun SearchScreen(
                 filter = state.filter,
                 playerViewModel = playerViewModel,
                 onItemClick = { item -> onYTItemClick(item, actions.onNavigate, playerViewModel) },
-                onMoodClick = { browseId, params -> actions.onNavigate(Route.YouTubeBrowse(browseId, params)) },
+                onMoodClick = { browseId, params -> actions.onNavigate(ScreenConfig.YouTubeBrowse(browseId, params)) },
                 onFilterChange = actions.onFilterChange,
                 onLoadMore = actions.onLoadMore,
             )
@@ -552,7 +552,6 @@ fun ResultsList(
 
     // ---- Paginación ----
     val currentState by rememberUpdatedState(uiState)
-    val currentOnLoadMore by rememberUpdatedState(onLoadMore)
     val shouldLoadMore by remember {
         derivedStateOf {
             val state = currentState

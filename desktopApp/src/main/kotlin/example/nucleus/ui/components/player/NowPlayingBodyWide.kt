@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.innertube.models.MediaInfo
 import example.nucleus.generated.resources.*
 import example.nucleus.models.MediaMetadata
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.viewmodels.PlayerUiState
 import org.jetbrains.jewel.foundation.modifier.onHover
 
@@ -27,7 +27,7 @@ internal fun NowPlayingWideBody(
     lyrics: String?,
     mediaInfo: MediaInfo?,
     selectedTab: NowPlayingTab,
-    onNavigate: ((Route) -> Unit)?,
+    onNavigate: ((ScreenConfig) -> Unit)?,
     onCollapse: () -> Unit,
     coverScale: Animatable<Float, *>,
     coverAlpha: Animatable<Float, *>,
@@ -92,7 +92,6 @@ internal fun NowPlayingWideBody(
                     CoverArt(
                         url = song.thumbnailUrl,
                         title = song.title,
-                        videoId = song.id,
                         modifier = Modifier
                             .size(coverDimension)
                             .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)

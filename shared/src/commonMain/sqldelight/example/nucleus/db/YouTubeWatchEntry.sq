@@ -1,0 +1,33 @@
+CREATE TABLE IF NOT EXISTS YouTubeWatchEntry (
+    videoId TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    channelName TEXT,
+    durationSeconds INTEGER NOT NULL DEFAULT 0,
+    thumbnailUrl TEXT,
+    viewCount INTEGER,
+    uploadedText TEXT,
+    positionMs INTEGER NOT NULL DEFAULT 0,
+    durationMs INTEGER NOT NULL DEFAULT 0,
+    lastWatchedAt INTEGER NOT NULL
+);
+
+insertOrReplace:
+INSERT OR REPLACE INTO YouTubeWatchEntry (
+    videoId, title, channelName, durationSeconds, thumbnailUrl, viewCount,
+    uploadedText, positionMs, durationMs, lastWatchedAt
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+recent:
+SELECT * FROM YouTubeWatchEntry ORDER BY lastWatchedAt DESC LIMIT ?;
+
+byId:
+SELECT * FROM YouTubeWatchEntry WHERE videoId = ?;
+
+updateProgress:
+UPDATE YouTubeWatchEntry SET positionMs = ?, durationMs = ?, lastWatchedAt = ? WHERE videoId = ?;
+
+delete:
+DELETE FROM YouTubeWatchEntry WHERE videoId = ?;
+
+clearAll:
+DELETE FROM YouTubeWatchEntry;

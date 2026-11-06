@@ -7,12 +7,8 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.time.LocalDateTime
-import java.util.concurrent.ConcurrentLinkedDeque
 
 object PlatformCrashHandler {
-
-    private const val MAX_RECENT_LOGS = 50
-    private val recentLogs = ConcurrentLinkedDeque<String>()
 
     fun register() {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -20,22 +16,12 @@ object PlatformCrashHandler {
         }
     }
 
-    fun addLog(message: String) {
-        recentLogs.addLast("[${LocalDateTime.now()}] $message")
-        while (recentLogs.size > MAX_RECENT_LOGS) {
-            recentLogs.pollFirst()
-        }
-    }
-
-    fun getRecentLogs(): List<String> = recentLogs.toList()
-
     private fun logCrash(thread: Thread, throwable: Throwable) {
         runCatching {
             val report = CrashReportRepository.buildCrashReport(
                 thread = thread,
                 throwable = throwable,
                 appVersion = AppViewModel.CURRENT_VERSION,
-                recentLogs = getRecentLogs(),
             )
             CrashReportRepository.saveCrashReport(report)
 

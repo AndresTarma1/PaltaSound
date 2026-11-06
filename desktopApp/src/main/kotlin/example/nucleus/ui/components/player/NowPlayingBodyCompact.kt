@@ -21,7 +21,7 @@ import com.metrolist.innertube.models.MediaInfo
 import example.nucleus.generated.resources.*
 import example.nucleus.generated.resources.Res
 import example.nucleus.models.MediaMetadata
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.viewmodels.PlayerUiState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.onHover
@@ -33,7 +33,7 @@ internal fun NowPlayingCompactBody(
     lyrics: String?,
     mediaInfo: MediaInfo?,
     selectedTab: NowPlayingTab,
-    onNavigate: ((Route) -> Unit)?,
+    onNavigate: ((ScreenConfig) -> Unit)?,
     onCollapse: () -> Unit,
     coverScale: Animatable<Float, *>,
     coverAlpha: Animatable<Float, *>,
@@ -78,7 +78,6 @@ internal fun NowPlayingCompactBody(
                         CoverArt(
                             url = song.thumbnailUrl,
                             title = song.title,
-                            videoId = song.id,
                             modifier = Modifier
                                 .size(coverSize)
                                 .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
@@ -121,7 +120,6 @@ internal fun NowPlayingCompactBody(
                     CoverArt(
                         url = song.thumbnailUrl,
                         title = song.title,
-                        videoId = song.id,
                         modifier = Modifier
                             .size(48.dp)
                             .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)

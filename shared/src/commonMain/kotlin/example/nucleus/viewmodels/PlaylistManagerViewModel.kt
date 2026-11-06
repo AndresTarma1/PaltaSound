@@ -15,7 +15,9 @@ import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.pages.PlaylistPage
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -51,6 +53,8 @@ class PlaylistManagerViewModel(
 ) : ApplicationViewModel() {
 
     private val log = Logger.getLogger("PlaylistViewModel")
+
+    private var loadJob: Job? = null
 
     private val _uiState = MutableStateFlow<PlaylistState>(PlaylistState.Loading)
     val uiState = _uiState.asStateFlow()
@@ -89,11 +93,12 @@ class PlaylistManagerViewModel(
         }
     }
 
-    fun loadPlaylist(playlistId: String) {
-        if (_currentPlaylistId.value == playlistId && playlistId != "LOCAL_DOWNLOADS") return
+    fun loadPlaylist(playlistId: String, force: Boolean = false) {
+        if (!force && _currentPlaylistId.value == playlistId && playlistId != "LOCAL_DOWNLOADS") return
         _currentPlaylistId.value = playlistId
+        loadJob?.cancel()
 
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             _uiState.value = PlaylistState.Loading
             _songs.value = emptyList()
             _continuation.value = null
@@ -149,7 +154,9 @@ class PlaylistManagerViewModel(
 
             // Podcast detail (MPSP...): reuses PlaylistScreen via YouTube.podcast — never cached locally
             if (playlistId.startsWith("MPSP")) {
-                YouTube.podcast(playlistId)
+                val result = YouTube.podcast(playlistId)
+                if (!isActive) return@launch
+                result
                     .onSuccess { page ->
                         val songs = page.episodes.map { it.asSongItem() }
                         _songs.value = songs
@@ -174,7 +181,7 @@ class PlaylistManagerViewModel(
             val cachedSongs = repository.getCachedPlaylistSongs(playlistId)
             val cachedPlaylist = repository.getCachedPlaylistItem(playlistId)
 
-            if (cachedSongs != null && cachedPlaylist != null) {
+            if (!force && cachedSongs != null && cachedPlaylist != null) {
                 log.info("Cargando playlist desde caché local: $playlistId (${cachedSongs.size} canciones)")
                 _songs.value = cachedSongs
                 _continuation.value = null
@@ -200,7 +207,9 @@ class PlaylistManagerViewModel(
 
             // 2. No está en caché → buscar en YouTube
             log.info("Playlist no cacheada, cargando desde YouTube: $playlistId")
-            YouTube.playlist(playlistId)
+            val result = YouTube.playlist(playlistId)
+            if (!isActive) return@launch
+            result
                 .onSuccess { page ->
                     if(page.songs.isNotEmpty()){
 

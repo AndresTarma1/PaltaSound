@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +24,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
@@ -37,8 +37,20 @@ import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.themes.AppShapes
+import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.utils.LocalAnimationsEnabled
+
+internal val LibraryGridMinCellWidth = 150.dp
+internal val LibraryGridSpacing = 12.dp
+
+@Composable
+internal fun libraryGridContentPadding(): PaddingValues = PaddingValues(
+    start = 20.dp,
+    end = 20.dp,
+    top = 8.dp,
+    bottom = maxOf(80.dp, LocalMiniPlayerInset.current),
+)
 
 /**
  * Cabecera de las secciones de la biblioteca. Ambas delegan en [SectionHeaderRow], el
@@ -56,16 +68,6 @@ internal fun YtmSectionHeader(title: String, isLoading: Boolean = false) {
                 CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 1.5.dp)
             }
         },
-    )
-}
-
-@Composable
-internal fun LocalSectionHeader(title: String) {
-    SectionHeaderRow(
-        title = title,
-        icon = Icons.Default.PhoneAndroid,
-        iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 6.dp),
     )
 }
 

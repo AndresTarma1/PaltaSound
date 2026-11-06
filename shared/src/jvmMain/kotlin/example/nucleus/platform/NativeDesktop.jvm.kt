@@ -15,24 +15,20 @@ import java.util.concurrent.TimeUnit
  * `explorer` / `xdg-open` / `open`.
  */
 object NativeDesktop {
-    private val osName: String = System.getProperty("os.name").orEmpty().lowercase()
-    private val isWindows: Boolean = osName.contains("win")
-    private val isMac: Boolean = osName.contains("mac")
-    private val isLinux: Boolean = osName.contains("linux") || osName.contains("nix")
 
     fun openFolder(folder: File): Boolean {
         return try {
             if (!folder.exists()) folder.mkdirs()
             val path = folder.absolutePath
             when {
-                isWindows -> {
+                Platform.isWindows -> {
                     ProcessBuilder("explorer.exe", path)
                         .redirectErrorStream(true)
                         .start()
                     true
                 }
-                isMac -> runProcess("open", path)
-                isLinux -> runProcess("xdg-open", path) ||
+                Platform.isMac -> runProcess("open", path)
+                Platform.isLinux -> runProcess("xdg-open", path) ||
                     tryAwtDesktop { it.open(folder) }
                 else -> tryAwtDesktop { it.open(folder) }
             }
@@ -46,7 +42,7 @@ object NativeDesktop {
         return try {
             val url = uri.toString()
             when {
-                isWindows -> {
+                Platform.isWindows -> {
                     // rundll32 evita el parsing de `&` de cmd.exe (que cortaba `&body=`).
                     // Fallback a `cmd /c start "" "url"` citado si rundll32 falla.
                     runCatching {
@@ -63,8 +59,8 @@ object NativeDesktop {
                             .start()
                     }.isSuccess
                 }
-                isMac -> runProcess("open", url)
-                isLinux -> runProcess("xdg-open", url) ||
+                Platform.isMac -> runProcess("open", url)
+                Platform.isLinux -> runProcess("xdg-open", url) ||
                     tryAwtDesktop { it.browse(uri) }
                 else -> tryAwtDesktop { it.browse(uri) }
             }
@@ -89,9 +85,9 @@ object NativeDesktop {
         val exts = extensions.map { it.trim().removePrefix(".").lowercase() }.filter { it.isNotEmpty() }
         return try {
             when {
-                isWindows -> pickOpenFileWindows(title, filterDescription, exts)
-                isMac -> pickOpenFileMac(title, exts)
-                isLinux -> pickOpenFileLinux(title, filterDescription, exts)
+                Platform.isWindows -> pickOpenFileWindows(title, filterDescription, exts)
+                Platform.isMac -> pickOpenFileMac(title, exts)
+                Platform.isLinux -> pickOpenFileLinux(title, filterDescription, exts)
                 else -> null
             }
         } catch (t: Throwable) {

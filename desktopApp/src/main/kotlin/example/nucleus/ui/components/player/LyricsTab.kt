@@ -55,10 +55,7 @@ fun LyricsContent(
     // son marcadores internos (sin letras / fallback), no fuentes que mencionar.
     val lyricsProvider by playerViewModel.lyricsProvider.collectAsState()
     val providerCredit = lyricsProvider?.takeIf { it.isNotBlank() && it != "None" && it != "Unknown" }
-    // Global (Settings) + por canción (menú ⋮ Now Playing / DB).
-    val globalOffsetMs by userPreferences.lyricsOffsetMs.collectAsState(0)
-    val songOffsetMs by playerViewModel.currentSongLyricsOffsetMs.collectAsState()
-    val lyricsOffsetMs = globalOffsetMs + songOffsetMs
+    val lyricsOffsetMs by userPreferences.lyricsOffsetMs.collectAsState(0)
     val syncedLines = synced
 
     val uiState by playerViewModel.uiState.collectAsState()

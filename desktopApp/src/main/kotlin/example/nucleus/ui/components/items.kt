@@ -783,21 +783,8 @@ fun YoutubeListItem(
                     onShuffle(item)
                 },
                 onExport = if (item is PlaylistItem) ({
-                    playlistsViewModel.exportPlaylist(item.id) { success, msg ->
-                        scope.launch {
-                            if (success) {
-                                val result = snackbar.showSnackbar(
-                                    message = "Exportada a $msg",
-                                    actionLabel = "Abrir carpeta",
-                                    duration = androidx.compose.material3.SnackbarDuration.Long
-                                )
-                                if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                                    try { example.nucleus.platform.NativeDesktop.openFolder(java.io.File(msg).parentFile ?: java.io.File(msg)) } catch (_: Exception) {}
-                                }
-                            } else {
-                                snackbar.showSnackbar("Error: $msg")
-                            }
-                        }
+                    exportPlaylistWithFeedback(scope, snackbar) { onResult ->
+                        playlistsViewModel.exportPlaylist(item.id, onResult)
                     }
                 }) else null
             )

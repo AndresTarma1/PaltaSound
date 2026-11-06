@@ -42,8 +42,10 @@
     <string name="settings_subtitle">Customize your experience</string>
     <string name="section_audio">Audio</string>
     <string name="streaming_quality">Audio quality</string>
+    <string name="mode_music">Music mode</string>
+    <string name="mode_youtube">YouTube mode</string>
     <string name="sabr_streaming">SABR streaming</string>
-    <string name="sabr_streaming_subtitle">In-process segmented audio when the CDN blocks direct streams. Off: yt-dlp is used, which extracts best when signed in.</string>
+    <string name="sabr_streaming_subtitle">In-process SABR download for YouTube audio and video. Video downloads the full file before playback; off uses DASH/yt-dlp.</string>
     <string name="equalizer">Equalizer</string>
     <string name="ten_bands">5 bands</string>
     <string name="loudness_level">Volume normalization</string>
@@ -68,9 +70,7 @@
     <string name="lyrics_romanize">Romanize lyrics</string>
     <string name="lyrics_romanize_subtitle">Show romanization for Japanese, Korean and Russian</string>
     <string name="lyrics_offset_settings">Lyrics offset (global)</string>
-    <string name="lyrics_offset_settings_subtitle">Global compensation in milliseconds (−10 s … +10 s). Added to the per-song offset from the ⋮ menu in Now Playing.</string>
-    <string name="lyrics_offset_song">Sync for this song</string>
-    <string name="lyrics_offset_song_value">This song: %1$d ms</string>
+    <string name="lyrics_offset_settings_subtitle">Global compensation in milliseconds (−10 s … +10 s).</string>
     <string name="section_appearance">Appearance</string>
     <string name="animations_enabled">Interface animations</string>
     <string name="animations_enabled_subtitle">Enable transition and motion animations</string>
@@ -398,9 +398,6 @@
     <string name="lyrics_offset">Lyrics sync offset</string>
     <string name="lyrics_offset_subtitle">Nudge lyrics earlier or later if they drift from the audio</string>
     <string name="lyrics_offset_value">%1$d ms</string>
-    <string name="lyrics_offset_reset">Reset</string>
-    <string name="lyrics_offset_earlier">−0.5 s</string>
-    <string name="lyrics_offset_later">+0.5 s</string>
     <string name="toggle_lyrics_menu">Toggle lyrics</string>
     <string name="queue_download_added">%1$d songs added to downloads</string>
     <string name="queue_saved_as">Queue saved as “%1$s”</string>

@@ -82,6 +82,22 @@ object CipherDeobfuscator {
 
     suspend fun warmup(): Boolean = ensurePrepared(forceRefresh = false)
 
+    /**
+     * Decodes one raw `s` value from a YouTube signatureCipher. Used by the
+     * PipePipeExtractor bridge, which asks for signature/N batches instead of
+     * a full stream URL.
+     */
+    suspend fun deobfuscateSignature(signature: String): String? {
+        if (!ensurePrepared(forceRefresh = false)) return null
+        return solveSig(signature)
+    }
+
+    /** Decodes one raw `n` throttling parameter. */
+    suspend fun deobfuscateNParam(value: String): String? {
+        if (!ensurePrepared(forceRefresh = false)) return null
+        return solveN(value)
+    }
+
     private fun resetPrepared() {
         nativeCipher?.close()
         nativeCipher = null

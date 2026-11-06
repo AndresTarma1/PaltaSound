@@ -55,6 +55,7 @@ import com.arkivanov.decompose.extensions.compose.experimental.stack.animation.f
 import com.arkivanov.decompose.extensions.compose.experimental.stack.animation.stackAnimation
 
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
+import example.nucleus.data.repository.AppMode
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
 import example.nucleus.data.repository.MiniPlayerStyle
@@ -67,11 +68,14 @@ import example.nucleus.ui.screens.library.CsvImportProgressOverlay
 import example.nucleus.ui.screens.library.StatsScreen
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
 import example.nucleus.viewmodels.PlayerViewModel
+import example.nucleus.viewmodels.YouTubeWatchViewModel
 import org.koin.compose.koinInject
-import example.nucleus.ui.components.glass.LocalGlassHaze
-import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.player.YouTubePlayerService
 import example.nucleus.ui.screens.*
 import example.nucleus.ui.screens.album.AlbumScreenRoute
+import example.nucleus.ui.screens.youtube.YouTubeHomeScreenRoute
+import example.nucleus.ui.screens.youtube.YouTubeWatchScreenRoute
+import example.nucleus.ui.youtube.YouTubeFloatingMiniPlayer
 import example.nucleus.ui.screens.home.HomeScreenRoute
 import example.nucleus.ui.screens.library.LibraryScreenRoute
 import example.nucleus.ui.themes.LocalDimens
@@ -92,13 +96,13 @@ data class TabInfo(
     val icon: ImageVector
 )
 
-val mainTabs = listOf(
+val musicMainTabs = listOf(
     TabInfo(ScreenConfig.Home, Icons.Filled.Home),
     TabInfo(ScreenConfig.Search, Icons.Filled.Search),
     TabInfo(ScreenConfig.Library, Icons.Filled.LibraryMusic),
 )
 
-val bottomTabs = listOf(
+val musicBottomTabs = listOf(
     TabInfo(ScreenConfig.ListenTogether, Icons.Filled.Groups),
     TabInfo(ScreenConfig.Account, Icons.Filled.Person),
     TabInfo(ScreenConfig.Settings, Icons.Filled.Settings),
@@ -110,9 +114,14 @@ val bottomTabs = listOf(
 fun NavigationDesktop(
     rootComponent: RootComponent,
     userPreferences: UserPreferencesRepository,
-    railHazeState: HazeState,
+    appMode: AppMode,
 ) {
     val childStack by rootComponent.childStack.subscribeAsState()
+
+    LaunchedEffect(appMode) {
+        val root = if (appMode == AppMode.YOUTUBE) ScreenConfig.YouTubeHome else ScreenConfig.Home
+        rootComponent.switchTab(root)
+    }
 
     // Retroceso global centralizado (Compose puro, sin AWT): botón "atrás" del ratón vía
     // pointerInput + teclas Escape/Back vía onPreviewKeyEvent, ambos en el Surface raíz.
@@ -124,6 +133,11 @@ fun NavigationDesktop(
     val snackbarHostState = LocalSnackbarHostState.current
     val playlistsViewModel = koinInject<LibraryPlaylistsViewModel>()
     val csvImportState by playlistsViewModel.csvImportState.collectAsState()
+    val youtubePlayerService: YouTubePlayerService = koinInject()
+    val youtubeWatchViewModel: YouTubeWatchViewModel = koinInject()
+    val youtubeMiniVisible by youtubePlayerService.minimized.collectAsState()
+    val youtubeMiniVideo by youtubePlayerService.currentVideo.collectAsState()
+    val youtubeFullscreen by youtubePlayerService.fullscreen.collectAsState()
 
     val navigationRailStyle by userPreferences.navigationRailStyle.collectAsState(NavigationRailStyle.DEFAULT)
     val miniPlayerStyle by userPreferences.miniPlayerStyle.collectAsState(MiniPlayerStyle.BAR)
@@ -135,12 +149,20 @@ fun NavigationDesktop(
 
     val isOnNowPlaying = activeConfig is ScreenConfig.NowPlaying
     val animationsEnabled = LocalAnimationsEnabled.current
+    val musicChrome = appMode == AppMode.MUSIC
+
+    LaunchedEffect(appMode) {
+        if (!musicChrome) isQueueVisible = false
+    }
 
     val currentSong = playerState.currentSong
     val queueWidth = 420.dp
-    val floatingMiniPlayer = miniPlayerStyle == MiniPlayerStyle.FLOATING && currentSong != null
-    val dockedMiniPlayer = miniPlayerStyle == MiniPlayerStyle.DOCKED && currentSong != null
-    val barMiniPlayer = miniPlayerStyle == MiniPlayerStyle.BAR && currentSong != null
+    val floatingMiniPlayer =
+        miniPlayerStyle == MiniPlayerStyle.FLOATING && currentSong != null && musicChrome
+    val dockedMiniPlayer =
+        miniPlayerStyle == MiniPlayerStyle.DOCKED && currentSong != null && musicChrome
+    val barMiniPlayer =
+        miniPlayerStyle == MiniPlayerStyle.BAR && currentSong != null && musicChrome
 
     val dimens = LocalDimens.current
     // En Now Playing el mini player está oculto (pantalla completa): no hay inset que reservar.
@@ -171,7 +193,7 @@ fun NavigationDesktop(
             val sharedTransitionScope = this
             val hazeState = rememberHazeState()
             val miniPlayerSlot: @Composable (Modifier) -> Unit = { m ->
-                MiniPlayerHost(
+                MiniPlayer(
                     isOnNowPlaying = isOnNowPlaying,
                     onNowPlaying = {
                         if (isOnNowPlaying) {
@@ -198,17 +220,32 @@ fun NavigationDesktop(
             modifier = Modifier
                 .fillMaxSize()
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown && (event.key == Key.Escape || event.key == Key.Back) && rootComponent.canGoBack()) {
-                        rootComponent.onBack()
-                        true
-                    } else false
+                    if (event.type == KeyEventType.KeyDown && (event.key == Key.Escape || event.key == Key.Back)) {
+                        when {
+                            youtubeFullscreen -> {
+                                youtubePlayerService.setFullscreen(false)
+                                true
+                            }
+                            rootComponent.canGoBack() -> {
+                                rootComponent.onBack()
+                                true
+                            }
+                            else -> false
+                        }
+                    } else {
+                        false
+                    }
                 }
-                .pointerInput(Unit) {
+                .pointerInput(youtubeFullscreen) {
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press && event.buttons == PointerButtons(8) && rootComponent.canGoBack()) {
-                                rootComponent.onBack()
+                            if (event.type == PointerEventType.Press && event.buttons == PointerButtons(8)) {
+                                if (youtubeFullscreen) {
+                                    youtubePlayerService.setFullscreen(false)
+                                } else if (rootComponent.canGoBack()) {
+                                    rootComponent.onBack()
+                                }
                             }
                         }
                     }
@@ -229,30 +266,39 @@ fun NavigationDesktop(
                     Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
 
                         // Now Playing siempre es pantalla completa: el rail se oculta solo.
+                        // La ventana principal no cambia de layout al entrar en
+                        // fullscreen: el vídeo se muestra en una ventana aparte.
                         AnimatedVisibility(
                             visible = !isOnNowPlaying,
                             enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
                             exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
                         ) {
-                            when (navigationRailStyle) {
-                                NavigationRailStyle.DEFAULT -> {
-                                    NavigationRailDefault(
-                                        activeConfig = activeConfig,
-                                        changeQueueVisible = { isQueueVisible = it },
-                                        rootComponent = rootComponent,
-                                        liquidGlass = liquidGlassEnabled,
-                                        hazeState = railHazeState,
-                                    )
-                                }
+                            if (appMode == AppMode.YOUTUBE) {
+                                YouTubeSidebar(
+                                    activeConfig = activeConfig,
+                                    rootComponent = rootComponent,
+                                )
+                            } else {
+                                when (navigationRailStyle) {
+                                    NavigationRailStyle.DEFAULT -> {
+                                        NavigationRailDefault(
+                                            activeConfig = activeConfig,
+                                            changeQueueVisible = { isQueueVisible = it },
+                                            rootComponent = rootComponent,
+                                            mainTabs = musicMainTabs,
+                                            bottomTabs = musicBottomTabs,
+                                        )
+                                    }
 
-                                NavigationRailStyle.WIDE -> {
-                                    WideNavigationRail(
-                                        activeConfig = activeConfig,
-                                        changeQueueVisible = { isQueueVisible = it },
-                                        rootComponent = rootComponent,
-                                        liquidGlass = liquidGlassEnabled,
-                                        hazeState = railHazeState,
-                                    )
+                                    NavigationRailStyle.WIDE -> {
+                                        WideNavigationRail(
+                                            activeConfig = activeConfig,
+                                            changeQueueVisible = { isQueueVisible = it },
+                                            rootComponent = rootComponent,
+                                            mainTabs = musicMainTabs,
+                                            bottomTabs = musicBottomTabs,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -283,7 +329,10 @@ fun NavigationDesktop(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(end = dimens.windowPadding, bottom = bottomPadding)
+                                .padding(
+                                    end = dimens.windowPadding,
+                                    bottom = bottomPadding,
+                                ),
                         ) {
 
                             Row(
@@ -474,6 +523,24 @@ fun NavigationDesktop(
                     onCancel = { playlistsViewModel.cancelCsvImport() },
                     onDismiss = { playlistsViewModel.dismissCsvImportResult() },
                 )
+
+                val miniVideo = youtubeMiniVideo
+                if (youtubeMiniVisible && miniVideo != null) {
+                    YouTubeFloatingMiniPlayer(
+                        playerService = youtubePlayerService,
+                        video = miniVideo,
+                        onRestore = {
+                            youtubeWatchViewModel.restoreFromMini()
+                            rootComponent.navigateTo(
+                                ScreenConfig.YouTubeWatch(miniVideo.id),
+                            )
+                        },
+                        onClose = { youtubeWatchViewModel.closeMini() },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(24.dp),
+                    )
+                }
             }
         }
     }
@@ -481,54 +548,7 @@ fun NavigationDesktop(
     }
 }
 
-@Composable
-private fun MiniPlayerHost(
-    isOnNowPlaying: Boolean,
-    onNowPlaying: () -> Unit,
-    onToggleQueue: () -> Unit,
-    isQueueVisible: Boolean,
-    modifier: Modifier = Modifier,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    floating: Boolean = false,
-    isDocked: Boolean = false,
-    backgroundStyle: MiniPlayerBackgroundStyle = MiniPlayerBackgroundStyle.TRANSLUCENT,
-    hazeState: HazeState? = null,
-    liquidGlass: Boolean = false,
-) {
-    MiniPlayer(
-        isOnNowPlaying = isOnNowPlaying,
-        onNowPlaying = onNowPlaying,
-        onToggleQueue = onToggleQueue,
-        isQueueVisible = isQueueVisible,
-        modifier = modifier,
-        sharedTransitionScope = sharedTransitionScope,
-        floating = floating,
-        isDocked = isDocked,
-        backgroundStyle = backgroundStyle,
-        hazeState = hazeState,
-        liquidGlass = liquidGlass,
-    )
-}
 
-
-fun Route.toConfig(): ScreenConfig = when (this) {
-    Route.Home -> ScreenConfig.Home
-    Route.Search -> ScreenConfig.Search
-    Route.Library -> ScreenConfig.Library
-    Route.Account -> ScreenConfig.Account
-    Route.Settings -> ScreenConfig.Settings
-    Route.ListenTogether -> ScreenConfig.ListenTogether
-    Route.NowPlaying -> ScreenConfig.NowPlaying
-    Route.Stats -> ScreenConfig.Stats
-    // Los episodios de pódcast usan un álbum con id MPSP... (el id del pódcast);
-    // ese id solo es válido en la ruta de Playlist (PlaylistScreen reutilizado).
-    is Route.Album ->
-        if (browseId.startsWith("MPSP")) ScreenConfig.Playlist(browseId)
-        else ScreenConfig.Album(browseId)
-    is Route.Playlist -> ScreenConfig.Playlist(playlistId)
-    is Route.Artist -> ScreenConfig.Artist(artistId)
-    is Route.YouTubeBrowse -> ScreenConfig.YouTubeBrowse(browseId, params)
-}
 
 @Composable
 fun ScreenRouter(
@@ -537,7 +557,7 @@ fun ScreenRouter(
     sharedAnimatedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
-    val navigator = createNavigator(rootComponent)
+    val navigator: (ScreenConfig) -> Unit = rootComponent::navigateTo
     when (instance) {
         is RootComponent.Child.Home -> {
             HomeScreenRoute(
@@ -613,6 +633,37 @@ fun ScreenRouter(
             )
         }
 
+        is RootComponent.Child.YouTubeHome -> {
+            YouTubeHomeScreenRoute(
+                viewModel = instance.component.viewModel,
+                onOpenVideo = { videoId ->
+                    rootComponent.navigateTo(ScreenConfig.YouTubeWatch(videoId))
+                },
+            )
+        }
+
+        is RootComponent.Child.YouTubeShorts -> {
+            YouTubeHomeScreenRoute(
+                viewModel = instance.component.viewModel,
+                onOpenVideo = { videoId ->
+                    rootComponent.navigateTo(ScreenConfig.YouTubeWatch(videoId))
+                },
+                shortsOnly = true,
+            )
+        }
+
+        is RootComponent.Child.YouTubeWatch -> {
+            val playerService = koinInject<YouTubePlayerService>()
+            YouTubeWatchScreenRoute(
+                viewModel = instance.component.viewModel,
+                playerService = playerService,
+                onBack = { rootComponent.onBack() },
+                onOpenVideo = { videoId ->
+                    rootComponent.navigateTo(ScreenConfig.YouTubeWatch(videoId))
+                },
+            )
+        }
+
         is RootComponent.Child.NowPlaying -> {
             NowPlayingScreen(
                 viewModel = instance.component.viewModel,
@@ -624,12 +675,3 @@ fun ScreenRouter(
         }
     }
 }
-
-
-// Helper para simplificar las llamadas
-@Composable
-fun createNavigator(rootComponent: RootComponent): (Route) -> Unit = { route ->
-    rootComponent.navigateTo(route.toConfig())
-}
-
-

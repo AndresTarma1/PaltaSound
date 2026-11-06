@@ -112,8 +112,8 @@ fun NavigationRailDefault(
     activeConfig: ScreenConfig,
     changeQueueVisible: (Boolean) -> Unit,
     rootComponent: RootComponent,
-    liquidGlass: Boolean = false,
-    hazeState: HazeState? = null,
+    mainTabs: List<TabInfo>,
+    bottomTabs: List<TabInfo>,
 ){
     val square = LocalLayoutMode.current == LayoutMode.SQUARE
     val dimens = LocalDimens.current
@@ -200,7 +200,8 @@ fun NavigationRailDefault(
 
             mainTabs.forEach { tab ->
                 NavigationRailItem(
-                    selected = activeConfig == tab.config,
+                    selected = activeConfig == tab.config ||
+                        (tab.config == ScreenConfig.YouTubeHome && activeConfig is ScreenConfig.YouTubeWatch),
                     onClick = {
                         rootComponent.switchTab(tab.config)
                     },
@@ -211,6 +212,7 @@ fun NavigationRailDefault(
                                 ScreenConfig.Home -> stringResource(Res.string.nav_home)
                                 ScreenConfig.Search -> stringResource(Res.string.nav_search)
                                 ScreenConfig.Library -> stringResource(Res.string.nav_library)
+                                ScreenConfig.YouTubeHome -> stringResource(Res.string.nav_home)
                                 else -> ""
                             }
                         )
@@ -224,7 +226,8 @@ fun NavigationRailDefault(
 
             bottomTabs.forEach { tab ->
                 NavigationRailItem(
-                    selected = activeConfig == tab.config,
+                    selected = activeConfig == tab.config ||
+                        (tab.config == ScreenConfig.YouTubeHome && activeConfig is ScreenConfig.YouTubeWatch),
                     onClick = {
                         changeQueueVisible(false)
                         rootComponent.switchTab(tab.config)
@@ -265,8 +268,8 @@ fun WideNavigationRail(
     activeConfig: ScreenConfig,
     changeQueueVisible: (Boolean) -> Unit,
     rootComponent: RootComponent,
-    liquidGlass: Boolean = false,
-    hazeState: HazeState? = null,
+    mainTabs: List<TabInfo>,
+    bottomTabs: List<TabInfo>,
 ) {
     val square = LocalLayoutMode.current == LayoutMode.SQUARE
     val dimens = LocalDimens.current
@@ -413,11 +416,13 @@ fun WideNavigationRail(
                                 ScreenConfig.Home -> stringResource(Res.string.nav_home)
                                 ScreenConfig.Search -> stringResource(Res.string.nav_search)
                                 ScreenConfig.Library -> stringResource(Res.string.nav_library)
+                                ScreenConfig.YouTubeHome -> stringResource(Res.string.nav_home)
                                 else -> ""
                             }
                         )
                     },
-                    selected = activeConfig == tab.config,
+                    selected = activeConfig == tab.config ||
+                        (tab.config == ScreenConfig.YouTubeHome && activeConfig is ScreenConfig.YouTubeWatch),
                     onClick = {
                         rootComponent.switchTab(tab.config)
                     },
@@ -438,7 +443,8 @@ fun WideNavigationRail(
                             }
                         )
                     },
-                    selected = activeConfig == tab.config,
+                    selected = activeConfig == tab.config ||
+                        (tab.config == ScreenConfig.YouTubeHome && activeConfig is ScreenConfig.YouTubeWatch),
                     onClick = {
                         changeQueueVisible(false)
                         rootComponent.switchTab(tab.config)

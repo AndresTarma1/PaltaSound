@@ -57,7 +57,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.ui.screens.library.tabs.AlbumsTab
@@ -101,7 +101,7 @@ data class LibraryScreenState(
 
 data class LibraryActions(
     val onTabSelected: (LibraryTab) -> Unit,
-    val onNavigate: (Route) -> Unit,
+    val onNavigate: (ScreenConfig) -> Unit,
     val onOpenStats: () -> Unit,
     val onRemoveAlbum: (String) -> Unit,
     val onRemoveArtist: (String) -> Unit,
@@ -113,7 +113,6 @@ data class LibraryActions(
     val onRefreshYtm: () -> Unit,
     val onCreatePlaylist: (String) -> Unit,
     val onImportCsv: () -> Unit,
-    val onExportPlaylist: (String) -> Unit,
     val onSearchQueryChange: (String) -> Unit,
     val onClearSearch: () -> Unit,
     val onSortOrderChange: (LibrarySortOrder) -> Unit,
@@ -123,7 +122,7 @@ data class LibraryActions(
 @Composable
 fun LibraryScreenRoute(
     viewModel: LibraryViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
     val playlistsViewModel = koinInject<LibraryPlaylistsViewModel>()
@@ -167,7 +166,7 @@ fun LibraryScreenRoute(
         LibraryActions(
             onTabSelected = viewModel::selectTab,
             onNavigate = onNavigate,
-            onOpenStats = { onNavigate(Route.Stats) },
+            onOpenStats = { onNavigate(ScreenConfig.Stats) },
             onRemoveAlbum = viewModel::removeAlbum,
             onRemoveArtist = viewModel::removeArtist,
             onRemovePlaylist = { id ->
@@ -219,12 +218,6 @@ fun LibraryScreenRoute(
             onRefreshYtm = viewModel::refreshYtmLibrary,
             onCreatePlaylist = viewModel::createLocalPlaylist,
             onImportCsv = { showCsvTutorial = true },
-            onExportPlaylist = { playlistId ->
-                playlistsViewModel.exportPlaylist(playlistId) { success, msg ->
-                    // Manejo simple: log o snackbar (por ahora solo log)
-                    println(if (success) "Exportado: $msg" else "Error export: $msg")
-                }
-            },
             onSearchQueryChange = viewModel::setSearchQuery,
             onClearSearch = viewModel::clearSearch,
             onSortOrderChange = viewModel::setSortOrder,

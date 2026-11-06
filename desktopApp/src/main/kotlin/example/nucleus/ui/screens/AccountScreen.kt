@@ -36,7 +36,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import com.metrolist.innertube.YouTube
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.images.MusicPlayerImage
@@ -77,7 +77,7 @@ data class AccountActions(
     val onReset: () -> Unit,
     val onRetry: () -> Unit,
     val onRefreshPlaylists: () -> Unit,
-    val onNavigate: (Route) -> Unit,
+    val onNavigate: (ScreenConfig) -> Unit,
     val onLoginWithCookie: (String) -> Unit = {},
 )
 
@@ -85,7 +85,7 @@ data class AccountActions(
 @Composable
 fun AccountScreenRoute(
     viewModel: AccountManagerViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
 
     val playerViewModel = LocalPlayerViewModel.current
@@ -297,7 +297,6 @@ private fun LoginSection(
                 textAlign = TextAlign.Center
             )
 
-            // ── Browser sign in ─────────────────────────────────────────
             if (hasBrowser) {
                 val browserSignInInteraction = remember { MutableInteractionSource() }
                 Card(
@@ -381,7 +380,6 @@ private fun LoginSection(
                 }
             }
 
-            // ── Import from browser ─────────────────────────────────────
             if (browsers.isNotEmpty()) {
                 TextButton(
                     onClick = { showAdvanced = !showAdvanced },
@@ -473,7 +471,6 @@ private fun LoginSection(
                 }
             }
 
-            // ── Divider ─────────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -487,7 +484,6 @@ private fun LoginSection(
                 HorizontalDivider(modifier = Modifier.weight(1f))
             }
 
-            // ── Manual cookie paste (existing) ─────────────────────────
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -698,7 +694,7 @@ private fun ErrorSection(message: String, onRetry: () -> Unit, onReset: () -> Un
 private fun LoggedInSection(
     state: AccountState.LoggedIn,
     onRefresh: () -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val scrollState = rememberScrollState()
 
@@ -707,12 +703,10 @@ private fun LoggedInSection(
             .fillMaxSize()
             .verticalScroll(scrollState)
     ) {
-        // Header de perfil
         AccountProfileHeader(accountInfo = state.accountInfo)
 
         Spacer(Modifier.height(8.dp))
 
-        // Sección de playlists
         PlaylistsSection(
             playlists = state.playlists,
             isLoading = state.isLoadingPlaylists,
@@ -744,7 +738,6 @@ private fun AccountProfileHeader(accountInfo: com.metrolist.innertube.models.Acc
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar
                 if (!accountInfo.thumbnailUrl.isNullOrBlank()) {
                     MusicPlayerImage(
                         url = accountInfo.thumbnailUrl,
@@ -769,7 +762,6 @@ private fun AccountProfileHeader(accountInfo: com.metrolist.innertube.models.Acc
                     }
                 }
 
-                // Info
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         accountInfo.name,
@@ -798,7 +790,6 @@ private fun AccountProfileHeader(accountInfo: com.metrolist.innertube.models.Acc
                     }
                 }
 
-                // Badge de sesión activa
                 AssistChip(
                     onClick = {},
                     label = {
@@ -823,7 +814,6 @@ private fun AccountProfileHeader(accountInfo: com.metrolist.innertube.models.Acc
                 )
             }
 
-            // Barra de info: dónde está guardada la cookie
             if (cookieSize > 0L) {
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -861,10 +851,9 @@ private fun PlaylistsSection(
     playlists: List<PlaylistItem>,
     isLoading: Boolean,
     onRefresh: () -> Unit,
-    onNavigate: (Route) -> Unit
+    onNavigate: (ScreenConfig) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Header de sección
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -898,7 +887,6 @@ private fun PlaylistsSection(
 
         when {
             isLoading && playlists.isEmpty() -> {
-                // Skeleton loaders
                 Column(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -923,7 +911,7 @@ private fun PlaylistsSection(
                     playlists.forEach { playlist ->
                         PlaylistAccountItem(
                             playlist = playlist,
-                            onClick = { onNavigate(Route.Playlist(playlist.id)) }
+                            onClick = { onNavigate(ScreenConfig.Playlist(playlist.id)) }
                         )
                     }
                 }
@@ -955,7 +943,6 @@ private fun PlaylistAccountItem(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Thumbnail
         MusicPlayerImage(
             url = playlist.thumbnail,
             contentDescription = playlist.title,
@@ -964,7 +951,6 @@ private fun PlaylistAccountItem(
             placeholderType = PlaceholderType.PLAYLIST,
         )
 
-        // Info
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 playlist.title,

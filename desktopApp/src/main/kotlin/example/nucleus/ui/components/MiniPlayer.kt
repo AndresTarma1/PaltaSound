@@ -888,7 +888,7 @@ private fun MiniPlayerWideRow(
 @Composable
 fun TimeText(millis: Long, seekValue: Float? = null) {
     Text(
-        text = formatPlayerTimeValue(millis),
+        text = formatClock(millis),
         style = MaterialTheme.typography.labelSmall.copy(
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,

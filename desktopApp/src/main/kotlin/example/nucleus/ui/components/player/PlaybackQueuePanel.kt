@@ -489,17 +489,6 @@ internal fun QueueActionsMenu(
     }
 }
 
-internal fun formatQueueDuration(totalSeconds: Long): String {
-    if (totalSeconds <= 0) return ""
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    return if (hours > 0) {
-        "$hours h $minutes min"
-    } else {
-        "$minutes min"
-    }
-}
-
 @Composable
 private fun EmptyQueuePlaceholder() {
     ExpressiveEmptyState(

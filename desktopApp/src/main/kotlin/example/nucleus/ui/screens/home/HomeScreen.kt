@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.ChipRowSkeleton
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.HorizontalGridLikeRow
@@ -56,7 +56,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 @Composable
 fun HomeScreenRoute(
     viewModel: HomeViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
     val uiState by viewModel.uiState.collectAsState()
@@ -76,7 +76,7 @@ fun HomeScreen(
     uiState: HomeState,
     recentSongs: List<SongItem> = emptyList(),
     onEvent: (HomeUiEvent) -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
 ) {
     Box(
@@ -132,7 +132,7 @@ fun HomeScreenContent(
     isLoadingMore: Boolean,
     onChipClick: (String?) -> Unit,
     onScrollNearEnd: () -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
 ) {
     val listState = rememberLazyListState()
@@ -280,7 +280,7 @@ private fun ChipFilterRow(
 @Composable
 private fun HomeSectionRow(
     section: HomePage.Section,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
 ) {
     Column(modifier = Modifier.padding(vertical = 12.dp)) {

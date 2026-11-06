@@ -109,6 +109,21 @@ actual object DatabaseDriverFactory {
                 savedAt INTEGER NOT NULL
             )
             """.trimIndent(),
+            // Historial de YouTube principal (independiente de la biblioteca de música).
+            """
+            CREATE TABLE IF NOT EXISTS YouTubeWatchEntry (
+                videoId TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                channelName TEXT,
+                durationSeconds INTEGER NOT NULL DEFAULT 0,
+                thumbnailUrl TEXT,
+                viewCount INTEGER,
+                uploadedText TEXT,
+                positionMs INTEGER NOT NULL DEFAULT 0,
+                durationMs INTEGER NOT NULL DEFAULT 0,
+                lastWatchedAt INTEGER NOT NULL
+            )
+            """.trimIndent(),
             // Las letras ya no se persisten (viven solo en memoria durante la sesion, ver
             // PlayerViewModel). Esto borra lo que versiones anteriores dejaron en disco.
             "DROP TABLE IF EXISTS Lyrics"

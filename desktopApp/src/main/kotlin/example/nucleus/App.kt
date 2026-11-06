@@ -61,6 +61,7 @@ import dev.nucleusframework.window.styling.TitleBarStyle
 import example.nucleus.bootstrap.CrashReportDialog
 import example.nucleus.data.account.AccountManager
 import example.nucleus.data.repository.AppLocale
+import example.nucleus.data.repository.AppMode
 import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.CrashReport
 import example.nucleus.data.repository.CrashReportRepository
@@ -74,6 +75,8 @@ import example.nucleus.navigation.ScreenConfig
 import example.nucleus.overlay.GlobalHotkeyManager
 import example.nucleus.overlay.HotkeyCombo
 import example.nucleus.player.PlaybackState
+import example.nucleus.player.YouTubePlayerService
+import example.nucleus.platform.Platform
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.ui.components.CoilSetup
@@ -81,6 +84,7 @@ import example.nucleus.ui.components.artwork.ArtworkColors
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.artwork.rememberArtworkColors
 import example.nucleus.ui.components.background.BackgroundStyle
+import example.nucleus.ui.youtube.YouTubeFullscreenWindow
 import example.nucleus.ui.themes.AppTheme
 import example.nucleus.utils.LocalDownloadViewModel
 import example.nucleus.utils.LocalPlayerViewModel
@@ -93,6 +97,7 @@ import example.nucleus.viewmodels.AppViewModel
 import example.nucleus.viewmodels.DownloadViewModel
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
 import example.nucleus.viewmodels.PlayerViewModel
+import example.nucleus.viewmodels.YouTubeWatchViewModel
 import example.nucleus.viewmodels.UpdateStatus
 import example.nucleus.windows.TaskBarMediaWidget
 import example.nucleus.windows.WindowsThumbBar
@@ -153,6 +158,7 @@ fun NucleusApplicationScope.App(
     /** Arrancar con la ventana oculta (lanzamiento al iniciar sesión → directo a la bandeja). */
     startHidden: Boolean = false,
 ) {
+    val appScope = this
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
@@ -185,7 +191,6 @@ fun NucleusApplicationScope.App(
         }
     }
 
-    // Estado del overlay
     val hotkeyManager: GlobalHotkeyManager = koinInject()
     val overlayEnabled by remember(userPreferences) { userPreferences.overlayHotkeyEnabled }.collectAsState(true)
     val overlayCode by remember(userPreferences) { userPreferences.overlayHotkeyCode }.collectAsState(0)
@@ -201,7 +206,6 @@ fun NucleusApplicationScope.App(
         hotkeyManager.updateCombo(HotkeyCombo.fromPrefs(overlayCode, overlayMods))
     }
 
-    // Estado de sincronización YTM
     val syncUtils: example.nucleus.utils.SyncUtils = koinInject()
     val ytmSyncEnabled by remember(userPreferences) { userPreferences.ytmSyncEnabled }.collectAsState(false)
     val offlineMode by remember(userPreferences) { userPreferences.offlineModeEnabled }.collectAsState(false)
@@ -250,8 +254,12 @@ fun NucleusApplicationScope.App(
         ArtworkColors.Default
     }
     val themeMode by remember(userPreferences) { userPreferences.themeMode }.collectAsState(ThemeMode.SYSTEM)
+    val appMode by remember(userPreferences) { userPreferences.appMode }.collectAsState(AppMode.MUSIC)
     val youtubeRegion by remember(userPreferences) { userPreferences.youtubeRegion }.collectAsState(YouTubeRegion.SYSTEM)
     val animationsEnabled by remember(userPreferences) { userPreferences.animationsEnabled }.collectAsState(true)
+    val youtubePlayerService: YouTubePlayerService = koinInject()
+    val youtubeWatchViewModel: YouTubeWatchViewModel = koinInject()
+    val youtubeFullscreen by youtubePlayerService.fullscreen.collectAsState()
 
     if (!isVisible || minimizeToTray) {
         TrayCustom(
@@ -433,10 +441,15 @@ fun NucleusApplicationScope.App(
                                         style = titleBarStyle
                                     ) {
                                         DesktopTitleBar(
-                                            currentSong = currentSong?.title,
-                                            isPlaying = isPlaying,
+                                            currentSong = currentSong?.title
+                                                ?.takeIf { appMode == AppMode.MUSIC },
+                                            isPlaying = isPlaying && appMode == AppMode.MUSIC,
                                             isLoggedIn = isLoggedIn,
                                             accountInfo = accountInfo,
+                                            appMode = appMode,
+                                            onModeChange = { mode ->
+                                                scope.launch { userPreferences.setAppMode(mode) }
+                                            },
                                             ytmSyncEnabled = ytmSyncEnabled,
                                             isSyncing = syncState.overallStatus is example.nucleus.utils.SyncStatus.Syncing,
                                             isOfflineMode = offlineMode,
@@ -463,6 +476,8 @@ fun NucleusApplicationScope.App(
 
                                         // Fuera de Now Playing la barra va APILADA arriba, dentro de la
                                         // columna: reserva su alto y el contenido empieza debajo.
+                                        // En fullscreen de vídeo tampoco se compone: el contenido
+                                        // llena la ventana y se sale con Esc o con el botón del vídeo.
                                         if (!isOnNowPlaying) {
                                             titleBar()
                                             if (isSquareLayout) {
@@ -496,7 +511,7 @@ fun NucleusApplicationScope.App(
                                             NavigationDesktop(
                                                 rootComponent = rootComponent,
                                                 userPreferences = userPreferences,
-                                                railHazeState = railHazeState,
+                                                appMode = appMode,
                                             )
                                         }
                                     }
@@ -512,6 +527,16 @@ fun NucleusApplicationScope.App(
                                 }
                             }
                         }
+
+                        // Ventana aparte para el vídeo fullscreen: la principal
+                        // no cambia de tamaño ni de layout, así no hay transición
+                        // de swapchain que pueda dejar frames viejos.
+                        YouTubeFullscreenWindow(
+                            scope = appScope,
+                            playerService = youtubePlayerService,
+                            viewModel = youtubeWatchViewModel,
+                            visible = youtubeFullscreen,
+                        )
                     }
                 }
             }
@@ -623,7 +648,7 @@ private fun NucleusDecoratedWindowScope.WindowsTaskbarIntegration(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
 ) {
-    if (!isWindows()) return
+    if (!Platform.isWindows) return
     val thumbBar = remember { WindowsThumbBar(onPrevious, onPlayPause, onNext) }
 
     LaunchedEffect(isVisible) {
@@ -643,6 +668,3 @@ private fun NucleusDecoratedWindowScope.WindowsTaskbarIntegration(
         thumbBar.setPlaying(isPlaying)
     }
 }
-
-private fun isWindows(): Boolean =
-    System.getProperty("os.name").orEmpty().lowercase().contains("win")

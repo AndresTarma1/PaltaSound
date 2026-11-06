@@ -24,7 +24,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import example.nucleus.data.account.AccountManager
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.PlaylistScreenSkeleton
 import example.nucleus.ui.screens.playlist.PlaylistLayout
 import example.nucleus.utils.LocalSnackbarHostState
@@ -60,7 +60,7 @@ data class PlaylistScreenState(
 
 data class PlaylistActions(
     val onBack: () -> Unit,
-    val onNavigate: (Route) -> Unit,
+    val onNavigate: (ScreenConfig) -> Unit,
     val onToggleSave: () -> Unit,
     val onPlay: () -> Unit,
     val onShuffle: () -> Unit,
@@ -87,7 +87,7 @@ private fun syncAgoText(syncedAt: Long): String {
 
 @Composable
 fun PlaylistScreenRoute(
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
     viewModel: PlaylistManagerViewModel,
 ) {

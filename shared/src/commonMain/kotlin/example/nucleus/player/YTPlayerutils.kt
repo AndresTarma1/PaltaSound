@@ -285,13 +285,4 @@ object YTPlayerutils {
      */
     private suspend fun getSignatureTimestampOrNull(videoId: String): Int? =
         PlayerJsFetcher.getSignatureTimestamp()
-
-    /**
-     * Invalida las URLs de stream en caché para un video.
-     *
-     * @param videoId El ID del video.
-     */
-    suspend fun forceRefreshForVideo(videoId: String) {
-        StreamCache.invalidateForVideo(videoId)
-    }
 }

@@ -89,7 +89,7 @@ dependencies {
 
 
 
-    implementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.test)
 
     implementation(compose.desktop.currentOs) {
         exclude(group = "org.jetbrains.compose.material")
@@ -104,10 +104,6 @@ dependencies {
 
     // Widgets Compose dentro de la barra de tareas de Windows (solo desktop/JVM)
     implementation("uk.kulikov:compose-windows-taskbar:0.1.0")
-
-
-
-    implementation(compose.desktop.currentOs)
 }
 
 // Jewel trae el fork de coroutines de JetBrains (`org.jetbrains.intellij.deps.kotlinx`,
@@ -131,7 +127,9 @@ nucleus.application {
     jvmArgs(
         // Heap
         "-Xms64m",
-        "-Xmx320m",
+        // 320m leaves no room for a 720p SABR video/audio download plus the
+        // Compose/Skia working set; GC thrashing froze the UI during playback.
+        "-Xmx512m",
         "-XX:+UseG1GC",
         "-XX:MaxGCPauseMillis=100",
         // G1PeriodicGC libera periódicamente el heap Y los objetos nativos de Skia (imágenes):
@@ -225,7 +223,8 @@ nucleus.application {
         // getResourceAsStream("/thumbbar/...") funcione en el binario nativo.
         buildArgs.add("-H:IncludeResources=thumbbar/.*")
         // Heap del binario nativo acotado (objetivo RAM); Serial GC por defecto.
-        maxHeapSize = "320m"
+        // 512m deja margen para el MVP SABR de vídeo sin disparar pausas de GC.
+        maxHeapSize = "512m"
     }
 
     // Los recursos Windows de runtime a veces no se propagan desde appResources al app-image

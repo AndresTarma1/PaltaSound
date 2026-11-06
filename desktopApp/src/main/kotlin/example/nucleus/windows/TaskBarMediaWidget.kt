@@ -58,7 +58,7 @@ import example.nucleus.generated.resources.tray_open
 import example.nucleus.generated.resources.tray_pause
 import example.nucleus.generated.resources.tray_play
 import example.nucleus.ui.components.SlimSlider
-import example.nucleus.ui.components.formatPlayerTimeValue
+import example.nucleus.ui.components.formatClock
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.themes.AppShapes
@@ -353,7 +353,7 @@ private fun FlyoutSeekBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = formatPlayerTimeValue(
+            text = formatClock(
                 if (isDragging) (localSliderValue * progressState.durationMs).toLong() else progressState.positionMs
             ),
             style = MaterialTheme.typography.labelSmall,
@@ -373,12 +373,9 @@ private fun FlyoutSeekBar(
             enabled = progressState.durationMs > 0,
         )
         Text(
-            text = formatPlayerTimeValue(progressState.durationMs),
+            text = formatClock(progressState.durationMs),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
-
-private fun isWindows(): Boolean =
-    System.getProperty("os.name").orEmpty().lowercase().contains("win")

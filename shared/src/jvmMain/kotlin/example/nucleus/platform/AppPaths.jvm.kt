@@ -58,6 +58,7 @@ actual object AppPaths {
     actual val databaseDir: String get() = File(roamingRootFile, "db").absolutePath
     actual val preferencesFile: String get() = File(roamingRootFile, "settings.properties").absolutePath
     actual val cookieFile: String get() = File(roamingRootFile, "yt_cookie.txt").absolutePath
+    actual val exportsDir: String get() = File(roamingRootFile, "exports").absolutePath
 
     // Volátiles (local) — %LOCALAPPDATA%\Tarma\MusicPlayer\
     actual val cacheDir: String get() = File(localRootFile, "cache").absolutePath
@@ -72,6 +73,7 @@ actual object AppPaths {
             localRootFile,
             // Persistentes
             File(roamingRootFile, "db"),
+            File(roamingRootFile, "exports"),
             // Volátiles
             File(localRootFile, "cache"),
             File(localRootFile, "cache/image_cache"),

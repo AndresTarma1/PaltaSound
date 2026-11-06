@@ -45,6 +45,13 @@ object MpvLib {
     const val MPV_FORMAT_INT64 = 4
     const val MPV_FORMAT_DOUBLE = 5
 
+    // mpv_render_param_type
+    const val MPV_RENDER_PARAM_API_TYPE = 1
+    const val MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME = 12
+    const val MPV_RENDER_PARAM_D3D11_INIT_PARAMS = 21
+    const val MPV_RENDER_PARAM_D3D11_FBO = 22
+    const val MPV_RENDER_UPDATE_FRAME = 1L
+
     private val log = Logger.getLogger("MpvLib")
 
     // Arena global que mantiene viva la biblioteca cargada durante toda la vida de la app.
@@ -60,6 +67,7 @@ object MpvLib {
     private var mpvInitialize: MethodHandle? = null
     private var mpvCommand: MethodHandle? = null
     private var mpvTerminateDestroy: MethodHandle? = null
+    private var mpvSetOptionString: MethodHandle? = null
     private var mpvSetPropertyString: MethodHandle? = null
     private var mpvGetPropertyString: MethodHandle? = null
     private var mpvFree: MethodHandle? = null
@@ -67,9 +75,15 @@ object MpvLib {
     private var mpvWaitEvent: MethodHandle? = null
     private var mpvWakeup: MethodHandle? = null
     private var mpvRequestLogMessages: MethodHandle? = null
+    private var mpvRenderContextCreate: MethodHandle? = null
+    private var mpvRenderContextRender: MethodHandle? = null
+    private var mpvRenderContextUpdate: MethodHandle? = null
+    private var mpvRenderContextReportSwap: MethodHandle? = null
+    private var mpvRenderContextFree: MethodHandle? = null
 
     private var loadError: Throwable? = null
     val isAvailable: Boolean get() = loadError == null && mpvCreate != null
+    val renderApiAvailable: Boolean get() = mpvRenderContextCreate != null && mpvRenderContextRender != null
     fun getLoadError(): Throwable? = loadError
 
     private fun ensureAvailable() {
@@ -94,6 +108,10 @@ object MpvLib {
         mpvInitialize = bind("mpv_initialize", FunctionDescriptor.of(C_INT, C_POINTER))
         mpvCommand = bind("mpv_command", FunctionDescriptor.of(C_INT, C_POINTER, C_POINTER))
         mpvTerminateDestroy = bind("mpv_terminate_destroy", FunctionDescriptor.ofVoid(C_POINTER))
+        mpvSetOptionString = bind(
+            "mpv_set_option_string",
+            FunctionDescriptor.of(C_INT, C_POINTER, C_POINTER, C_POINTER),
+        )
         mpvSetPropertyString = bind(
             "mpv_set_property_string",
             FunctionDescriptor.of(C_INT, C_POINTER, C_POINTER, C_POINTER),
@@ -109,6 +127,26 @@ object MpvLib {
         mpvRequestLogMessages = bind(
             "mpv_request_log_messages",
             FunctionDescriptor.of(C_INT, C_POINTER, C_POINTER),
+        )
+        mpvRenderContextCreate = bind(
+            "mpv_render_context_create",
+            FunctionDescriptor.of(C_INT, C_POINTER, C_POINTER, C_POINTER),
+        )
+        mpvRenderContextRender = bind(
+            "mpv_render_context_render",
+            FunctionDescriptor.of(C_INT, C_POINTER, C_POINTER),
+        )
+        mpvRenderContextUpdate = bind(
+            "mpv_render_context_update",
+            FunctionDescriptor.of(C_LONG, C_POINTER),
+        )
+        mpvRenderContextReportSwap = bind(
+            "mpv_render_context_report_swap",
+            FunctionDescriptor.ofVoid(C_POINTER),
+        )
+        mpvRenderContextFree = bind(
+            "mpv_render_context_free",
+            FunctionDescriptor.ofVoid(C_POINTER),
         )
         } catch (e: Throwable) {
             loadError = e
@@ -198,7 +236,7 @@ object MpvLib {
             }
         }
         log.info("MpvLib: libmpv del sistema no encontrada en rutas conocidas; probando resolución por nombre")
-        return SymbolLookup.libraryLookup(if (Platform.isMac) "mpv" else "mpv", arena)
+        return SymbolLookup.libraryLookup("mpv", arena)
     }
 
     // ── API pública (misma forma que el binding JNA) ──────────────────────────
@@ -224,21 +262,36 @@ object MpvLib {
     }
 
     /** [args] es una lista de argumentos terminada en null (el array se copia en una arena confinada). */
-    fun mpv_command(handle: MemorySegment, args: Array<String?>) {
+    fun mpv_command(handle: MemorySegment, args: Array<String?>): Int {
         ensureAvailable()
-        Arena.ofConfined().use { a ->
+        return Arena.ofConfined().use { a ->
             val arr = a.allocate(C_POINTER, (args.size + 1).toLong())
             args.forEachIndexed { i, s ->
                 val p: MemorySegment = if (s != null) a.utf8(s) else MemorySegment.NULL
                 arr.set(C_POINTER, (i * C_POINTER.byteSize()).toLong(), p)
             }
-            mpvCommand!!.invokeWithArguments(handle, arr)
+            mpvCommand!!.invokeWithArguments(handle, arr) as Int
         }
     }
 
     fun mpv_terminate_destroy(handle: MemorySegment) {
         ensureAvailable()
         mpvTerminateDestroy!!.invokeWithArguments(handle)
+    }
+
+    /**
+     * Sets a libmpv option before `mpv_initialize`. Options such as `wid`
+     * must be applied before initialization, unlike runtime properties.
+     */
+    fun mpv_set_option_string(handle: MemorySegment, name: String, value: String): Int {
+        ensureAvailable()
+        return Arena.ofConfined().use { a ->
+            mpvSetOptionString!!.invokeWithArguments(
+                handle,
+                a.utf8(name),
+                a.utf8(value),
+            ) as Int
+        }
     }
 
     fun mpv_set_property_string(handle: MemorySegment, name: String, value: String): Int {
@@ -291,5 +344,81 @@ object MpvLib {
         return Arena.ofConfined().use { a ->
             mpvRequestLogMessages!!.invokeWithArguments(handle, a.utf8(level)) as Int
         }
+    }
+
+    // ── Render API (D3D11) ───────────────────────────────────────────────────
+
+    /**
+     * `mpv_render_param` is `{ int type; void* data; }`. On Windows x64 the
+     * pointer sits at offset 8; the terminator is an all-zero entry.
+     */
+    private fun renderParams(arena: Arena, vararg entries: Pair<Int, MemorySegment?>): MemorySegment {
+        val stride = 16L
+        val params = arena.allocate(stride * (entries.size + 1))
+        entries.forEachIndexed { index, (type, data) ->
+            val offset = index * stride
+            params.set(C_INT, offset, type)
+            params.set(C_POINTER, offset + 8, data ?: MemorySegment.NULL)
+        }
+        return params
+    }
+
+    /**
+     * Creates the D3D11 render context for [handle]. Must be called after
+     * `mpv_initialize` and before the first file is loaded. The renderer draws
+     * into the shared texture later passed to [mpv_render_context_render].
+     */
+    fun mpv_render_context_create(handle: MemorySegment, device: MemorySegment): MemorySegment? {
+        ensureAvailable()
+        if (!renderApiAvailable) return null
+        return Arena.ofConfined().use { a ->
+            val out = a.allocate(C_POINTER)
+            val api = a.utf8("d3d11")
+            val initParams = a.allocate(C_POINTER).also { it.set(C_POINTER, 0L, device) }
+            val params = renderParams(
+                a,
+                MPV_RENDER_PARAM_API_TYPE to api,
+                MPV_RENDER_PARAM_D3D11_INIT_PARAMS to initParams,
+            )
+            val rc = mpvRenderContextCreate!!.invokeWithArguments(out, handle, params) as Int
+            if (rc < 0) {
+                log.warning("mpv_render_context_create D3D11 falló (rc=$rc)")
+                null
+            } else {
+                val ctx = out.get(C_POINTER, 0L)
+                if (ctx.address() == 0L) null else MemorySegment.ofAddress(ctx.address())
+            }
+        }
+    }
+
+    /** Renders the current frame into [texture] (an ID3D11Texture2D*). */
+    fun mpv_render_context_render(ctx: MemorySegment, texture: MemorySegment): Int {
+        ensureAvailable()
+        return Arena.ofConfined().use { a ->
+            val fbo = a.allocate(C_POINTER).also { it.set(C_POINTER, 0L, texture) }
+            val block = a.allocate(C_INT).also { it.set(C_INT, 0L, 1) }
+            val params = renderParams(
+                a,
+                MPV_RENDER_PARAM_D3D11_FBO to fbo,
+                MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME to block,
+            )
+            mpvRenderContextRender!!.invokeWithArguments(ctx, params) as Int
+        }
+    }
+
+    /** Returns a bitset; [MPV_RENDER_UPDATE_FRAME] means a render is due. */
+    fun mpv_render_context_update(ctx: MemorySegment): Long {
+        ensureAvailable()
+        return mpvRenderContextUpdate!!.invokeWithArguments(ctx) as Long
+    }
+
+    fun mpv_render_context_report_swap(ctx: MemorySegment) {
+        ensureAvailable()
+        mpvRenderContextReportSwap!!.invokeWithArguments(ctx)
+    }
+
+    fun mpv_render_context_free(ctx: MemorySegment) {
+        ensureAvailable()
+        runCatching { mpvRenderContextFree!!.invokeWithArguments(ctx) }
     }
 }

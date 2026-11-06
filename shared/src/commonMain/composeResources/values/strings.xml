@@ -42,8 +42,10 @@
     <string name="settings_subtitle">Personaliza tu experiencia</string>
     <string name="section_audio">Audio</string>
     <string name="streaming_quality">Calidad de audio</string>
+    <string name="mode_music">Modo Música</string>
+    <string name="mode_youtube">Modo YouTube</string>
     <string name="sabr_streaming">Streaming SABR</string>
-    <string name="sabr_streaming_subtitle">Audio segmentado en-proceso cuando el CDN bloquea el stream directo. Apagado: se usa yt-dlp, que extrae mejor con sesión iniciada.</string>
+    <string name="sabr_streaming_subtitle">Descarga SABR en-proceso para audio y vídeo de YouTube. En vídeo descarga el archivo completo antes de reproducir; apagado se usa DASH/yt-dlp.</string>
     <string name="equalizer">Ecualizador</string>
     <string name="ten_bands">5 bandas</string>
     <string name="loudness_level">Normalización de volumen</string>
@@ -68,9 +70,7 @@
     <string name="lyrics_romanize">Romanizar letras</string>
     <string name="lyrics_romanize_subtitle">Mostrar romanización para japonés, coreano y ruso</string>
     <string name="lyrics_offset_settings">Offset de letras (global)</string>
-    <string name="lyrics_offset_settings_subtitle">Compensación global en milisegundos (−10 s … +10 s). Se suma al offset por canción del menú ⋮ en Now Playing.</string>
-    <string name="lyrics_offset_song">Sincronización de esta canción</string>
-    <string name="lyrics_offset_song_value">Esta canción: %1$d ms</string>
+    <string name="lyrics_offset_settings_subtitle">Compensación global en milisegundos (−10 s … +10 s).</string>
     <string name="section_appearance">Apariencia</string>
     <string name="animations_enabled">Animaciones de interfaz</string>
     <string name="animations_enabled_subtitle">Habilitar animaciones de transición y movimiento</string>
@@ -406,9 +406,6 @@
     <string name="lyrics_offset">Sincronización de letras</string>
     <string name="lyrics_offset_subtitle">Ajusta si las letras van adelantadas o atrasadas respecto al audio</string>
     <string name="lyrics_offset_value">%1$d ms</string>
-    <string name="lyrics_offset_reset">Restablecer</string>
-    <string name="lyrics_offset_earlier">−0,5 s</string>
-    <string name="lyrics_offset_later">+0,5 s</string>
     <string name="toggle_lyrics_menu">Alternar letras</string>
     <string name="queue_download_added">%1$d canciones agregadas a descargas</string>
     <string name="queue_saved_as">Cola guardada como «%1$s»</string>

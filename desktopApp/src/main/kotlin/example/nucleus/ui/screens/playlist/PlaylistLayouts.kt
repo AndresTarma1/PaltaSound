@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
@@ -37,6 +36,7 @@ import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
 import example.nucleus.ui.screens.PlaylistActions
 import example.nucleus.ui.screens.PlaylistScreenState
+import example.nucleus.ui.screens.shared.CollectionCompactBreakpoint
 import example.nucleus.ui.screens.shared.CollectionCompactCoverSize
 import example.nucleus.ui.screens.shared.CollectionHeroActionRow
 import example.nucleus.ui.screens.shared.CollectionHeroIconButton
@@ -109,7 +109,7 @@ internal fun PlaylistLayout(
     )
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        if (maxWidth < 980.dp) {
+        if (maxWidth < CollectionCompactBreakpoint) {
             PlaylistCompactLayout(
                 playlistPage = playlistPage,
                 state = state,
@@ -580,38 +580,5 @@ internal fun PlaylistInfoPanel(
         isDownloading = isDownloadingAny(),
         isFullyDownloaded = isFullyDownloaded(),
         onDownloadClick = onDownloadClick,
-    )
-}
-
-@Composable
-fun PlaylistActionButton(
-    onClick: () -> Unit,
-    icon: ImageVector,
-    isActive: Boolean,
-    isLoading: Boolean,
-    activeColor: Color = MaterialTheme.colorScheme.primary,
-    modifier: Modifier = Modifier,
-) {
-    CollectionHeroIconButton(
-        onClick = onClick,
-        icon = icon,
-        active = isActive,
-        isLoading = isLoading,
-        modifier = modifier,
-    )
-}
-
-@Composable
-internal fun DownloadAllButton(
-    isDownloadingAny: () -> Boolean,
-    isFullyDownloaded: () -> Boolean,
-    onClick: () -> Unit,
-) {
-    CollectionHeroIconButton(
-        onClick = onClick,
-        icon = if (isFullyDownloaded()) Icons.Default.DownloadDone else Icons.Default.Download,
-        active = isFullyDownloaded(),
-        isLoading = isDownloadingAny(),
-        useWavyProgress = true,
     )
 }

@@ -38,9 +38,6 @@ import example.nucleus.utils.LocalAnimationsEnabled
  */
 val expressiveEasing: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
 
-/** Standard emphasized accelerate for exits / dismiss. */
-val expressiveAccelerateEasing: Easing = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
-
 /**
  * Soft layout spring — critically damped (no overshoot).
  * Prefer for expand/collapse and large chrome moves when a spring feel is desired.
@@ -71,9 +68,6 @@ const val expressiveFadeDuration = 240
 
 /** Slightly longer fade for color-scheme / seed transitions. */
 const val expressiveColorDuration = 300
-
-/** Smooth scroll / longer content motion (synced lyrics). */
-const val expressiveScrollDuration = 480
 
 /** Default duration for layout morphs that use tween instead of spring. */
 const val expressiveLayoutDuration = 320
@@ -182,22 +176,10 @@ fun <T> rememberUiTween(
     return uiTween(enabled, durationMillis, delayMillis, easing)
 }
 
-/** Content hierarchy spring with reduce-motion. */
-@Composable
-fun <T> rememberContentSpring(): FiniteAnimationSpec<T> =
-    rememberUiSpring { contentSpring() }
-
 /** Interaction spring with reduce-motion. */
 @Composable
 fun <T> rememberInteractionSpring(): FiniteAnimationSpec<T> =
     rememberUiSpring { interactionSpring() }
-
-/** Layout tween with reduce-motion — prefer for expand/slide chrome. */
-@Composable
-fun <T> rememberExpressiveLayout(): FiniteAnimationSpec<T> {
-    val enabled = LocalAnimationsEnabled.current
-    return if (enabled) expressiveLayoutTween() else snap()
-}
 
 /**
  * [MotionScheme] sin ninguna animación: todas sus ranuras devuelven [snap].

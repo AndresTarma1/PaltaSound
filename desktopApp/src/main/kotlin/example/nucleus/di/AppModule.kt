@@ -10,6 +10,7 @@ import example.nucleus.data.repository.PlaylistRepository
 import example.nucleus.data.repository.PodcastRepository
 import example.nucleus.data.repository.SearchRepository
 import example.nucleus.data.repository.SongRepository
+import example.nucleus.data.repository.YouTubeHistoryRepository
 import example.nucleus.bootstrap.JvmConfigLauncher
 import example.nucleus.lifecycle.AppLifecycleManager
 import example.nucleus.viewmodels.AccountManagerViewModel
@@ -39,14 +40,20 @@ import example.nucleus.viewmodels.JvmSettingsViewModel
 import example.nucleus.viewmodels.PlayerCoordinator
 import example.nucleus.viewmodels.PlayerCoordinatorImpl
 import example.nucleus.viewmodels.YouTubeBrowseManagerViewModel
+import example.nucleus.viewmodels.YouTubeHomeViewModel
+import example.nucleus.viewmodels.YouTubeWatchViewModel
+import example.youtube.YouTubeService
 import example.nucleus.db.DatabaseDao
 import example.nucleus.db.MusicPlayerDatabase
 import example.nucleus.db.MusicDatabase
 import example.nucleus.player.AudioStreamResolver
 import example.nucleus.download.DownloadService
+import example.nucleus.player.PipePipeLocalDecoder
+import example.nucleus.player.YouTubeHomeFeedService
 import example.nucleus.player.PlayerService
 import example.nucleus.player.QueueManager
 import example.nucleus.player.WindowsMediaSession
+import example.nucleus.player.YouTubePlayerService
 import example.nucleus.listentogether.ListenTogetherClient
 import example.nucleus.listentogether.ListenTogetherManager
 import example.nucleus.utils.OfflineModeController
@@ -59,14 +66,12 @@ import org.koin.dsl.module
 
 val appModule = module {
 
-    // Base de datos
     single<SqlDriver> { DatabaseDriverFactory.createDriver() }
     single<MusicPlayerDatabase> { MusicPlayerDatabase(get<SqlDriver>()) }
 
     single<MusicDatabase> { MusicDatabase(get<MusicPlayerDatabase>()) }
     single<DatabaseDao> { get<MusicDatabase>().dao }
 
-    // Capa de datos
     single<ApiService> { ApiService() }
     single<AlbumRepository> { AlbumRepository(get()) }
     single<ArtistRepository> { ArtistRepository(get()) }
@@ -74,6 +79,7 @@ val appModule = module {
     single<PlaylistRepository> { PlaylistRepository(get(), get()) }
     single<PodcastRepository> { PodcastRepository(get()) }
     single<SearchRepository> { SearchRepository(get()) }
+    single<YouTubeHistoryRepository> { YouTubeHistoryRepository(get<MusicPlayerDatabase>()) }
     single<SyncUtils> { SyncUtils(get(), get(), get(), get(), get()) }
 
     // Reproductor (singletons — compartidos en toda la app)
@@ -90,9 +96,19 @@ val appModule = module {
     single<OfflineModeController> { OfflineModeController(get()) }
     // ✅ DownloadViewModel singleton — mantiene estado de descargas compartido
     single<DownloadViewModel> { DownloadViewModel(get(), get(), get()) }
-    // ✅ PlayerViewModel singleton, pero inicialización pesada diferida al init{} interno
     single<PlayerViewModel> { PlayerViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     single<PlayerCoordinator> { PlayerCoordinatorImpl(get<PlayerViewModel>(), get<DownloadViewModel>()) }
+
+    // YouTube principal (fase 1: metadatos con PipePipeExtractor + playback yt-dlp/mpv)
+    single { PipePipeLocalDecoder() }
+    single {
+        YouTubeService(
+            cookieProvider = { AccountManager.getCookie() },
+            localDecoder = get<PipePipeLocalDecoder>(),
+        )
+    }
+    single { YouTubePlayerService() }
+    single { YouTubeHomeFeedService() }
 
     // Escuchar Juntos (sincronización WebSocket con el servidor relay meowery)
     single<ListenTogetherClient> { ListenTogetherClient() }
@@ -106,6 +122,8 @@ val appModule = module {
     // ViewModels — loginState de AccountManager para reaccionar a cambios de sesión
     factory { AccountManagerViewModel(get(), get(), get()) }
     factory { YouTubeBrowseManagerViewModel() }
+    single { YouTubeHomeViewModel(get(), get()) }
+    single { YouTubeWatchViewModel(get(), get(), get(), get(), get()) }
     single { HomeViewModel(databaseDao = get(), loginState = AccountManager.loginState, preferencesRepository = get()) }
     single { SearchViewModel(get()) }
     single { LibraryViewModel(get(), get(), get(), get(), get(), get(), loginState = AccountManager.loginState) }

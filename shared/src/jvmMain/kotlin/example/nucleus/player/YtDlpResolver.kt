@@ -1,6 +1,7 @@
 package example.nucleus.player
 
 import example.nucleus.data.repository.AudioQuality
+import example.nucleus.platform.findExecutableOnPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -96,6 +97,94 @@ object YtDlpResolver {
         }
     }
 
+    data class ResolvedVideoStreams(
+        val videoUrl: String,
+        val audioUrl: String?,
+        val muxed: Boolean,
+    )
+
+    /**
+     * Resolves a YouTube-main video for mpv. H.264 is preferred because it
+     * decodes reliably on Windows (hardware or software) without depending on
+     * AV1/VP9 support in the user's GPU.
+     */
+    suspend fun resolveVideoUrls(
+        videoId: String,
+        maxHeight: Int = 1080,
+    ): ResolvedVideoStreams? = withContext(Dispatchers.IO) {
+        val exe = ytDlpPath ?: run {
+            log.warning("yt-dlp not found (not bundled and not on PATH); cannot resolve video")
+            return@withContext null
+        }
+        val watchUrl = "https://www.youtube.com/watch?v=$videoId"
+        try {
+            log.info("yt-dlp video: resolving $videoId (maxHeight=$maxHeight) via $exe")
+            // Anonymous URLs are often friendlier to the local proxy than
+            // account-bound ones. Only the fallback sends the session cookies.
+            runYtDlp(exe, watchUrl, videoId, maxHeight, useCookies = false)
+                ?: runYtDlp(exe, watchUrl, videoId, maxHeight, useCookies = true)
+        } catch (e: Exception) {
+            log.warning("yt-dlp video invocation failed for $videoId: ${e.message}")
+            null
+        }
+    }
+
+    private fun runYtDlp(
+        exe: String,
+        watchUrl: String,
+        videoId: String,
+        maxHeight: Int,
+        useCookies: Boolean,
+    ): ResolvedVideoStreams? {
+        val args = buildList {
+            add(exe); add("--no-warnings"); add("--no-playlist")
+            add("--user-agent"); add(VIDEO_USER_AGENT)
+            add("-f")
+            // Muxed first: it is the most reliable path for the local proxy.
+            add(
+                "best[height<=$maxHeight][vcodec^=avc1]/best[height<=$maxHeight]/" +
+                    "bestvideo[height<=$maxHeight][vcodec^=avc1]+bestaudio/best",
+            )
+            if (useCookies) {
+                cookiesFile()?.let { add("--cookies"); add(it.absolutePath) }
+            }
+            add("-g"); add(watchUrl)
+        }
+        val proc = ProcessBuilder(args).start()
+        val stdout = proc.inputStream.bufferedReader().readText()
+        val stderr = proc.errorStream.bufferedReader().readText()
+        if (!proc.waitFor(60, TimeUnit.SECONDS)) {
+            proc.destroyForcibly()
+            log.warning("yt-dlp video timed out for $videoId (cookies=$useCookies)")
+            return null
+        }
+        val urls = stdout.lineSequence()
+            .map { it.trim() }
+            .filter { it.startsWith("http") }
+            .toList()
+        if (urls.isEmpty()) {
+            log.warning(
+                "yt-dlp video returned no URL for $videoId (cookies=$useCookies): " +
+                    stderr.take(300),
+            )
+            return null
+        }
+        val result = if (urls.size >= 2) {
+            ResolvedVideoStreams(urls[0], urls[1], muxed = false)
+        } else {
+            ResolvedVideoStreams(urls[0], null, muxed = true)
+        }
+        log.info(
+            "yt-dlp video resolved $videoId (muxed=${result.muxed}, " +
+                "cookies=$useCookies, urlLen=${result.videoUrl.length})",
+        )
+        return result
+    }
+
+    private const val VIDEO_USER_AGENT =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
     private var cachedCookiesFile: File? = null
     private var cachedCookieValue: String? = null
 
@@ -159,25 +248,6 @@ object YtDlpResolver {
             log.info("Using bundled yt-dlp: ${it.absolutePath}")
             return it.absolutePath
         }
-        // Recurrir a una instalación del sistema, resolviendo su ruta absoluta con where/which.
-        return resolveOnPath("yt-dlp")?.also { log.info("Using system yt-dlp: $it") }
-    }
-
-    /**
-     * Localiza un ejecutable en el PATH del sistema.
-     *
-     * @param name El nombre del ejecutable a localizar.
-     * @return La ruta absoluta al ejecutable si se encuentra, `null` en caso contrario.
-     */
-    private fun resolveOnPath(name: String): String? = try {
-        val which = if (System.getProperty("os.name").startsWith("Windows", true)) "where" else "which"
-        val proc = ProcessBuilder(which, name).redirectErrorStream(true).start()
-        val out = proc.inputStream.bufferedReader().readText()
-        if (proc.waitFor(5, TimeUnit.SECONDS) && proc.exitValue() == 0) {
-            out.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }
-        } else null
-    } catch (e: Exception) {
-        // `where`/`which` no disponible — asumir que no está instalado.
-        null
+        return findExecutableOnPath("yt-dlp")?.also { log.info("Using system yt-dlp: $it") }
     }
 }

@@ -33,14 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.DpOffset
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupPositionProvider
 import example.nucleus.download.DownloadState
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.LocalSnackbarHostState
@@ -112,44 +105,6 @@ fun DownloadIndicator(
         }
     }
 }
-
-@Composable
-fun rememberContextMenuPositionProvider(clickOffset: DpOffset): PopupPositionProvider {
-    val density = LocalDensity.current
-    val clickXPx = with(density) { clickOffset.x.toPx() }
-    val clickYPx = with(density) { clickOffset.y.toPx() }
-    val marginPx = with(density) { 6.dp.roundToPx() }
-
-    return remember(clickXPx, clickYPx, marginPx) {
-        object : PopupPositionProvider {
-            override fun calculatePosition(
-                anchorBounds: IntRect,
-                windowSize: IntSize,
-                layoutDirection: LayoutDirection,
-                popupContentSize: IntSize
-            ): IntOffset {
-                var x = anchorBounds.left + clickXPx.roundToInt()
-                var y = anchorBounds.top + clickYPx.roundToInt()
-
-                if (x + popupContentSize.width > windowSize.width - marginPx) {
-                    x = windowSize.width - popupContentSize.width - marginPx
-                }
-                if (y + popupContentSize.height > windowSize.height - marginPx) {
-                    y -= popupContentSize.height
-                }
-
-                x = x.coerceAtLeast(marginPx)
-                y = y.coerceAtLeast(marginPx)
-
-                return IntOffset(x, y)
-            }
-        }
-    }
-}
-
-
-
-
 
 @Composable
 fun AddToPlaylistDialog(
