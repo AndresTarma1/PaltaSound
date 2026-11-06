@@ -228,7 +228,7 @@ fun NavigationDesktop(
                         false
                     }
                 }
-                .pointerInput(Unit) {
+                .pointerInput(youtubeFullscreen) {
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -258,41 +258,38 @@ fun NavigationDesktop(
                     Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
 
                         // Now Playing siempre es pantalla completa: el rail se oculta solo.
-                        // En fullscreen de vídeo se saca de composición (sin animación):
-                        // animar el ancho redimensiona el HWND nativo frame a frame y
-                        // deja estelas/líneas en el vídeo.
-                        if (!youtubeFullscreen) {
-                            AnimatedVisibility(
-                                visible = !isOnNowPlaying,
-                                enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
-                                exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
-                            ) {
-                                if (appMode == AppMode.YOUTUBE) {
-                                    YouTubeSidebar(
-                                        activeConfig = activeConfig,
-                                        rootComponent = rootComponent,
-                                    )
-                                } else {
-                                    when (navigationRailStyle) {
-                                        NavigationRailStyle.DEFAULT -> {
-                                            NavigationRailDefault(
-                                                activeConfig = activeConfig,
-                                                changeQueueVisible = { isQueueVisible = it },
-                                                rootComponent = rootComponent,
-                                                mainTabs = musicMainTabs,
-                                                bottomTabs = musicBottomTabs,
-                                            )
-                                        }
+                        // La ventana principal no cambia de layout al entrar en
+                        // fullscreen: el vídeo se muestra en una ventana aparte.
+                        AnimatedVisibility(
+                            visible = !isOnNowPlaying,
+                            enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
+                            exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
+                        ) {
+                            if (appMode == AppMode.YOUTUBE) {
+                                YouTubeSidebar(
+                                    activeConfig = activeConfig,
+                                    rootComponent = rootComponent,
+                                )
+                            } else {
+                                when (navigationRailStyle) {
+                                    NavigationRailStyle.DEFAULT -> {
+                                        NavigationRailDefault(
+                                            activeConfig = activeConfig,
+                                            changeQueueVisible = { isQueueVisible = it },
+                                            rootComponent = rootComponent,
+                                            mainTabs = musicMainTabs,
+                                            bottomTabs = musicBottomTabs,
+                                        )
+                                    }
 
-                                        NavigationRailStyle.WIDE -> {
-                                            WideNavigationRail(
-                                                activeConfig = activeConfig,
-                                                changeQueueVisible = { isQueueVisible = it },
-                                                rootComponent = rootComponent,
-                                                mainTabs = musicMainTabs,
-                                                bottomTabs = musicBottomTabs,
-                                            )
-                                        }
+                                    NavigationRailStyle.WIDE -> {
+                                        WideNavigationRail(
+                                            activeConfig = activeConfig,
+                                            changeQueueVisible = { isQueueVisible = it },
+                                            rootComponent = rootComponent,
+                                            mainTabs = musicMainTabs,
+                                            bottomTabs = musicBottomTabs,
+                                        )
                                     }
                                 }
                             }
@@ -325,8 +322,8 @@ fun NavigationDesktop(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(
-                                    end = if (youtubeFullscreen) 0.dp else dimens.windowPadding,
-                                    bottom = if (youtubeFullscreen) 0.dp else bottomPadding,
+                                    end = dimens.windowPadding,
+                                    bottom = bottomPadding,
                                 ),
                         ) {
 

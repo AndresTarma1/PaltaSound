@@ -81,6 +81,7 @@ import example.nucleus.ui.components.artwork.ArtworkColors
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.artwork.rememberArtworkColors
 import example.nucleus.ui.components.background.BackgroundStyle
+import example.nucleus.ui.youtube.YouTubeFullscreenWindow
 import example.nucleus.ui.themes.AppTheme
 import example.nucleus.utils.LocalDownloadViewModel
 import example.nucleus.utils.LocalPlayerViewModel
@@ -93,6 +94,7 @@ import example.nucleus.viewmodels.AppViewModel
 import example.nucleus.viewmodels.DownloadViewModel
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
 import example.nucleus.viewmodels.PlayerViewModel
+import example.nucleus.viewmodels.YouTubeWatchViewModel
 import example.nucleus.viewmodels.UpdateStatus
 import example.nucleus.windows.TaskBarMediaWidget
 import example.nucleus.windows.WindowsThumbBar
@@ -153,6 +155,7 @@ fun NucleusApplicationScope.App(
     /** Arrancar con la ventana oculta (lanzamiento al iniciar sesión → directo a la bandeja). */
     startHidden: Boolean = false,
 ) {
+    val appScope = this
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
@@ -254,6 +257,7 @@ fun NucleusApplicationScope.App(
     val youtubeRegion by remember(userPreferences) { userPreferences.youtubeRegion }.collectAsState(YouTubeRegion.SYSTEM)
     val animationsEnabled by remember(userPreferences) { userPreferences.animationsEnabled }.collectAsState(true)
     val youtubePlayerService: YouTubePlayerService = koinInject()
+    val youtubeWatchViewModel: YouTubeWatchViewModel = koinInject()
     val youtubeFullscreen by youtubePlayerService.fullscreen.collectAsState()
 
     if (!isVisible || minimizeToTray) {
@@ -469,7 +473,7 @@ fun NucleusApplicationScope.App(
                                         // columna: reserva su alto y el contenido empieza debajo.
                                         // En fullscreen de vídeo tampoco se compone: el contenido
                                         // llena la ventana y se sale con Esc o con el botón del vídeo.
-                                        if (!isOnNowPlaying && !youtubeFullscreen) {
+                                        if (!isOnNowPlaying) {
                                             titleBar()
                                             if (isSquareLayout) {
                                                 HorizontalDivider(
@@ -518,6 +522,16 @@ fun NucleusApplicationScope.App(
                                 }
                             }
                         }
+
+                        // Ventana aparte para el vídeo fullscreen: la principal
+                        // no cambia de tamaño ni de layout, así no hay transición
+                        // de swapchain que pueda dejar frames viejos.
+                        YouTubeFullscreenWindow(
+                            scope = appScope,
+                            playerService = youtubePlayerService,
+                            viewModel = youtubeWatchViewModel,
+                            visible = youtubeFullscreen,
+                        )
                     }
                 }
             }
