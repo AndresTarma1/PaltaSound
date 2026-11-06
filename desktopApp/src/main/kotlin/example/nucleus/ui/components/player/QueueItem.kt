@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import example.nucleus.models.MediaMetadata
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
-import example.nucleus.ui.components.formatPlayerTimeValue
+import example.nucleus.ui.components.formatClock
 import example.nucleus.ui.components.song.DownloadIndicator
 import example.nucleus.ui.components.skeletons.AnimatedEqualizer
 import example.nucleus.ui.themes.AppShapes
@@ -224,7 +224,7 @@ fun QueueItem(
             ) {
                 if (song.duration > 0) {
                     Text(
-                        text = formatPlayerTimeValue(song.duration * 1000L),
+                        text = formatClock(song.duration * 1000L),
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontFeatureSettings = "tnum",
                             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,

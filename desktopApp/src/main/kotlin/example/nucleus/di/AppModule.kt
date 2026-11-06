@@ -66,14 +66,12 @@ import org.koin.dsl.module
 
 val appModule = module {
 
-    // Base de datos
     single<SqlDriver> { DatabaseDriverFactory.createDriver() }
     single<MusicPlayerDatabase> { MusicPlayerDatabase(get<SqlDriver>()) }
 
     single<MusicDatabase> { MusicDatabase(get<MusicPlayerDatabase>()) }
     single<DatabaseDao> { get<MusicDatabase>().dao }
 
-    // Capa de datos
     single<ApiService> { ApiService() }
     single<AlbumRepository> { AlbumRepository(get()) }
     single<ArtistRepository> { ArtistRepository(get()) }
@@ -98,7 +96,6 @@ val appModule = module {
     single<OfflineModeController> { OfflineModeController(get()) }
     // ✅ DownloadViewModel singleton — mantiene estado de descargas compartido
     single<DownloadViewModel> { DownloadViewModel(get(), get(), get()) }
-    // ✅ PlayerViewModel singleton, pero inicialización pesada diferida al init{} interno
     single<PlayerViewModel> { PlayerViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     single<PlayerCoordinator> { PlayerCoordinatorImpl(get<PlayerViewModel>(), get<DownloadViewModel>()) }
 

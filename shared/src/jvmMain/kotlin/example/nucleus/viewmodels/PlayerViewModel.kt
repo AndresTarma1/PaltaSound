@@ -52,12 +52,6 @@ class PlayerViewModel(
     val seekBarStyle = userPreferences.seekBarStyle
     val playbackSpeed = userPreferences.playbackSpeed
 
-    // Mientras pienso en un buen diseño xd
-//    val background: Flow<BackgroundStyle?> = userPreferences.fullScreenPlayer
-//        .combine(userPreferences.nowPlayingBackground) { isFullScreen, style ->
-//            if (isFullScreen) style else null
-//        }
-
     fun setPlaybackSpeed(speed: Float) {
         viewModelScope.launch { userPreferences.setPlaybackSpeed(speed) }
     }
@@ -84,11 +78,6 @@ class PlayerViewModel(
      */
     private val _seekEvents = MutableSharedFlow<Long>(extraBufferCapacity = 8)
     val seekEvents: SharedFlow<Long> = _seekEvents.asSharedFlow()
-
-    // Stubs para compatibilidad con NowPlayingOverlay (prefetch deshabilitado temporalmente)
-    val currentSongLyricsOffsetMs: StateFlow<Int> = MutableStateFlow(0)
-    fun nudgeCurrentSongLyricsOffset(deltaMs: Int) {}
-    fun resetCurrentSongLyricsOffset() {}
 
     /** Mensajes transitorios para el usuario (por ejemplo, si una canción no se pudo reproducir). La UI los muestra como snackbars. */
     private val _playbackMessages = MutableSharedFlow<String>(extraBufferCapacity = 4)

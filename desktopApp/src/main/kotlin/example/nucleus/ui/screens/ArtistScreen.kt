@@ -28,7 +28,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.*
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
@@ -59,7 +59,7 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ArtistScreenRoute(
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
     viewModel: ArtistManagerViewModel,
 ) {
@@ -107,7 +107,7 @@ data class ArtistScreenActions(
 @Composable
 fun ArtistScreen(
     uiState: ArtistState,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
     isSaved: Boolean = false,
     actions: ArtistScreenActions,
@@ -139,7 +139,7 @@ fun ArtistScreen(
 @Composable
 private fun ArtistScreenContent(
     artistPage: ArtistPage,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     isSaved: Boolean,
     actions: ArtistScreenActions,
     playerViewModel: PlayerViewModel

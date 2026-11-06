@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import example.nucleus.ui.components.formatVideoDuration
 import example.nucleus.ui.components.artwork.rememberArtworkColors
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
@@ -493,7 +494,7 @@ private fun VideoCard(
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 ) {
                     Text(
-                        text = formatDuration(video.durationSeconds),
+                        text = formatVideoDuration(video.durationSeconds),
                         color = Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -665,14 +666,6 @@ private fun YouTubeSearchItem.key(): String = when (this) {
     is YouTubeSearchItem.Video -> "v:${video.id}"
     is YouTubeSearchItem.Channel -> "c:${channel.url}"
     is YouTubeSearchItem.Playlist -> "p:${playlist.url}"
-}
-
-internal fun formatDuration(seconds: Long): String {
-    if (seconds <= 0) return ""
-    val h = seconds / 3600
-    val m = (seconds % 3600) / 60
-    val s = seconds % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
 internal fun formatCount(value: Long): String = when {

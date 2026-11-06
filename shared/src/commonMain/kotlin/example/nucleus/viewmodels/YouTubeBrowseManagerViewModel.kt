@@ -3,6 +3,8 @@ package example.nucleus.viewmodels
 import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.pages.BrowseResult
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +18,8 @@ sealed class YouTubeBrowseState {
 
 class YouTubeBrowseManagerViewModel : ApplicationViewModel() {
 
+    private var loadJob: Job? = null
+
     private val _uiState = MutableStateFlow<YouTubeBrowseState>(YouTubeBrowseState.Loading)
     val uiState: StateFlow<YouTubeBrowseState> = _uiState.asStateFlow()
 
@@ -23,14 +27,13 @@ class YouTubeBrowseManagerViewModel : ApplicationViewModel() {
     val title: StateFlow<String> = _title.asStateFlow()
 
     fun load(browseId: String, params: String?) {
-        if (_uiState.value is YouTubeBrowseState.Loading) {
-            // already loading
-        } else {
-            _uiState.value = YouTubeBrowseState.Loading
-        }
+        _uiState.value = YouTubeBrowseState.Loading
+        loadJob?.cancel()
 
-        viewModelScope.launch {
-            YouTube.browse(browseId, params)
+        loadJob = viewModelScope.launch {
+            val result = YouTube.browse(browseId, params)
+            if (!isActive) return@launch
+            result
                 .onSuccess { result ->
                     _title.value = result.title ?: ""
                     _uiState.value = YouTubeBrowseState.Success(result)

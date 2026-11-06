@@ -65,12 +65,10 @@ fun main(args: Array<String>) {
         dev.nucleusframework.autolaunch.AutoLaunch.wasStartedAtLogin(args)
     }.getOrDefault(false)
 
-    // Configuración inicial
     DecomposeSettings.update { DecomposeSettings(mainThreadCheckEnabled = false) }
     AppEnvironment.initialize()
     PlatformCrashHandler.register()
 
-    // Inicializar Koin
     val koinApp = PlatformCrashHandler.runSafely("Error al iniciar Koin") {
         startKoin { modules(appModule, dataStoreModule) }
     }
@@ -88,17 +86,14 @@ fun main(args: Array<String>) {
         )
     }
 
-    // Inicializar AccountManager
     PlatformCrashHandler.runSafely("Error iniciando AccountManager") {
         val dataStore = koin.get<DataStore<Preferences>>()
         AccountManager.init(dataStore)
     }
 
-    // Configurar app
     koin.get<JvmConfigLauncher>().applySync()
     koin.get<OfflineModeController>()
 
-    // Obtener ViewModels
     val playerViewModel = PlatformCrashHandler.runSafely("Error creando PlayerViewModel") {
         koin.get<PlayerViewModel>()
     }
@@ -120,7 +115,6 @@ fun main(args: Array<String>) {
         AppStartup.startDeferred(playerViewModel)
     }
 
-    // Restaurar estado de ventana
     val saved = runBlocking {
         Triple(
             userPreferencesRepository.windowWidth.first(),

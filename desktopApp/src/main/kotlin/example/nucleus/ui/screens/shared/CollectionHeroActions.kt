@@ -64,6 +64,9 @@ val CollectionWideCoverSize: Dp = 240.dp
 /** Cover compartido en layout compacto. */
 val CollectionCompactCoverSize: Dp = 190.dp
 
+/** Ancho a partir del cual las colecciones usan el layout wide. */
+val CollectionCompactBreakpoint: Dp = 980.dp
+
 val CollectionWidePaddingStart: Dp = 48.dp
 val CollectionWidePaddingTop: Dp = 32.dp
 val CollectionWidePaddingBottom: Dp = 16.dp

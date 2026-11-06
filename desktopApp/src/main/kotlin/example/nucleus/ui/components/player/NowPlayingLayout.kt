@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.innertube.models.MediaInfo
 import example.nucleus.generated.resources.*
 import example.nucleus.models.MediaMetadata
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.EqualizerDialog
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.LocalTitleBarOverlayInset
@@ -38,7 +38,7 @@ fun NowPlayingLayout(
     state: PlayerUiState,
     song: MediaMetadata,
     onCollapse: () -> Unit,
-    onNavigate: ((Route) -> Unit)? = null,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
     selectedTab: NowPlayingTab = NowPlayingTab.QUEUE,
     onTabSelected: (NowPlayingTab) -> Unit = {},
     lyrics: String? = null,
@@ -212,9 +212,6 @@ fun NowPlayingLayout(
     }
 }
 
-/**
- * Contenedor transparente para alojar el contenido de la pestaña activa derivando del AppBackground.
- */
 @Composable
 internal fun TransparentPanel(
     modifier: Modifier = Modifier,
@@ -245,7 +242,7 @@ private fun SpaciousNowPlayingBody(
     lyrics: String?,
     mediaInfo: MediaInfo?,
     selectedTab: NowPlayingTab,
-    onNavigate: ((Route) -> Unit)?,
+    onNavigate: ((ScreenConfig) -> Unit)?,
     onCollapse: () -> Unit,
     compact: Boolean,
     sharedTransitionScope: SharedTransitionScope?,

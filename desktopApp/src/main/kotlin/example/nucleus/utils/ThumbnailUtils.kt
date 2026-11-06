@@ -1,7 +1,5 @@
 package example.nucleus.ui.utils
 
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.metrolist.innertube.models.YTItem
 
 import example.nucleus.utils.isWideThumbnail as sharedIsWideThumbnail
@@ -27,11 +25,4 @@ fun YTItem.isWideThumbnail(): Boolean = this.sharedIsWideThumbnail()
     replaceWith = ReplaceWith("this.thumbnailAspectRatio()", "example.nucleus.utils.thumbnailAspectRatio")
 )
 fun YTItem.thumbnailAspectRatio(): Float = this.sharedThumbnailAspectRatio()
-
-/**
- * Returns the recommended card width for a MusicItem card.
- * Wide (16:9) items get a wider card to preserve readability.
- */
-fun YTItem.musicItemCardWidth(): Dp = if (this.sharedIsWideThumbnail()) 280.dp else 200.dp
-
 

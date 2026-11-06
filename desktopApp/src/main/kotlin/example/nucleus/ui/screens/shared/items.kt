@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.CornerQuickPlayConfig
 import example.nucleus.ui.components.ItemContentSource
 import example.nucleus.ui.components.images.PlaceholderType
@@ -45,22 +45,22 @@ import org.jetbrains.compose.resources.*
 
 fun onYTItemClick(
     item: YTItem,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel?,
 ) {
     when (item) {
         is SongItem -> playerViewModel?.playSingle(item)
-        is AlbumItem -> onNavigate(Route.Album(item.browseId))
-        is PlaylistItem -> onNavigate(Route.Playlist(item.id))
-        is ArtistItem -> onNavigate(Route.Artist(item.id))
-        is PodcastItem -> onNavigate(Route.Playlist(item.id))
+        is AlbumItem -> onNavigate(ScreenConfig.collection(item.browseId))
+        is PlaylistItem -> onNavigate(ScreenConfig.Playlist(item.id))
+        is ArtistItem -> onNavigate(ScreenConfig.Artist(item.id))
+        is PodcastItem -> onNavigate(ScreenConfig.Playlist(item.id))
         is EpisodeItem -> playerViewModel?.playSingle(item.asSongItem())
     }
 }
 
 private fun playYTItem(
     item: YTItem,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
     onClick: (YTItem) -> Unit,
 ) {
@@ -79,8 +79,8 @@ private fun playYTItem(
             title = item.title,
             onEmpty = { onClick(item) }
         )
-        is PodcastItem -> onNavigate(Route.Playlist(item.id))
-        is ArtistItem -> onNavigate(Route.Artist(item.id))
+        is PodcastItem -> onNavigate(ScreenConfig.Playlist(item.id))
+        is ArtistItem -> onNavigate(ScreenConfig.Artist(item.id))
     }
 }
 
@@ -339,7 +339,7 @@ fun EpisodeGridItem(
 @Composable
 fun SectionListItem(
     item: YTItem,
-    onNavigate: (Route) -> Unit = {},
+    onNavigate: (ScreenConfig) -> Unit = {},
     modifier: Modifier = Modifier,
     dividerBelow: Boolean = false,
     playerViewModel: PlayerViewModel
@@ -360,7 +360,7 @@ fun SectionListItem(
 @Composable
 fun SectionGridItem(
     item: YTItem,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -372,7 +372,7 @@ fun SectionGridItem(
         is SongItem -> SongGridItem(
             item = item,
             onClick = onClick,
-            onClickSubtitle = { onNavigate(Route.Artist(it)) },
+            onClickSubtitle = { onNavigate(ScreenConfig.Artist(it)) },
             modifier = modifier,
         )
         is AlbumItem -> AlbumGridItem(item = item, onClick = onClick, modifier = modifier, onPlay = onPlay, onShuffle = onShuffle)
@@ -382,7 +382,7 @@ fun SectionGridItem(
         is EpisodeItem -> EpisodeGridItem(
             item = item,
             onClick = onClick,
-            onClickSubtitle = { onNavigate(Route.Artist(it)) },
+            onClickSubtitle = { onNavigate(ScreenConfig.Artist(it)) },
             modifier = modifier,
         )
     }

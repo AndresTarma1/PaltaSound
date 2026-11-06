@@ -1,19 +1,38 @@
 package example.youtube
 
-import kotlinx.coroutines.runBlocking
-import org.junit.Test
-import kotlin.test.assertTrue
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class YouTubeServiceTest {
+
     @Test
-    fun searchAndVideoSmoke() = runBlocking {
-        val service = YouTubeService()
-        val page = service.search("lofi hip hop")
-        assertTrue(page.items.isNotEmpty(), "search returned no items")
-        val firstVideo = page.items.filterIsInstance<example.youtube.model.YouTubeSearchItem.Video>().firstOrNull()
-        assertTrue(firstVideo != null, "search returned no videos")
-        val details = service.video(firstVideo!!.video.id)
-        assertTrue(details.video.title.isNotBlank(), "video title is blank")
-        println("YouTube smoke: ${details.video.title} / ${details.video.channelName}")
+    fun extractVideoIdFromWatchUrl() {
+        assertEquals(
+            "abc123",
+            YouTubeService.videoIdFromUrl("https://www.youtube.com/watch?v=abc123"),
+        )
+        assertEquals(
+            "abc 123",
+            YouTubeService.videoIdFromUrl("https://www.youtube.com/watch?v=abc%20123"),
+        )
+    }
+
+    @Test
+    fun extractVideoIdFromShortUrl() {
+        assertEquals(
+            "abc123",
+            YouTubeService.videoIdFromUrl("https://youtu.be/abc123"),
+        )
+        assertEquals(
+            "abc123",
+            YouTubeService.videoIdFromUrl("https://youtu.be/abc123?t=10"),
+        )
+    }
+
+    @Test
+    fun rejectInputWithoutVideoId() {
+        assertNull(YouTubeService.videoIdFromUrl("not a url"))
+        assertNull(YouTubeService.videoIdFromUrl("https://www.youtube.com/"))
     }
 }

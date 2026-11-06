@@ -6,9 +6,6 @@ import example.nucleus.logging.AppFileLogger
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import java.io.File
-import java.io.FileOutputStream
-import java.io.PrintStream
-import java.time.LocalDateTime
 
 object AppEnvironment {
 
@@ -44,16 +41,5 @@ object AppEnvironment {
         }
     }
 
-    private fun redirectStandardStreams() {
-        try {
-            val sysOutFile = File(AppDirs.logsDir, "sysout.log")
-            val sysErrFile = File(AppDirs.logsDir, "syserr.log")
-            System.setOut(PrintStream(FileOutputStream(sysOutFile, true), true))
-            System.setErr(PrintStream(FileOutputStream(sysErrFile, true), true))
-            println("[${LocalDateTime.now()}] --- Application Starting ---")
-            System.err.println("[${LocalDateTime.now()}] --- Application Starting ---")
-        } catch (_: Exception) {
-        }
-    }
 }
 

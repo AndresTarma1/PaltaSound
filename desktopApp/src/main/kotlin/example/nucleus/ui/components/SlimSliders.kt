@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,26 +55,30 @@ fun SlimSlider(
     val currentOnValueChange by rememberUpdatedState(onValueChange)
     val currentOnValueChangeFinished by rememberUpdatedState(onValueChangeFinished)
 
-    val interaction = if (!enabled) Modifier else Modifier
-        .pointerHoverIcon(PointerIcon.Hand)
-        .pointerInput(Unit) {
-            detectTapGestures { offset ->
-                val width = size.width.takeIf { it > 0 } ?: 1
-                currentOnValueChange((offset.x / width).coerceIn(0f, 1f))
-                currentOnValueChangeFinished?.invoke()
+    val interaction = if (enabled) {
+        Modifier
+            .pointerHoverIcon(PointerIcon.Hand)
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    val width = size.width.takeIf { it > 0 } ?: 1
+                    currentOnValueChange((offset.x / width).coerceIn(0f, 1f))
+                    currentOnValueChangeFinished?.invoke()
+                }
             }
-        }
-        .pointerInput(Unit) {
-            detectHorizontalDragGestures(
-                onDragStart = { isDragging = true },
-                onDragEnd = { isDragging = false; currentOnValueChangeFinished?.invoke() },
-                onDragCancel = { isDragging = false },
-            ) { change, _ ->
-                change.consume()
-                val width = size.width.takeIf { it > 0 } ?: 1
-                currentOnValueChange((change.position.x / width).coerceIn(0f, 1f))
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { isDragging = true },
+                    onDragEnd = { isDragging = false; currentOnValueChangeFinished?.invoke() },
+                    onDragCancel = { isDragging = false },
+                ) { change, _ ->
+                    change.consume()
+                    val width = size.width.takeIf { it > 0 } ?: 1
+                    currentOnValueChange((change.position.x / width).coerceIn(0f, 1f))
+                }
             }
-        }
+    } else {
+        Modifier
+    }
 
     BoxWithConstraints(modifier = modifier.height(20.dp).then(interaction)) {
         val widthPx = with(density) { maxWidth.toPx() }
@@ -107,96 +110,5 @@ fun SlimSlider(
                     .background(activeColor)
             )
         }
-    }
-}
-
-@Composable
-fun SlimVerticalSlider(
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-    modifier: Modifier = Modifier,
-    activeColor: Color = MaterialTheme.colorScheme.primary,
-    inactiveColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f),
-) {
-    val density = LocalDensity.current
-    var isDragging by remember { mutableStateOf(false) }
-    val thumbDiameter by animateDpAsState(
-        targetValue = if (isDragging) 12.dp else 8.dp,
-        animationSpec = rememberInteractionSpring(),
-        label = "slimVerticalThumb",
-    )
-
-    // Mantener siempre actualizados el callback y el rango
-    val currentOnValueChange by rememberUpdatedState(onValueChange)
-    val currentRange by rememberUpdatedState(valueRange)
-
-    val span = (valueRange.endInclusive - valueRange.start).takeIf { it != 0f } ?: 1f
-    val fraction = ((value - valueRange.start) / span).coerceIn(0f, 1f)
-    val zeroFraction = ((0f - valueRange.start) / span).coerceIn(0f, 1f)
-
-    // La función interna ahora consulta las propiedades delegadas actualizadas
-    fun updateFromOffsetY(offsetY: Float, heightPx: Float) {
-        val currentSpan = (currentRange.endInclusive - currentRange.start).takeIf { it != 0f } ?: 1f
-        val f = (1f - offsetY / heightPx).coerceIn(0f, 1f)
-        currentOnValueChange(currentRange.start + f * currentSpan)
-    }
-
-    BoxWithConstraints(
-        modifier = modifier
-            .width(20.dp)
-            .pointerHoverIcon(PointerIcon.Hand)
-            .pointerInput(Unit) {
-                detectTapGestures { offset ->
-                    val height = size.height.takeIf { it > 0 }?.toFloat() ?: 1f
-                    updateFromOffsetY(offset.y, height)
-                }
-            }
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onDragStart = { isDragging = true },
-                    onDragEnd = { isDragging = false },
-                    onDragCancel = { isDragging = false },
-                ) { change, _ ->
-                    change.consume()
-                    val height = size.height.takeIf { it > 0 }?.toFloat() ?: 1f
-                    updateFromOffsetY(change.position.y, height)
-                }
-            },
-    ) {
-        val heightPx = with(density) { maxHeight.toPx() }
-        val thumbRadiusPx = with(density) { (thumbDiameter / 2).toPx() }
-        val thumbOffsetY = (heightPx * (1f - fraction) - thumbRadiusPx).roundToInt()
-        val valueY = 1f - fraction
-        val zeroY = 1f - zeroFraction
-
-        val fillTop = minOf(valueY, zeroY)
-        val fillHeightFraction =
-            (maxOf(valueY, zeroY) - fillTop).coerceIn(0f, 1f)
-        Box(
-            Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxHeight()
-                .width(3.dp)
-                .clip(RoundedCornerShape(50))
-                .background(inactiveColor)
-        )
-        Box(
-            Modifier
-                .align(Alignment.TopCenter)
-                .offset { IntOffset(0, (heightPx * fillTop).roundToInt()) }
-                .fillMaxHeight(fillHeightFraction)
-                .width(3.dp)
-                .clip(RoundedCornerShape(50))
-                .background(activeColor)
-        )
-        Box(
-            Modifier
-                .align(Alignment.TopCenter)
-                .offset { IntOffset(0, thumbOffsetY) }
-                .size(thumbDiameter)
-                .clip(CircleShape)
-                .background(activeColor)
-        )
     }
 }

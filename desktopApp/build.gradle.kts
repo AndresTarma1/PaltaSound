@@ -88,7 +88,7 @@ dependencies {
 
 
 
-    implementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.test)
 
     implementation(compose.desktop.currentOs) {
         exclude(group = "org.jetbrains.compose.material")
@@ -103,10 +103,6 @@ dependencies {
 
     // Widgets Compose dentro de la barra de tareas de Windows (solo desktop/JVM)
     implementation("uk.kulikov:compose-windows-taskbar:0.1.0")
-
-
-
-    implementation(compose.desktop.currentOs)
 }
 
 // Jewel trae el fork de coroutines de JetBrains (`org.jetbrains.intellij.deps.kotlinx`,

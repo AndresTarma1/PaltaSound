@@ -24,35 +24,6 @@ import example.nucleus.ui.themes.expressiveFadeTween
 import example.nucleus.utils.LocalAnimationsEnabled
 
 /**
- * Desktop hover / focus / press state for M3 state layers.
- *
- * Prefer sharing one [interactionSource] with the clickable / button that owns the control.
- */
-@Composable
-fun rememberDesktopInteractionState(
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-): DesktopInteractionState {
-    val hovered by interactionSource.collectIsHoveredAsState()
-    val focused by interactionSource.collectIsFocusedAsState()
-    val pressed by interactionSource.collectIsPressedAsState()
-    return DesktopInteractionState(
-        interactionSource = interactionSource,
-        hovered = hovered,
-        focused = focused,
-        pressed = pressed,
-    )
-}
-
-data class DesktopInteractionState(
-    val interactionSource: MutableInteractionSource,
-    val hovered: Boolean,
-    val focused: Boolean,
-    val pressed: Boolean,
-) {
-    val active: Boolean get() = hovered || focused || pressed
-}
-
-/**
  * M3-ish state-layer alpha on desktop (hover 0.08, focus 0.10, press 0.12; combined max ~0.16).
  */
 fun desktopStateLayerAlpha(

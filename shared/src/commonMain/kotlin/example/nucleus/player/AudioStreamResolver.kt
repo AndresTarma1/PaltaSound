@@ -4,11 +4,6 @@ import example.nucleus.data.repository.AudioQuality
 import example.nucleus.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 
-/**
- * Custom exception for age-restricted content.
- */
-class AgeRestrictedException(message: String) : Exception(message)
-
 class AudioStreamResolver(
     private val userPreferences: UserPreferencesRepository,
 ) {

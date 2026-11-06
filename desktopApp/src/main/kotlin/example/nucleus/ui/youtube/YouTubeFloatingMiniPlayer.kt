@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import example.nucleus.player.YouTubePlayerService
+import example.nucleus.ui.components.formatMiniTime
 import example.youtube.model.YouTubeVideo
 
 private val MINI_WIDTH = 360.dp
@@ -116,11 +117,4 @@ fun YouTubeFloatingMiniPlayer(
             }
         }
     }
-}
-
-private fun formatMiniTime(millis: Long): String {
-    val seconds = (millis / 1000).coerceAtLeast(0)
-    val minutes = seconds / 60
-    val rest = seconds % 60
-    return "%d:%02d".format(minutes, rest)
 }

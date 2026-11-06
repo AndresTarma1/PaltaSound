@@ -22,8 +22,6 @@ fun AccessibilitySettingsGroup() {
     val uiScale by viewModel.uiScale.collectAsState()
     val selectedFont by viewModel.selectedFont.collectAsState()
 
-    var showUiScaleDropdown by remember { mutableStateOf(false) }
-
     SettingsGroup(
         title = { Text(stringResource(Res.string.appearance_motion), style = MaterialTheme.typography.titleMediumEmphasized) },
         colors = colors,

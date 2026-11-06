@@ -5,7 +5,6 @@ import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -15,7 +14,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -26,13 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.ItemContentSource
 import example.nucleus.ui.components.MediaGridItem
+import example.nucleus.ui.components.exportPlaylistWithFeedback
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.screens.library.LibraryScreenState
-import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.utils.LocalDownloadViewModel
 import example.nucleus.utils.LocalPlaylistsViewModel
 import example.nucleus.utils.LocalSnackbarHostState
@@ -41,10 +39,6 @@ import example.nucleus.viewmodels.YtmLibraryState
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.YTItem
-import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.getString
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyGridState
 import example.nucleus.ui.utils.circleAwareShape
 import org.koin.compose.koinInject
 
@@ -52,7 +46,7 @@ import org.koin.compose.koinInject
 @Composable
 fun LibraryMixedTab(
     state: LibraryScreenState,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel? = null,
     onRemovePlaylist: (String) -> Unit = {},
     onQuickPlayAlbum: (browseId: String, playlistId: String?, title: String, onFallback: () -> Unit) -> Unit,
@@ -70,12 +64,6 @@ fun LibraryMixedTab(
     val fullyDownloadedAlbums by downloadViewModel.fullyDownloadedAlbums.collectAsState()
     val fullyDownloadedPlaylists by downloadViewModel.fullyDownloadedPlaylists.collectAsState()
 
-
-    val ytmSettled = true
-    if (!ytmSettled) {
-        CircularWavyProgressIndicator() // spinner o skeleton simple
-        return
-    }
 
     val albumLabel = stringResource(Res.string.item_album)
     val artistLabel = stringResource(Res.string.item_artist)
@@ -122,8 +110,8 @@ fun LibraryMixedTab(
             val seenPlaylistIds = mutableSetOf<String>()
 
             mergedAlbums.forEach { albumInfo ->
-
                 if (albumInfo.id !in seenAlbumIds) {
+                    seenAlbumIds.add(albumInfo.id)
                     add(
                         MixedGridEntry(
                             key = "alb_${albumInfo.id}",
@@ -134,15 +122,15 @@ fun LibraryMixedTab(
                             placeholderType = PlaceholderType.ALBUM,
                             shape = RoundedCornerShape(12.dp),
                             source = if (ytm?.albums?.any { it.id == albumInfo.id } == true) ItemContentSource.YOUTUBE else ItemContentSource.LOCAL,
-                            onClick = { onNavigate(Route.Album(albumInfo.browseId)) },
+                            onClick = { onNavigate(ScreenConfig.collection(albumInfo.browseId)) },
                             onPlay = {
                                 onQuickPlayAlbum(albumInfo.browseId, albumInfo.playlistId, albumInfo.title) {
-                                    onNavigate(Route.Album(albumInfo.browseId))
+                                    onNavigate(ScreenConfig.collection(albumInfo.browseId))
                                 }
                             },
                             onShuffle = {
                                 onQuickShuffleAlbum(albumInfo.browseId, albumInfo.playlistId, albumInfo.title) {
-                                    onNavigate(Route.Album(albumInfo.browseId))
+                                    onNavigate(ScreenConfig.collection(albumInfo.browseId))
                                 }
                             },
                         )
@@ -162,7 +150,7 @@ fun LibraryMixedTab(
                         placeholderType = PlaceholderType.ARTIST,
                         shape = circleAwareShape(),
                         source = if (ytm?.artists?.any { it.id == artist.id } == true) ItemContentSource.YOUTUBE else ItemContentSource.LOCAL,
-                        onClick = { onNavigate(Route.Artist(artist.id)) },
+                        onClick = { onNavigate(ScreenConfig.Artist(artist.id)) },
                     )
                 )
             }
@@ -180,38 +168,22 @@ fun LibraryMixedTab(
                         placeholderType = PlaceholderType.PLAYLIST,
                         shape = RoundedCornerShape(12.dp),
                         source = if (isYtm) ItemContentSource.YOUTUBE else ItemContentSource.LOCAL,
-                        onClick = { onNavigate(Route.Playlist(playlist.id)) },
+                        onClick = { onNavigate(ScreenConfig.Playlist(playlist.id)) },
                         onPlay = {
                             onQuickPlayPlaylist(playlist.id, playlist.playEndpoint, playlist.title) {
-                                onNavigate(Route.Playlist(playlist.id))
+                                onNavigate(ScreenConfig.Playlist(playlist.id))
                             }
                         },
                         onShuffle = {
                             onQuickShufflePlaylist(playlist.id, playlist.shuffleEndpoint ?: playlist.playEndpoint, playlist.title) {
-                                onNavigate(Route.Playlist(playlist.id))
+                                onNavigate(ScreenConfig.Playlist(playlist.id))
                             }
                         },
                         isRemovable = !isYtm,
                         onRemove = { onRemovePlaylist(playlist.id) },
                         onExport = {
-                            playlistsViewModel.exportPlaylist(playlist.id) { success, msg ->
-                                scope.launch {
-                                    if (success) {
-                                        val result = snackbar.showSnackbar(
-                                            message = getString(Res.string.export_playlist_success, msg),
-                                            actionLabel = "Abrir carpeta",
-                                            duration = androidx.compose.material3.SnackbarDuration.Long
-                                        )
-                                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                                            try {
-                                                val file = java.io.File(msg)
-                                                example.nucleus.platform.NativeDesktop.openFolder(file.parentFile ?: file)
-                                            } catch (_: Exception) {}
-                                        }
-                                    } else {
-                                        snackbar.showSnackbar(getString(Res.string.export_playlist_error, msg))
-                                    }
-                                }
+                            exportPlaylistWithFeedback(scope, snackbar) { onResult ->
+                                playlistsViewModel.exportPlaylist(playlist.id, onResult)
                             }
                         },
                     )
@@ -236,7 +208,7 @@ fun LibraryMixedTab(
                         } else {
                             ItemContentSource.LOCAL
                         },
-                        onClick = { onNavigate(Route.Playlist(podcast.id)) },
+                        onClick = { onNavigate(ScreenConfig.Playlist(podcast.id)) },
                     )
                 )
             }
@@ -251,12 +223,12 @@ fun LibraryMixedTab(
                         placeholderType = PlaceholderType.DOWNLOADS,
                         shape = RoundedCornerShape(12.dp),
                         source = ItemContentSource.LOCAL,
-                        onClick = { onNavigate(Route.Playlist("LOCAL_DOWNLOADS")) },
+                        onClick = { onNavigate(ScreenConfig.Playlist("LOCAL_DOWNLOADS")) },
                         onPlay = {
                             if (downloadedSongs.isNotEmpty()) {
                                 playerViewModel?.playCustom(downloadedSongs, 0)
                             } else {
-                                onNavigate(Route.Playlist("LOCAL_DOWNLOADS"))
+                                onNavigate(ScreenConfig.Playlist("LOCAL_DOWNLOADS"))
                             }
                         },
                         onShuffle = {
@@ -264,7 +236,7 @@ fun LibraryMixedTab(
                                 playerViewModel?.playCustom(downloadedSongs, 0)
                                 playerViewModel?.toggleShuffle()
                             } else {
-                                onNavigate(Route.Playlist("LOCAL_DOWNLOADS"))
+                                onNavigate(ScreenConfig.Playlist("LOCAL_DOWNLOADS"))
                             }
                         },
                     )
@@ -282,15 +254,15 @@ fun LibraryMixedTab(
                             placeholderType = PlaceholderType.PLAYLIST,
                             shape = RoundedCornerShape(12.dp),
                             source = ItemContentSource.LOCAL,
-                            onClick = { onNavigate(Route.Playlist(playlistInfo.playlistId)) },
+                            onClick = { onNavigate(ScreenConfig.Playlist(playlistInfo.playlistId)) },
                             onPlay = {
                                 onQuickPlayPlaylist(playlistInfo.playlistId, null, playlistInfo.playlistName) {
-                                    onNavigate(Route.Playlist(playlistInfo.playlistId))
+                                    onNavigate(ScreenConfig.Playlist(playlistInfo.playlistId))
                                 }
                             },
                             onShuffle = {
                                 onQuickShufflePlaylist(playlistInfo.playlistId, null, playlistInfo.playlistName) {
-                                    onNavigate(Route.Playlist(playlistInfo.playlistId))
+                                    onNavigate(ScreenConfig.Playlist(playlistInfo.playlistId))
                                 }
                             },
                         )
@@ -309,15 +281,15 @@ fun LibraryMixedTab(
                             placeholderType = PlaceholderType.ALBUM,
                             shape = RoundedCornerShape(12.dp),
                             source = ItemContentSource.LOCAL,
-                            onClick = { onNavigate(Route.Album(albumInfo.albumId)) },
+                            onClick = { onNavigate(ScreenConfig.collection(albumInfo.albumId)) },
                             onPlay = {
                                 onQuickPlayAlbum(albumInfo.albumId, null, albumInfo.albumName) {
-                                    onNavigate(Route.Album(albumInfo.albumId))
+                                    onNavigate(ScreenConfig.collection(albumInfo.albumId))
                                 }
                             },
                             onShuffle = {
                                 onQuickShuffleAlbum(albumInfo.albumId, null, albumInfo.albumName) {
-                                    onNavigate(Route.Album(albumInfo.albumId))
+                                    onNavigate(ScreenConfig.collection(albumInfo.albumId))
                                 }
                             },
                         )
@@ -342,15 +314,10 @@ fun LibraryMixedTab(
         Box(modifier = Modifier.fillMaxSize()) {
             LazyVerticalGrid(
                 state = gridState,
-                columns = GridCells.Adaptive(minSize = 150.dp),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 8.dp,
-                    bottom = maxOf(80.dp, LocalMiniPlayerInset.current)
-                ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                columns = GridCells.Adaptive(minSize = LibraryGridMinCellWidth),
+                contentPadding = libraryGridContentPadding(),
+                horizontalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
+                verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing)
             ) {
                 items(items = items, key = { it.key }) { entry ->
                     if (entry.item != null) {

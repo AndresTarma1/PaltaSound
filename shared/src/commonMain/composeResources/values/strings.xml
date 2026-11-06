@@ -70,9 +70,7 @@
     <string name="lyrics_romanize">Romanizar letras</string>
     <string name="lyrics_romanize_subtitle">Mostrar romanización para japonés, coreano y ruso</string>
     <string name="lyrics_offset_settings">Offset de letras (global)</string>
-    <string name="lyrics_offset_settings_subtitle">Compensación global en milisegundos (−10 s … +10 s). Se suma al offset por canción del menú ⋮ en Now Playing.</string>
-    <string name="lyrics_offset_song">Sincronización de esta canción</string>
-    <string name="lyrics_offset_song_value">Esta canción: %1$d ms</string>
+    <string name="lyrics_offset_settings_subtitle">Compensación global en milisegundos (−10 s … +10 s).</string>
     <string name="section_appearance">Apariencia</string>
     <string name="animations_enabled">Animaciones de interfaz</string>
     <string name="animations_enabled_subtitle">Habilitar animaciones de transición y movimiento</string>
@@ -406,9 +404,6 @@
     <string name="lyrics_offset">Sincronización de letras</string>
     <string name="lyrics_offset_subtitle">Ajusta si las letras van adelantadas o atrasadas respecto al audio</string>
     <string name="lyrics_offset_value">%1$d ms</string>
-    <string name="lyrics_offset_reset">Restablecer</string>
-    <string name="lyrics_offset_earlier">−0,5 s</string>
-    <string name="lyrics_offset_later">+0,5 s</string>
     <string name="toggle_lyrics_menu">Alternar letras</string>
     <string name="queue_download_added">%1$d canciones agregadas a descargas</string>
     <string name="queue_saved_as">Cola guardada como «%1$s»</string>

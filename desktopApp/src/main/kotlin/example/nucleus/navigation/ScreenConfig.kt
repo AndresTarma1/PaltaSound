@@ -48,4 +48,19 @@ sealed class ScreenConfig {
 
     @Serializable
     data class YouTubeWatch(val videoId: String) : ScreenConfig()
+
+    companion object {
+        private const val PODCAST_BROWSE_PREFIX = "MPSP"
+
+        /**
+         * Punto único para abrir una colección por browseId: los pódcast usan
+         * un browseId `MPSP...` que se sirve con la pantalla de playlist.
+         */
+        fun collection(browseId: String): ScreenConfig =
+            if (browseId.startsWith(PODCAST_BROWSE_PREFIX)) {
+                Playlist(browseId)
+            } else {
+                Album(browseId)
+            }
+    }
 }

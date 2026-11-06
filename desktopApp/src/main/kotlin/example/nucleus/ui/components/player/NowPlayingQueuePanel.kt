@@ -48,7 +48,7 @@ import example.nucleus.generated.resources.Res
 import example.nucleus.player.PlaybackState
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.context.SongContextMenuPopup
-import example.nucleus.ui.components.formatPlayerTimeValue
+import example.nucleus.ui.components.formatQueueDuration
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
@@ -263,9 +263,6 @@ fun NowPlayingQueuePanel(
     }
 }
 
-/**
- * Cabecera limpia y moderna del panel de cola en Now Playing.
- */
 @Composable
 private fun NowPlayingQueueHeader(
     state: PlayerUiState,

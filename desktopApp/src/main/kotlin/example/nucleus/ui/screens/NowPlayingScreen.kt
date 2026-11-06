@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.player.NowPlayingLayout
 import example.nucleus.ui.components.player.rememberedNowPlayingTab
 import example.nucleus.viewmodels.PlayerViewModel
@@ -14,7 +14,7 @@ import example.nucleus.viewmodels.PlayerViewModel
 @Composable
 fun NowPlayingScreen(
     viewModel: PlayerViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
@@ -35,9 +35,7 @@ fun NowPlayingScreen(
                 state = playerState,
                 song = currentSong,
                 onCollapse = onBack,
-                onNavigate = { route ->
-                    onNavigate(route)
-                },
+                onNavigate = onNavigate,
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
                 lyrics = currentLyrics,

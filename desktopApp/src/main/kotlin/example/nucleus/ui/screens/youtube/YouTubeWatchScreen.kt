@@ -62,6 +62,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import example.nucleus.player.YouTubePlayerService
+import example.nucleus.ui.components.formatClock
+import example.nucleus.ui.components.formatVideoDuration
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
@@ -390,7 +392,7 @@ internal fun PlayerCard(
                     )
                 }
                 Text(
-                    text = formatTime(state.positionMs),
+                    text = formatClock(state.positionMs),
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                 )
@@ -407,7 +409,7 @@ internal fun PlayerCard(
                     ),
                 )
                 Text(
-                    text = formatTime(state.durationMs),
+                    text = formatClock(state.durationMs),
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                 )
@@ -581,7 +583,7 @@ private fun RelatedVideoRow(video: YouTubeVideo, onOpenVideo: (String) -> Unit) 
                         .padding(horizontal = 4.dp, vertical = 1.dp),
                 ) {
                     Text(
-                        text = formatDuration(video.durationSeconds),
+                        text = formatVideoDuration(video.durationSeconds),
                         color = Color.White,
                         style = MaterialTheme.typography.labelSmall,
                     )
@@ -615,12 +617,4 @@ private fun RelatedVideoRow(video: YouTubeVideo, onOpenVideo: (String) -> Unit) 
             }
         }
     }
-}
-
-private fun formatTime(millis: Long): String {
-    val totalSeconds = (millis / 1000).coerceAtLeast(0)
-    val h = totalSeconds / 3600
-    val m = (totalSeconds % 3600) / 60
-    val s = totalSeconds % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }

@@ -74,6 +74,7 @@ import example.nucleus.overlay.GlobalHotkeyManager
 import example.nucleus.overlay.HotkeyCombo
 import example.nucleus.player.PlaybackState
 import example.nucleus.player.YouTubePlayerService
+import example.nucleus.platform.Platform
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.ui.components.CoilSetup
@@ -188,7 +189,6 @@ fun NucleusApplicationScope.App(
         }
     }
 
-    // Estado del overlay
     val hotkeyManager: GlobalHotkeyManager = koinInject()
     val overlayEnabled by remember(userPreferences) { userPreferences.overlayHotkeyEnabled }.collectAsState(true)
     val overlayCode by remember(userPreferences) { userPreferences.overlayHotkeyCode }.collectAsState(0)
@@ -204,7 +204,6 @@ fun NucleusApplicationScope.App(
         hotkeyManager.updateCombo(HotkeyCombo.fromPrefs(overlayCode, overlayMods))
     }
 
-    // Estado de sincronización YTM
     val syncUtils: example.nucleus.utils.SyncUtils = koinInject()
     val ytmSyncEnabled by remember(userPreferences) { userPreferences.ytmSyncEnabled }.collectAsState(false)
     val offlineMode by remember(userPreferences) { userPreferences.offlineModeEnabled }.collectAsState(false)
@@ -643,7 +642,7 @@ private fun NucleusDecoratedWindowScope.WindowsTaskbarIntegration(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
 ) {
-    if (!isWindows()) return
+    if (!Platform.isWindows) return
     val thumbBar = remember { WindowsThumbBar(onPrevious, onPlayPause, onNext) }
 
     LaunchedEffect(isVisible) {
@@ -663,6 +662,3 @@ private fun NucleusDecoratedWindowScope.WindowsTaskbarIntegration(
         thumbBar.setPlaying(isPlaying)
     }
 }
-
-private fun isWindows(): Boolean =
-    System.getProperty("os.name").orEmpty().lowercase().contains("win")

@@ -34,13 +34,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,7 +57,6 @@ import example.nucleus.data.repository.AppMode
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.skiko.FPSCounter
 import dev.nucleusframework.window.TitleBarScope
 
 @Composable
@@ -322,33 +318,4 @@ fun TrayCustom(
             }
         )
     }
-}
-
-@Composable
-fun FpsCounter(
-    modifier: Modifier = Modifier
-) {
-    val fpsCounter = remember {
-        FPSCounter(periodSeconds = 1.0)
-    }
-
-    var fps by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            withFrameNanos {
-                fpsCounter.tick()
-
-                // Solo cambia una vez por segundo
-                fps = fpsCounter.average
-            }
-        }
-    }
-
-    Text(
-        text = "FPS: $fps",
-        fontSize = 12.sp,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(4.dp)
-    )
 }

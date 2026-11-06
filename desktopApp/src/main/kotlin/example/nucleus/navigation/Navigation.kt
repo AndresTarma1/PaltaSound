@@ -186,7 +186,7 @@ fun NavigationDesktop(
             val sharedTransitionScope = this
             val hazeState = rememberHazeState()
             val miniPlayerSlot: @Composable (Modifier) -> Unit = { m ->
-                MiniPlayerHost(
+                MiniPlayer(
                     isOnNowPlaying = isOnNowPlaying,
                     onNowPlaying = {
                         if (isOnNowPlaying) {
@@ -539,55 +539,7 @@ fun NavigationDesktop(
     }
 }
 
-@Composable
-private fun MiniPlayerHost(
-    isOnNowPlaying: Boolean,
-    onNowPlaying: () -> Unit,
-    onToggleQueue: () -> Unit,
-    isQueueVisible: Boolean,
-    modifier: Modifier = Modifier,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    floating: Boolean = false,
-    isDocked: Boolean = false,
-    backgroundStyle: MiniPlayerBackgroundStyle = MiniPlayerBackgroundStyle.TRANSLUCENT,
-    hazeState: HazeState? = null,
-) {
-    MiniPlayer(
-        isOnNowPlaying = isOnNowPlaying,
-        onNowPlaying = onNowPlaying,
-        onToggleQueue = onToggleQueue,
-        isQueueVisible = isQueueVisible,
-        modifier = modifier,
-        sharedTransitionScope = sharedTransitionScope,
-        floating = floating,
-        isDocked = isDocked,
-        backgroundStyle = backgroundStyle,
-        hazeState = hazeState,
-    )
-}
 
-
-fun Route.toConfig(): ScreenConfig = when (this) {
-    Route.Home -> ScreenConfig.Home
-    Route.Search -> ScreenConfig.Search
-    Route.Library -> ScreenConfig.Library
-    Route.Account -> ScreenConfig.Account
-    Route.Settings -> ScreenConfig.Settings
-    Route.ListenTogether -> ScreenConfig.ListenTogether
-    Route.NowPlaying -> ScreenConfig.NowPlaying
-    Route.Stats -> ScreenConfig.Stats
-    // Los episodios de pódcast usan un álbum con id MPSP... (el id del pódcast);
-    // ese id solo es válido en la ruta de Playlist (PlaylistScreen reutilizado).
-    is Route.Album ->
-        if (browseId.startsWith("MPSP")) ScreenConfig.Playlist(browseId)
-        else ScreenConfig.Album(browseId)
-    is Route.Playlist -> ScreenConfig.Playlist(playlistId)
-    is Route.Artist -> ScreenConfig.Artist(artistId)
-    is Route.YouTubeBrowse -> ScreenConfig.YouTubeBrowse(browseId, params)
-    Route.YouTubeHome -> ScreenConfig.YouTubeHome
-    Route.YouTubeShorts -> ScreenConfig.YouTubeShorts
-    is Route.YouTubeWatch -> ScreenConfig.YouTubeWatch(videoId)
-}
 
 @Composable
 fun ScreenRouter(
@@ -596,7 +548,7 @@ fun ScreenRouter(
     sharedAnimatedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
-    val navigator = createNavigator(rootComponent)
+    val navigator: (ScreenConfig) -> Unit = rootComponent::navigateTo
     when (instance) {
         is RootComponent.Child.Home -> {
             HomeScreenRoute(
@@ -714,12 +666,3 @@ fun ScreenRouter(
         }
     }
 }
-
-
-// Helper para simplificar las llamadas
-@Composable
-fun createNavigator(rootComponent: RootComponent): (Route) -> Unit = { route ->
-    rootComponent.navigateTo(route.toConfig())
-}
-
-

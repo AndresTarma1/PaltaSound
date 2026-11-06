@@ -33,7 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.dialogs.DownloadConfirmationDialog
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.layout.AppScrollbarGutter
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
@@ -43,6 +43,7 @@ import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.ui.screens.playlist.MultiSongSelectionBar
 import example.nucleus.ui.screens.playlist.SongListItem
+import example.nucleus.ui.screens.shared.CollectionCompactBreakpoint
 import example.nucleus.ui.screens.shared.CollectionCompactCoverSize
 import example.nucleus.ui.screens.shared.CollectionHeroActionRow
 import example.nucleus.ui.screens.shared.CollectionStickyHeaderBar
@@ -87,6 +88,14 @@ internal fun AlbumScreenLayout(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    val onDownloadClick = {
+        if (isFullyDownloadedState.value) {
+            showDeleteDialog = true
+        } else if (!isAnyDownloadingState.value) {
+            downloadViewModel.downloadAll(state.songs)
+        }
+    }
+
     if (showDeleteDialog) {
         DownloadConfirmationDialog(
             onConfirm = {
@@ -107,9 +116,24 @@ internal fun AlbumScreenLayout(
     val selectedSongs = remember(state.songs, selectedSongIds) {
         state.songs.filter { it.id in selectedSongIds }
     }
+    val onSelectionChange: (String, Boolean) -> Unit = { id, selected ->
+        selectedSongIds = if (selected) selectedSongIds + id else selectedSongIds - id
+    }
+    val onClearSelection = { selectedSongIds = emptySet<String>() }
+    val onSongClick: (Int) -> Unit = { index ->
+        if (selectedSongIds.isNotEmpty()) {
+            selectedSongIds = if (state.songs[index].id in selectedSongIds) {
+                selectedSongIds - state.songs[index].id
+            } else {
+                selectedSongIds + state.songs[index].id
+            }
+        } else {
+            playerViewModel.playAlbum(state.songs, index, albumPage.album.browseId, albumPage.album.title)
+        }
+    }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        if (maxWidth < 980.dp) {
+        if (maxWidth < CollectionCompactBreakpoint) {
             AlbumCompactLayout(
                 albumPage = albumPage,
                 songs = state.songs,
@@ -117,30 +141,18 @@ internal fun AlbumScreenLayout(
                 controls = controls,
                 isAnyDownloading = isAnyDownloadingState.value,
                 isFullyDownloaded = isFullyDownloadedState.value,
+                onDownloadClick = onDownloadClick,
                 selectedSongIds = selectedSongIds,
                 selectedSongs = selectedSongs,
-                onSelectionChange = { id, selected ->
-                    selectedSongIds = if (selected) selectedSongIds + id else selectedSongIds - id
-                },
-                onClearSelection = { selectedSongIds = emptySet() },
+                onSelectionChange = onSelectionChange,
+                onClearSelection = onClearSelection,
                 onSurfaceColor = onSurfaceColor,
                 onSurfaceVariant = onSurfaceVariant,
                 onLoadMore = actions.onLoadMore,
-                onSongClick = { index ->
-                    if (selectedSongIds.isNotEmpty()) {
-                        selectedSongIds = if (state.songs[index].id in selectedSongIds) {
-                            selectedSongIds - state.songs[index].id
-                        } else {
-                            selectedSongIds + state.songs[index].id
-                        }
-                    } else {
-                        playerViewModel.playAlbum(state.songs, index, albumPage.album.browseId, albumPage.album.title)
-                    }
-                },
+                onSongClick = onSongClick,
                 onToggleSave = actions.onToggleSave,
                 onPlayAll = actions.onPlayAll,
                 onShuffle = actions.onShuffle,
-                showDeleteDialog = { showDeleteDialog = true },
                 onNavigate = actions.onNavigate,
             )
         } else {
@@ -151,30 +163,18 @@ internal fun AlbumScreenLayout(
                 controls = controls,
                 isAnyDownloading = isAnyDownloadingState.value,
                 isFullyDownloaded = isFullyDownloadedState.value,
+                onDownloadClick = onDownloadClick,
                 selectedSongIds = selectedSongIds,
                 selectedSongs = selectedSongs,
-                onSelectionChange = { id, selected ->
-                    selectedSongIds = if (selected) selectedSongIds + id else selectedSongIds - id
-                },
-                onClearSelection = { selectedSongIds = emptySet() },
+                onSelectionChange = onSelectionChange,
+                onClearSelection = onClearSelection,
                 onSurfaceColor = onSurfaceColor,
                 onSurfaceVariant = onSurfaceVariant,
                 onLoadMore = actions.onLoadMore,
-                onSongClick = { index ->
-                    if (selectedSongIds.isNotEmpty()) {
-                        selectedSongIds = if (state.songs[index].id in selectedSongIds) {
-                            selectedSongIds - state.songs[index].id
-                        } else {
-                            selectedSongIds + state.songs[index].id
-                        }
-                    } else {
-                        playerViewModel.playAlbum(state.songs, index, albumPage.album.browseId, albumPage.album.title)
-                    }
-                },
+                onSongClick = onSongClick,
                 onToggleSave = actions.onToggleSave,
                 onPlayAll = actions.onPlayAll,
                 onShuffle = actions.onShuffle,
-                showDeleteDialog = { showDeleteDialog = true },
                 onNavigate = actions.onNavigate,
             )
         }
@@ -190,6 +190,7 @@ internal fun AlbumWideLayout(
     controls: AlbumInfoPanelControls,
     isAnyDownloading: Boolean,
     isFullyDownloaded: Boolean,
+    onDownloadClick: () -> Unit,
     selectedSongIds: Set<String>,
     selectedSongs: List<SongItem>,
     onSelectionChange: (String, Boolean) -> Unit,
@@ -201,8 +202,7 @@ internal fun AlbumWideLayout(
     onToggleSave: () -> Unit,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
-    showDeleteDialog: () -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val listState = rememberLazyListState()
 
@@ -235,10 +235,10 @@ internal fun AlbumWideLayout(
                     controls = controls,
                     isAnyDownloading = isAnyDownloading,
                     isFullyDownloaded = isFullyDownloaded,
+                    onDownloadClick = onDownloadClick,
                     onToggleSave = onToggleSave,
                     onPlayAll = onPlayAll,
                     onShuffle = onShuffle,
-                    showDeleteDialog = showDeleteDialog,
                     onNavigate = onNavigate,
                 )
             }
@@ -252,8 +252,6 @@ internal fun AlbumWideLayout(
                 onSelectionChange = onSelectionChange,
                 onClearSelection = onClearSelection,
                 selectedSongs = selectedSongs,
-                isLocalPlaylist = false,
-                onRemoveFromPlaylist = null,
                 onLoadMore = onLoadMore,
                 onSongClick = onSongClick,
             )
@@ -277,6 +275,7 @@ internal fun AlbumCompactLayout(
     controls: AlbumInfoPanelControls,
     isAnyDownloading: Boolean,
     isFullyDownloaded: Boolean,
+    onDownloadClick: () -> Unit,
     selectedSongIds: Set<String>,
     selectedSongs: List<SongItem>,
     onSelectionChange: (String, Boolean) -> Unit,
@@ -288,12 +287,10 @@ internal fun AlbumCompactLayout(
     onToggleSave: () -> Unit,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
-    showDeleteDialog: () -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         val lazyColumnState = rememberLazyListState()
-        val downloadViewModel = LocalDownloadViewModel.current
 
         val showStickHeader by remember {
             derivedStateOf { lazyColumnState.firstVisibleItemIndex > 0 }
@@ -315,13 +312,7 @@ internal fun AlbumCompactLayout(
                         title = albumPage.album.title,
                         isDownloading = isAnyDownloading,
                         isFullyDownloaded = isFullyDownloaded,
-                        onDownloadClick = {
-                            if (isFullyDownloaded) {
-                                showDeleteDialog()
-                            } else if (!isAnyDownloading) {
-                                downloadViewModel.downloadAll(songs)
-                            }
-                        },
+                        onDownloadClick = onDownloadClick,
                         onPlayClick = onPlayAll,
                         playContentDescription = stringResource(Res.string.cd_play),
                     )
@@ -344,10 +335,10 @@ internal fun AlbumCompactLayout(
                         controls = controls,
                         isAnyDownloading = isAnyDownloading,
                         isFullyDownloaded = isFullyDownloaded,
+                        onDownloadClick = onDownloadClick,
                         onToggleSave = onToggleSave,
                         onPlayAll = onPlayAll,
                         onShuffle = onShuffle,
-                        showDeleteDialog = showDeleteDialog,
                         onNavigate = onNavigate,
                     )
                     Spacer(Modifier.height(12.dp))
@@ -414,8 +405,6 @@ private fun AlbumSongList(
     onSelectionChange: (String, Boolean) -> Unit,
     onClearSelection: () -> Unit,
     selectedSongs: List<SongItem>,
-    isLocalPlaylist: Boolean,
-    onRemoveFromPlaylist: ((String) -> Unit)?,
     onLoadMore: () -> Unit,
     onSongClick: (index: Int) -> Unit,
 ) {
@@ -440,8 +429,8 @@ private fun AlbumSongList(
                     onSelectionChange = { selected ->
                         onSelectionChange(song.id, selected)
                     },
-                    isLocalPlaylist = isLocalPlaylist,
-                    onRemoveFromPlaylist = onRemoveFromPlaylist,
+                    isLocalPlaylist = false,
+                    onRemoveFromPlaylist = null,
                     modifier = Modifier.animateItem(
                         placementSpec = spring(
                             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -463,10 +452,10 @@ private fun AlbumSongList(
         MultiSongSelectionBar(
             selectedSongs = selectedSongs,
             allSongIds = songs.map { it.id },
-            isLocalPlaylist = isLocalPlaylist,
+            isLocalPlaylist = false,
             onClearSelection = onClearSelection,
             onSelectAll = { songs.forEach { onSelectionChange(it.id, true) } },
-            onRemoveFromPlaylist = onRemoveFromPlaylist,
+            onRemoveFromPlaylist = null,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -489,23 +478,12 @@ internal fun AlbumInfoPanel(
     controls: AlbumInfoPanelControls,
     isAnyDownloading: Boolean,
     isFullyDownloaded: Boolean,
+    onDownloadClick: () -> Unit,
     onToggleSave: () -> Unit,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
-    showDeleteDialog: () -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
-    val downloadViewModel = LocalDownloadViewModel.current
-
-    val songIds = remember(songs) { songs.map { it.id } }
-    val isDownloading by remember(songIds, downloadViewModel) {
-        downloadViewModel.isAnyDownloadingFlow(songIds)
-    }.collectAsState(initial = false)
-
-    val isFullyDownloaded by remember(songIds, downloadViewModel) {
-        downloadViewModel.isFullyDownloadedFlow(songIds)
-    }.collectAsState(initial = false)
-
     val firstArtist = albumPage.album.artists?.firstOrNull()
 
     Surface(
@@ -514,7 +492,7 @@ internal fun AlbumInfoPanel(
         modifier = Modifier
             .clip(AppShapes.large)
             .clickable(enabled = firstArtist?.id != null) {
-                firstArtist?.id?.let { onNavigate(Route.Artist(it)) }
+                firstArtist?.id?.let { onNavigate(ScreenConfig.Artist(it)) }
             }
             .pointerHoverIcon(if (firstArtist?.id != null) PointerIcon.Hand else PointerIcon.Default)
     ) {
@@ -589,14 +567,8 @@ internal fun AlbumInfoPanel(
         isLoadingForPlay = controls.isLoadingForPlay,
         onPlay = onPlayAll,
         onShuffle = onShuffle,
-        isDownloading = isDownloading,
+        isDownloading = isAnyDownloading,
         isFullyDownloaded = isFullyDownloaded,
-        onDownloadClick = {
-            if (isFullyDownloaded) {
-                showDeleteDialog()
-            } else if (!isDownloading) {
-                downloadViewModel.downloadAll(songs)
-            }
-        },
+        onDownloadClick = onDownloadClick,
     )
 }

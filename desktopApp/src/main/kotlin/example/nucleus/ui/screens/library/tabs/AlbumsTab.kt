@@ -7,11 +7,8 @@ import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -22,12 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.ItemContentSource
 import example.nucleus.ui.components.MediaGridItem
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
-import example.nucleus.ui.themes.LocalMiniPlayerInset
 import com.metrolist.innertube.models.AlbumItem
 
 @Composable
@@ -35,7 +30,7 @@ fun AlbumsTab(
     albums: List<AlbumItem>,
     ytmAlbums: List<AlbumItem> = emptyList(),
     isLoadingYtm: Boolean = false,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onRemove: (String) -> Unit,
     onQuickPlayAlbum: (browseId: String, playlistId: String?, title: String, onFallback: () -> Unit) -> Unit,
     onQuickShuffleAlbum: (browseId: String, playlistId: String?, title: String, onFallback: () -> Unit) -> Unit,
@@ -62,15 +57,10 @@ fun AlbumsTab(
     Box(modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(
             state = gridState,
-            columns = GridCells.Adaptive(minSize = 150.dp),
-            contentPadding = PaddingValues(
-                start = 20.dp,
-                end = 20.dp,
-                top = 8.dp,
-                bottom = maxOf(80.dp, LocalMiniPlayerInset.current)
-            ),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            columns = GridCells.Adaptive(minSize = LibraryGridMinCellWidth),
+            contentPadding = libraryGridContentPadding(),
+            horizontalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
+            verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing)
         ) {
             items(
                 items = mergedAlbums,
@@ -78,15 +68,15 @@ fun AlbumsTab(
             ) { (album, source) ->
                 MediaGridItem(
                     item = album,
-                    onClick = { onNavigate(Route.Album(album.browseId)) },
+                    onClick = { onNavigate(ScreenConfig.collection(album.browseId)) },
                     onPlay = {
                         onQuickPlayAlbum(album.browseId, album.playlistId, album.title) {
-                            onNavigate(Route.Album(album.browseId))
+                            onNavigate(ScreenConfig.collection(album.browseId))
                         }
                     },
                     onShuffle = {
                         onQuickShuffleAlbum(album.browseId, album.playlistId, album.title) {
-                            onNavigate(Route.Album(album.browseId))
+                            onNavigate(ScreenConfig.collection(album.browseId))
                         }
                     },
                     onRemove = { onRemove(album.browseId) },

@@ -30,7 +30,7 @@ class RootComponent(
             is ScreenConfig.Search -> Child.Search(SearchComponent(componentContext, get()))
             is ScreenConfig.Library -> Child.Library(LibraryComponent(componentContext, get()))
             is ScreenConfig.Account -> Child.Account(AccountComponent(componentContext, get()))
-            is ScreenConfig.Settings -> Child.Settings(SettingsComponent(componentContext))
+            is ScreenConfig.Settings -> Child.Settings
             is ScreenConfig.Stats -> Child.Stats
             is ScreenConfig.ListenTogether -> Child.ListenTogether
             is ScreenConfig.NowPlaying -> Child.NowPlaying(NowPlayingScreenRoot(componentContext, get()))
@@ -62,141 +62,159 @@ class RootComponent(
     fun canGoBack(): Boolean = childStack.value.items.size > 1
 
     /**
-     * "Recargar página" estilo web.
-     *  - Pestañas (Home/Search/Library): sus ViewModels son singletons y cargan en su `init`,
-     *    así que se llama directamente a su método de recarga.
-     *  - Pantallas de detalle: se saca la pantalla activa de la pila y se vuelve a meter para
-     *    que su componente se recree y recargue sus datos (init de los componentes).
+     * "Recargar página" estilo web: cada componente que sabe recargarse
+     * implementa [Reloadable]. Las pantallas sin recarga propia conservan el
+     * comportamiento anterior: se recrea el child activo en la pila.
      */
     fun refresh() {
-        when (val config = childStack.value.active.configuration) {
-            is ScreenConfig.Home -> get<HomeViewModel>().forceReload()
-            is ScreenConfig.Search -> get<SearchViewModel>().refresh()
-            is ScreenConfig.Library -> get<LibraryViewModel>().refreshYtmLibrary()
-            is ScreenConfig.YouTubeHome,
-            is ScreenConfig.YouTubeShorts,
-            -> get<YouTubeHomeViewModel>().refreshHome(force = true)
-            else -> {
-                navigation.navigate { stack ->
-                    val dropped = stack.dropLast(1)
-                    if (dropped.isEmpty()) stack else dropped
-                }
-                navigation.navigate { stack ->
-                    if (stack.lastOrNull() == config) stack else stack + config
-                }
-            }
+        val reloadable = childStack.value.active.instance.reloadable
+        if (reloadable != null) {
+            reloadable.reload()
+            return
+        }
+
+        // Fallback para pantallas sin reload propio: recrear el child activo
+        // conserva el comportamiento anterior del botón de refrescar.
+        val config = childStack.value.active.configuration
+        navigation.navigate { stack ->
+            val dropped = stack.dropLast(1)
+            if (dropped.isEmpty()) stack else dropped
+        }
+        navigation.navigate { stack ->
+            if (stack.lastOrNull() == config) stack else stack + config
         }
     }
 
 
-    sealed class Child {
-        data class Home(val component: HomeComponent) : Child()
-        data class Search(val component: SearchComponent) : Child()
-        data class Library(val component: LibraryComponent) : Child()
-        data class Account(val component: AccountComponent) : Child()
-        data class Settings(val component: SettingsComponent) : Child()
-        data object Stats : Child()
-        data object ListenTogether : Child()
-        data class NowPlaying(val component: NowPlayingScreenRoot) : Child()
-        data class Album(val component: AlbumComponent) : Child()
-        data class Playlist(val component: PlaylistComponent) : Child()
-        data class Artist(val component: ArtistComponent) : Child()
-        data class YouTubeBrowse(val component: YouTubeBrowseComponent) : Child()
-        data class YouTubeHome(val component: YouTubeHomeComponent) : Child()
-        data class YouTubeShorts(val component: YouTubeHomeComponent) : Child()
-        data class YouTubeWatch(val component: YouTubeWatchComponent) : Child()
+    sealed class Child(val reloadable: Reloadable?) {
+        data class Home(val component: HomeComponent) : Child(component)
+        data class Search(val component: SearchComponent) : Child(component)
+        data class Library(val component: LibraryComponent) : Child(component)
+        data class Account(val component: AccountComponent) : Child(component)
+        data object Settings : Child(null)
+        data object Stats : Child(null)
+        data object ListenTogether : Child(null)
+        data class NowPlaying(val component: NowPlayingScreenRoot) : Child(null)
+        data class Album(val component: AlbumComponent) : Child(component)
+        data class Playlist(val component: PlaylistComponent) : Child(component)
+        data class Artist(val component: ArtistComponent) : Child(component)
+        data class YouTubeBrowse(val component: YouTubeBrowseComponent) : Child(component)
+        data class YouTubeHome(val component: YouTubeHomeComponent) : Child(component)
+        data class YouTubeShorts(val component: YouTubeHomeComponent) : Child(component)
+        data class YouTubeWatch(val component: YouTubeWatchComponent) : Child(component)
     }
+}
+
+/** Pantalla que puede recargarse sin recrear su componente. */
+interface Reloadable {
+    fun reload()
 }
 
 // Cada componente posee su propio ViewModel para que sobreviva al retroceso de la pila
 
 class HomeComponent(componentContext: ComponentContext, val viewModel: HomeViewModel) :
-    ComponentContext by componentContext
+    ComponentContext by componentContext, Reloadable {
+    override fun reload() = viewModel.forceReload()
+}
 
 class SearchComponent(
     componentContext: ComponentContext,
     val viewModel: SearchViewModel
-) : ComponentContext by componentContext
-
-class SettingsComponent(componentContext: ComponentContext) : ComponentContext by componentContext
+) : ComponentContext by componentContext, Reloadable {
+    override fun reload() = viewModel.refresh()
+}
 
 class LibraryComponent(
     componentContext: ComponentContext,
     val viewModel: LibraryViewModel
-) : ComponentContext by componentContext
+) : ComponentContext by componentContext, Reloadable {
+    override fun reload() = viewModel.refreshYtmLibrary()
+}
 
 class AlbumComponent(
     componentContext: ComponentContext,
-    browseId: String,
+    private val browseId: String,
     val viewModel: AlbumManagerViewModel
-) : ComponentContext by componentContext {
+) : ComponentContext by componentContext, Reloadable {
     init {
         viewModel.loadAlbum(browseId)
         lifecycle.subscribe(object : Lifecycle.Callbacks {
             override fun onDestroy() { viewModel.dispose() }
         })
     }
+
+    override fun reload() = viewModel.loadAlbum(browseId, force = true)
 }
 
 class PlaylistComponent(
     componentContext: ComponentContext,
-    playlistId: String,
+    private val playlistId: String,
     val viewModel: PlaylistManagerViewModel
-) : ComponentContext by componentContext {
+) : ComponentContext by componentContext, Reloadable {
     init {
         viewModel.loadPlaylist(playlistId)
         lifecycle.subscribe(object : Lifecycle.Callbacks {
             override fun onDestroy() { viewModel.dispose() }
         })
     }
+
+    override fun reload() = viewModel.loadPlaylist(playlistId, force = true)
 }
 
 class ArtistComponent(
     componentContext: ComponentContext,
-    artistId: String,
+    private val artistId: String,
     val viewModel: ArtistManagerViewModel
-) : ComponentContext by componentContext {
+) : ComponentContext by componentContext, Reloadable {
     init {
         viewModel.loadArtist(artistId)
         lifecycle.subscribe(object : Lifecycle.Callbacks {
             override fun onDestroy() { viewModel.dispose() }
         })
     }
+
+    override fun reload() = viewModel.loadArtist(artistId)
 }
 
 class AccountComponent(componentContext: ComponentContext, val viewModel: AccountManagerViewModel) :
-    ComponentContext by componentContext {
+    ComponentContext by componentContext, Reloadable {
     init {
         lifecycle.subscribe(object : Lifecycle.Callbacks {
             override fun onDestroy() { viewModel.dispose() }
         })
     }
+
+    override fun reload() = viewModel.retry()
 }
 
 class YouTubeBrowseComponent(
     componentContext: ComponentContext,
-    browseId: String,
-    params: String?,
+    private val browseId: String,
+    private val params: String?,
     val viewModel: YouTubeBrowseManagerViewModel
-) : ComponentContext by componentContext {
+) : ComponentContext by componentContext, Reloadable {
     init {
         viewModel.load(browseId, params)
         lifecycle.subscribe(object : Lifecycle.Callbacks {
             override fun onDestroy() { viewModel.dispose() }
         })
     }
+
+    override fun reload() = viewModel.load(browseId, params)
 }
 
 class YouTubeHomeComponent(
     componentContext: ComponentContext,
     val viewModel: YouTubeHomeViewModel,
-) : ComponentContext by componentContext
+) : ComponentContext by componentContext, Reloadable {
+    override fun reload() = viewModel.refreshHome(force = true)
+}
 
 class YouTubeWatchComponent(
     componentContext: ComponentContext,
     val videoId: String,
     val viewModel: YouTubeWatchViewModel,
-) : ComponentContext by componentContext {
+) : ComponentContext by componentContext, Reloadable {
     init {
         viewModel.load(videoId)
         lifecycle.subscribe(object : Lifecycle.Callbacks {
@@ -208,6 +226,8 @@ class YouTubeWatchComponent(
             }
         })
     }
+
+    override fun reload() = viewModel.load(videoId)
 }
 
 class NowPlayingScreenRoot(

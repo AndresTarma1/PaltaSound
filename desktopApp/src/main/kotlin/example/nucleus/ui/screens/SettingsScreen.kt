@@ -35,15 +35,14 @@ import org.jetbrains.compose.resources.stringResource
 private enum class SettingsCategory(
     val icon: ImageVector,
     val titleRes: org.jetbrains.compose.resources.StringResource,
-    val subtitleRes: org.jetbrains.compose.resources.StringResource,
 ) {
-    APPEARANCE(Icons.Rounded.Palette, Res.string.section_appearance, Res.string.section_appearance_subtitle),
-    ACCESSIBILITY(Icons.Rounded.Accessibility, Res.string.section_accessibility, Res.string.section_accessibility_subtitle),
-    AUDIO(Icons.Rounded.GraphicEq, Res.string.section_audio, Res.string.section_audio_subtitle),
-    PLAYBACK(Icons.Rounded.PlayCircle, Res.string.section_playback, Res.string.section_playback_subtitle),
-    LIBRARY(Icons.Rounded.LibraryMusic, Res.string.section_library, Res.string.section_library_subtitle),
-    SYSTEM(Icons.Rounded.Settings, Res.string.section_system, Res.string.section_system_subtitle),
-    ABOUT(Icons.Rounded.Info, Res.string.section_about, Res.string.section_about_subtitle),
+    APPEARANCE(Icons.Rounded.Palette, Res.string.section_appearance),
+    ACCESSIBILITY(Icons.Rounded.Accessibility, Res.string.section_accessibility),
+    AUDIO(Icons.Rounded.GraphicEq, Res.string.section_audio),
+    PLAYBACK(Icons.Rounded.PlayCircle, Res.string.section_playback),
+    LIBRARY(Icons.Rounded.LibraryMusic, Res.string.section_library),
+    SYSTEM(Icons.Rounded.Settings, Res.string.section_system),
+    ABOUT(Icons.Rounded.Info, Res.string.section_about),
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -214,21 +213,6 @@ private fun NarrowSettingsLayout(
                 )
             }
         }
-//        ScrollableTabRow(
-//            selectedTabIndex = SettingsCategory.entries.indexOf(selected),
-//            contentColor = MaterialTheme.colorScheme.onSurface,
-//            divider = {},
-//            edgePadding = 8.dp,
-//        ) {
-//            SettingsCategory.entries.forEach { cat ->
-//                Tab(
-//                    selected = cat == selected,
-//                    onClick = { onSelect(cat) },
-//                    text = { Text(stringResource(cat.titleRes), style = MaterialTheme.typography.labelLargeEmphasized) },
-//                    icon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp)) },
-//                )
-//            }
-//        }
 
         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             AnimatedContent(

@@ -72,70 +72,6 @@ internal class MpvD3D11Output private constructor(
         }
     }
 
-    /**
-     * Test/diagnostic helper: copies the current texture to a staging texture
-     * and reads one RGBA pixel (ARGB int). Not used by playback.
-     */
-    internal fun readPixelArgb(x: Int, y: Int): Int? {
-        if (closed || x !in 0 until width || y !in 0 until height) return null
-        val stagingOut = arena.allocate(ADDRESS)
-        val createTexture = comMethod(
-            device,
-            index = 5,
-            FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS, ADDRESS),
-        )
-        val desc = textureDesc(
-            arena,
-            width,
-            height,
-            usage = D3D11_USAGE_STAGING,
-            bindFlags = 0,
-            cpuAccessFlags = D3D11_CPU_ACCESS_READ,
-            miscFlags = 0,
-        )
-        val hrCreate = createTexture.invokeWithArguments(
-            device, desc, MemorySegment.NULL, stagingOut,
-        ) as Int
-        if (hrCreate < 0) return null
-        val staging = stagingOut.get(ADDRESS, 0L)
-        if (staging.address() == 0L) return null
-        val mapped = arena.allocate(16)
-        try {
-            val copy = comMethod(context, 47, FunctionDescriptor.ofVoid(ADDRESS, ADDRESS, ADDRESS))
-            copy.invokeWithArguments(context, staging, texture)
-            val map = comMethod(
-                context,
-                14,
-                FunctionDescriptor.of(
-                    JAVA_INT,
-                    ADDRESS,
-                    ADDRESS,
-                    JAVA_INT,
-                    JAVA_INT,
-                    JAVA_INT,
-                    ADDRESS,
-                ),
-            )
-            val hrMap = map.invokeWithArguments(context, staging, 0, 1, 0, mapped) as Int
-            if (hrMap < 0) return null
-            val unmap = comMethod(context, 15, FunctionDescriptor.ofVoid(ADDRESS, ADDRESS, JAVA_INT))
-            return try {
-                val rowPitch = mapped.get(JAVA_INT, 8L)
-                val data = mapped.get(ADDRESS, 0L).reinterpret(rowPitch.toLong() * height + 4)
-                val offset = y.toLong() * rowPitch + x.toLong() * 4
-                val r = data.get(JAVA_BYTE, offset).toInt() and 0xff
-                val g = data.get(JAVA_BYTE, offset + 1).toInt() and 0xff
-                val b = data.get(JAVA_BYTE, offset + 2).toInt() and 0xff
-                val a = data.get(JAVA_BYTE, offset + 3).toInt() and 0xff
-                (a shl 24) or (r shl 16) or (g shl 8) or b
-            } finally {
-                unmap.invokeWithArguments(context, staging, 0)
-            }
-        } finally {
-            release(staging)
-        }
-    }
-
     override fun close() {
         if (closed) return
         closed = true
@@ -157,8 +93,6 @@ internal class MpvD3D11Output private constructor(
         private const val D3D11_CREATE_DEVICE_VIDEO_SUPPORT = 0x800
         private const val DXGI_FORMAT_R8G8B8A8_UNORM = 28
         private const val D3D11_USAGE_DEFAULT = 0
-        private const val D3D11_USAGE_STAGING = 3
-        private const val D3D11_CPU_ACCESS_READ = 0x20000
         private const val D3D11_BIND_SHADER_RESOURCE = 0x8
         private const val D3D11_BIND_RENDER_TARGET = 0x20
         private const val D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX = 0x100
@@ -374,10 +308,6 @@ internal class MpvD3D11Output private constructor(
             arena: Arena,
             width: Int,
             height: Int,
-            usage: Int = D3D11_USAGE_DEFAULT,
-            bindFlags: Int = D3D11_BIND_RENDER_TARGET or D3D11_BIND_SHADER_RESOURCE,
-            cpuAccessFlags: Int = 0,
-            miscFlags: Int = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX,
         ): MemorySegment {
             val desc = arena.allocate(44)
             desc.set(JAVA_INT, 0L, width)
@@ -387,10 +317,10 @@ internal class MpvD3D11Output private constructor(
             desc.set(JAVA_INT, 16L, DXGI_FORMAT_R8G8B8A8_UNORM)
             desc.set(JAVA_INT, 20L, 1) // SampleDesc.Count
             desc.set(JAVA_INT, 24L, 0) // SampleDesc.Quality
-            desc.set(JAVA_INT, 28L, usage)
-            desc.set(JAVA_INT, 32L, bindFlags)
-            desc.set(JAVA_INT, 36L, cpuAccessFlags)
-            desc.set(JAVA_INT, 40L, miscFlags)
+            desc.set(JAVA_INT, 28L, D3D11_USAGE_DEFAULT)
+            desc.set(JAVA_INT, 32L, D3D11_BIND_RENDER_TARGET or D3D11_BIND_SHADER_RESOURCE)
+            desc.set(JAVA_INT, 36L, 0) // CpuAccessFlags
+            desc.set(JAVA_INT, 40L, D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)
             return desc
         }
 

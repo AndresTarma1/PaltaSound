@@ -52,11 +52,7 @@ class YouTubeService(
         YoutubeApiDecoder.setLocalDecoder(localDecoder)
     }
 
-    fun updateCookie(cookie: String?) {
-        ServiceList.YouTube.setTokens(cookie.orEmpty())
-    }
-
-    suspend fun search(query: String, filter: SearchFilter = SearchFilter.ALL): YouTubeSearchPage =
+    suspend fun search(query: String): YouTubeSearchPage =
         withContext(Dispatchers.IO) {
             val factory = org.schabi.newpipe.extractor.services.youtube.linkHandler
                 .YoutubeSearchQueryHandlerFactory.getInstance()
@@ -265,9 +261,6 @@ class YouTubeService(
         else "https://www.youtube.com/playlist?list=$value"
 
     companion object {
-        private fun encode(value: String): String =
-            java.net.URLEncoder.encode(value, Charsets.UTF_8.name())
-
         fun videoIdFromUrl(value: String): String? {
             val uri = runCatching { URI(value) }.getOrNull() ?: return null
             if (uri.host?.endsWith("youtu.be") == true) {
@@ -279,12 +272,5 @@ class YouTubeService(
                 ?.substringAfter("v=")
                 ?.let { URLDecoder.decode(it, Charsets.UTF_8.name()) }
         }
-    }
-
-    enum class SearchFilter {
-        ALL,
-        VIDEOS,
-        CHANNELS,
-        PLAYLISTS,
     }
 }

@@ -236,7 +236,7 @@ object MpvLib {
             }
         }
         log.info("MpvLib: libmpv del sistema no encontrada en rutas conocidas; probando resolución por nombre")
-        return SymbolLookup.libraryLookup(if (Platform.isMac) "mpv" else "mpv", arena)
+        return SymbolLookup.libraryLookup("mpv", arena)
     }
 
     // ── API pública (misma forma que el binding JNA) ──────────────────────────

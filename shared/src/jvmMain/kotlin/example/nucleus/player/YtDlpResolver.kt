@@ -1,6 +1,7 @@
 package example.nucleus.player
 
 import example.nucleus.data.repository.AudioQuality
+import example.nucleus.platform.findExecutableOnPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -247,25 +248,6 @@ object YtDlpResolver {
             log.info("Using bundled yt-dlp: ${it.absolutePath}")
             return it.absolutePath
         }
-        // Recurrir a una instalación del sistema, resolviendo su ruta absoluta con where/which.
-        return resolveOnPath("yt-dlp")?.also { log.info("Using system yt-dlp: $it") }
-    }
-
-    /**
-     * Localiza un ejecutable en el PATH del sistema.
-     *
-     * @param name El nombre del ejecutable a localizar.
-     * @return La ruta absoluta al ejecutable si se encuentra, `null` en caso contrario.
-     */
-    private fun resolveOnPath(name: String): String? = try {
-        val which = if (System.getProperty("os.name").startsWith("Windows", true)) "where" else "which"
-        val proc = ProcessBuilder(which, name).redirectErrorStream(true).start()
-        val out = proc.inputStream.bufferedReader().readText()
-        if (proc.waitFor(5, TimeUnit.SECONDS) && proc.exitValue() == 0) {
-            out.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }
-        } else null
-    } catch (e: Exception) {
-        // `where`/`which` no disponible — asumir que no está instalado.
-        null
+        return findExecutableOnPath("yt-dlp")?.also { log.info("Using system yt-dlp: $it") }
     }
 }

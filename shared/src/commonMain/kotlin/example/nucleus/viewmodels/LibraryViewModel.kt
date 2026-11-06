@@ -16,6 +16,7 @@ import example.nucleus.data.repository.savedPlaylistToPlaylistItem
 import example.nucleus.data.repository.savedPodcastToPodcastItem
 import example.nucleus.data.repository.savedSongToSongItem
 import example.nucleus.db.MusicDatabase
+import example.nucleus.platform.AppPaths
 import example.nucleus.platform.CsvFilePicker
 import example.nucleus.utils.CsvPlaylistParser
 import example.nucleus.utils.CsvSongRow
@@ -49,6 +50,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.uuid.ExperimentalUuidApi
+import java.io.File
 
 enum class LibraryTab {
     LIBRARY, ALBUMS, ARTISTS, PLAYLISTS, PODCASTS
@@ -627,8 +629,13 @@ class LibraryPlaylistsViewModel(
                         appendLine("\"$t\",\"$a\",\"$al\"")
                     }
                 }
-                // Por ahora retornamos el CSV; la UI decide donde guardarlo (por ahora solo notifica)
-                withContext(Dispatchers.Main) { onDone(true, csv) }
+                val dir = File(AppPaths.exportsDir).apply { mkdirs() }
+                val safeName = item.title
+                    .replace(Regex("[^A-Za-z0-9 _-]"), "_")
+                    .ifBlank { "playlist" }
+                val file = File(dir, "playlist_$safeName.csv")
+                file.writeText(csv)
+                withContext(Dispatchers.Main) { onDone(true, file.absolutePath) }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { onDone(false, e.message ?: "Error") }
             }

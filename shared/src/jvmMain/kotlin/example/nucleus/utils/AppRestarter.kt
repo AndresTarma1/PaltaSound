@@ -1,6 +1,7 @@
 package example.nucleus.utils
 
 import example.nucleus.data.repository.JvmConfig
+import example.nucleus.platform.Platform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.system.exitProcess
@@ -59,7 +60,7 @@ object AppRestarter {
                     listOf(appPath)
                 } else {
                     val javaHome = System.getProperty("java.home")
-                    val javaBin = if (isWindows()) "$javaHome\\bin\\java.exe" else "$javaHome/bin/java"
+                    val javaBin = if (Platform.isWindows) "$javaHome\\bin\\java.exe" else "$javaHome/bin/java"
                     val classpath = System.getProperty("java.class.path")
                     val mainClass = System.getProperty("sun.java.command")?.split(" ")?.firstOrNull()
                         ?: "example.nucleus.MainKt"
@@ -78,7 +79,5 @@ object AppRestarter {
         }
     }
 
-    private fun isWindows(): Boolean {
-        return System.getProperty("os.name").lowercase().contains("win")
-    }
+
 }

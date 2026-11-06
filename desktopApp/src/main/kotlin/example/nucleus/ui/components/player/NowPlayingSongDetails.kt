@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import example.nucleus.generated.resources.*
 import example.nucleus.generated.resources.Res
 import example.nucleus.models.MediaMetadata
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.viewmodels.PlayerUiState
@@ -36,7 +36,7 @@ internal fun NowPlayingSongDetails(
     state: PlayerUiState,
     song: MediaMetadata,
     textAlign: TextAlign,
-    onNavigate: ((Route) -> Unit)?,
+    onNavigate: ((ScreenConfig) -> Unit)?,
     onCollapse: (() -> Unit)?,
     compact: Boolean,
     modifier: Modifier = Modifier,
@@ -49,7 +49,6 @@ internal fun NowPlayingSongDetails(
         },
         modifier = modifier,
     ) {
-        // Chip de origen / procedencia
         state.queueSource?.let { source ->
             val label = when (source) {
                 is QueueSource.Album -> stringResource(Res.string.from_album, source.title)
@@ -101,7 +100,6 @@ internal fun NowPlayingSongDetails(
 
         Spacer(Modifier.height(if (compact) 4.dp else 8.dp))
 
-        // Artistas interactivos
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = if (textAlign == TextAlign.Start) Arrangement.Start else Arrangement.Center,
@@ -120,7 +118,7 @@ internal fun NowPlayingSongDetails(
                             .clip(AppShapes.small)
                             .clickable {
                                 onCollapse?.invoke()
-                                onNavigate?.invoke(Route.Artist(artist.id!!))
+                                onNavigate?.invoke(ScreenConfig.Artist(artist.id!!))
                             }
                             .pointerHoverIcon(PointerIcon.Hand)
                             .padding(horizontal = 4.dp, vertical = 2.dp)
@@ -139,7 +137,6 @@ internal fun NowPlayingSongDetails(
             }
         }
 
-        // Álbum si está presente
         song.album?.let { album ->
             if (!compact) {
                 Spacer(Modifier.height(4.dp))
@@ -154,7 +151,7 @@ internal fun NowPlayingSongDetails(
                         .clip(AppShapes.small)
                         .clickable {
                             onCollapse?.invoke()
-                            onNavigate?.invoke(Route.Album(album.id))
+                            onNavigate?.invoke(ScreenConfig.collection(album.id))
                         }
                         .pointerHoverIcon(PointerIcon.Hand)
                         .padding(horizontal = 4.dp, vertical = 2.dp),
