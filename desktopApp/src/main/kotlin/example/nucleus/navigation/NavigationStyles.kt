@@ -114,6 +114,8 @@ fun NavigationRailDefault(
     rootComponent: RootComponent,
     mainTabs: List<TabInfo>,
     bottomTabs: List<TabInfo>,
+    liquidGlass: Boolean = false,
+    hazeState: HazeState? = null,
 ){
     val square = LocalLayoutMode.current == LayoutMode.SQUARE
     val dimens = LocalDimens.current
@@ -270,6 +272,8 @@ fun WideNavigationRail(
     rootComponent: RootComponent,
     mainTabs: List<TabInfo>,
     bottomTabs: List<TabInfo>,
+    liquidGlass: Boolean = false,
+    hazeState: HazeState? = null,
 ) {
     val square = LocalLayoutMode.current == LayoutMode.SQUARE
     val dimens = LocalDimens.current

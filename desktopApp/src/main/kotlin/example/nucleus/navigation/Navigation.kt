@@ -182,12 +182,6 @@ fun NavigationDesktop(
     }
 
 
-    // Estado del Liquid Glass BETA para los componentes que lo consumen vía
-    // CompositionLocal (transporte de Now Playing, likes, chips).
-    CompositionLocalProvider(
-        LocalLiquidGlass provides liquidGlassEnabled,
-        LocalGlassHaze provides railHazeState,
-    ) {
     CompositionLocalProvider(LocalMiniPlayerInset provides floatingBottomInset) {
         SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
             val sharedTransitionScope = this
@@ -542,11 +536,12 @@ fun NavigationDesktop(
                     )
                 }
             }
-        }
-    }
     }
     }
 }
+    }
+
+
 
 
 
