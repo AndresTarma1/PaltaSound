@@ -187,23 +187,48 @@ fun PlayerTransportRow(
         }
 
         // Play pill con acento Expressive principal
-        FilledIconButton(
-            onClick = { playerViewModel.togglePlayPause() },
-            modifier = Modifier
-                .size(width = 56.dp, height = 48.dp)
-                .pointerHoverIcon(PointerIcon.Hand),
-            shape = AppShapes.extraLarge,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = colorScheme.primary,
-                contentColor = colorScheme.onPrimary,
-            ),
-        ) {
-            if (isLoading) {
+        if (isLoading) {
+            FilledIconButton(
+                onClick = { playerViewModel.togglePlayPause() },
+                modifier = Modifier
+                    .size(width = 56.dp, height = 48.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+                shape = AppShapes.extraLarge,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = colorScheme.primary,
+                    contentColor = colorScheme.onPrimary,
+                ),
+            ) {
                 LoadingIndicator(
                     modifier = Modifier.size(28.dp),
                     color = colorScheme.onPrimary,
                 )
-            } else {
+            }
+        } else if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.togglePlayPause() },
+                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (isPlaying) {
+                    stringResource(Res.string.tray_pause)
+                } else {
+                    stringResource(Res.string.tray_play)
+                },
+                hazeState = hazeState!!,
+                size = 52.dp,
+                iconSize = 28.dp,
+            )
+        } else {
+            FilledIconButton(
+                onClick = { playerViewModel.togglePlayPause() },
+                modifier = Modifier
+                    .size(width = 56.dp, height = 48.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+                shape = AppShapes.extraLarge,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = colorScheme.primary,
+                    contentColor = colorScheme.onPrimary,
+                ),
+            ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = if (isPlaying) {
@@ -347,12 +372,16 @@ fun PlayerVolumeControl(
     trackHeight: Dp = 132.dp,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalGlassHaze.current,
 ) {
     PlayerVolumeTooltip(
         modifier = modifier,
         trackHeight = trackHeight,
         playerViewModel = playerViewModel,
         onBusyChange = onBusyChange,
+        liquidGlass = liquidGlass,
+        hazeState = hazeState,
     )
 }
 
@@ -401,12 +430,20 @@ fun PlayerVolumeTooltip(
     trackHeight: Dp = 132.dp,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalGlassHaze.current,
 ) {
     val volume by playerViewModel.volume.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
     val volumePercent = volume.coerceIn(0, 100)
     val fraction = volumePercent / 100f
     val isMuted = volumePercent == 0
+    val useGlass = liquidGlass && hazeState != null
+    val volumeIcon = when {
+        isMuted -> Icons.AutoMirrored.Rounded.VolumeOff
+        volumePercent < 40 -> Icons.AutoMirrored.Rounded.VolumeDown
+        else -> Icons.AutoMirrored.Rounded.VolumeUp
+    }
 
     var isButtonHovered by remember { mutableStateOf(false) }
     var isCardHovered by remember { mutableStateOf(false) }
@@ -465,40 +502,56 @@ fun PlayerVolumeTooltip(
             }
         },
     ) {
-        FilledTonalIconButton(
-            onClick = { playerViewModel.toggleMute() },
-            modifier = Modifier
-                .size(40.dp)
-                .onHover { isButtonHovered = it }
-                .pointerScrollToInt(
-                    value = volumePercent,
-                    range = 0..100,
-                    onValueChange = { playerViewModel.setVolume(it) },
-                )
-                .pointerHoverIcon(PointerIcon.Hand),
-            shape = AppShapes.medium,
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = if (isButtonHovered || isVisible) {
-                    colorScheme.secondaryContainer
-                } else {
-                    colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
-                },
-                contentColor = when {
-                    isMuted -> colorScheme.error
-                    isButtonHovered || isVisible -> colorScheme.onSecondaryContainer
-                    else -> colorScheme.onSurfaceVariant
-                },
-            ),
-        ) {
-            Icon(
-                imageVector = when {
-                    isMuted -> Icons.AutoMirrored.Rounded.VolumeOff
-                    volumePercent < 40 -> Icons.AutoMirrored.Rounded.VolumeDown
-                    else -> Icons.AutoMirrored.Rounded.VolumeUp
-                },
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.toggleMute() },
+                imageVector = volumeIcon,
                 contentDescription = stringResource(Res.string.mp_volume),
-                modifier = Modifier.size(20.dp),
+                hazeState = hazeState!!,
+                modifier = Modifier
+                    .size(40.dp)
+                    .onHover { isButtonHovered = it }
+                    .pointerScrollToInt(
+                        value = volumePercent,
+                        range = 0..100,
+                        onValueChange = { playerViewModel.setVolume(it) },
+                    )
+                    .pointerHoverIcon(PointerIcon.Hand),
+                size = 40.dp,
+                iconSize = 20.dp,
             )
+        } else {
+            FilledTonalIconButton(
+                onClick = { playerViewModel.toggleMute() },
+                modifier = Modifier
+                    .size(40.dp)
+                    .onHover { isButtonHovered = it }
+                    .pointerScrollToInt(
+                        value = volumePercent,
+                        range = 0..100,
+                        onValueChange = { playerViewModel.setVolume(it) },
+                    )
+                    .pointerHoverIcon(PointerIcon.Hand),
+                shape = AppShapes.medium,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (isButtonHovered || isVisible) {
+                        colorScheme.secondaryContainer
+                    } else {
+                        colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+                    },
+                    contentColor = when {
+                        isMuted -> colorScheme.error
+                        isButtonHovered || isVisible -> colorScheme.onSecondaryContainer
+                        else -> colorScheme.onSurfaceVariant
+                    },
+                ),
+            ) {
+                Icon(
+                    imageVector = volumeIcon,
+                    contentDescription = stringResource(Res.string.mp_volume),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }
