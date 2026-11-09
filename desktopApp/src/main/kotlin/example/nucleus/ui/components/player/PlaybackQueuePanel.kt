@@ -46,6 +46,7 @@ import example.nucleus.models.MediaMetadata
 import example.nucleus.player.PlaybackState
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.artwork.rememberArtworkColors
+import example.nucleus.ui.components.glass.GlassDropdownMenu
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
@@ -444,7 +445,7 @@ internal fun QueueActionsMenu(
     onAddToPlaylist: () -> Unit,
     onDownloadAll: () -> Unit,
 ) {
-    DropdownMenu(
+    GlassDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,

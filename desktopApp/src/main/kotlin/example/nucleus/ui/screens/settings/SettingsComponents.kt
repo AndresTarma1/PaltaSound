@@ -25,6 +25,7 @@ import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
 import example.nucleus.data.repository.SeekBarStyle
 import example.nucleus.data.repository.ThemePalette
 import example.nucleus.ui.components.PlayerSeekBar
+import example.nucleus.ui.components.glass.GlassDropdownMenu
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.systemFontFamily
@@ -108,7 +109,7 @@ internal fun <T> DropdownSelector(
             action = {
                 IconButton(onClick = { onExpandedChange(!expanded) }) {
                     Icon(Icons.Rounded.ChevronRight, null)
-                    DropdownMenu(
+                    GlassDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { onExpandedChange(false) },
                         offset = DpOffset(x = 16.dp, y = 0.dp),
@@ -173,7 +174,7 @@ internal fun SystemFontSelector(
             action = {
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(Icons.Rounded.ChevronRight, null)
-                    DropdownMenu(
+                    GlassDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
                         offset = DpOffset(x = 16.dp, y = 0.dp),

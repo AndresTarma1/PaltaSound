@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.glass.GlassDropdownMenu
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.AccountInfo
 import dev.nucleusframework.composenativetray.tray.api.Tray
@@ -164,7 +165,7 @@ fun TitleBarScope.DesktopTitleBar(
                 )
             }
         }
-        DropdownMenu(
+        GlassDropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
             containerColor = MaterialTheme.colorScheme.surface,

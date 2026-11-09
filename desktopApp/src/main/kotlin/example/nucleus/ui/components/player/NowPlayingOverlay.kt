@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
+import example.nucleus.ui.components.glass.GlassDropdownMenu
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.generated.resources.Res
@@ -73,7 +74,7 @@ fun NowPlayingTopActions(
                     style = MaterialTheme.typography.labelLargeEmphasized,
                 )
             }
-            DropdownMenu(
+            GlassDropdownMenu(
                 expanded = showSpeedMenu,
                 onDismissRequest = { showSpeedMenu = false },
                 shape = AppShapes.large,
@@ -121,7 +122,7 @@ fun NowPlayingTopActions(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            DropdownMenu(
+            GlassDropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { onMenuToggle(false) },
                 shape = AppShapes.large,

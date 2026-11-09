@@ -32,6 +32,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import example.nucleus.ui.components.glass.GlassFilterChip
+import example.nucleus.ui.components.glass.GlassDropdownMenu
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
+import example.nucleus.ui.components.glass.GlassDropdownMenu
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.ui.screens.library.tabs.AlbumsTab
 import example.nucleus.ui.screens.library.tabs.ArtistsTab
@@ -448,7 +450,7 @@ fun LibraryScreen(
                         )
                     }
 
-                    androidx.compose.material3.DropdownMenu(
+                    GlassDropdownMenu(
                         expanded = showFilterMenu,
                         onDismissRequest = { showFilterMenu = false },
                         containerColor = MaterialTheme.colorScheme.surface,

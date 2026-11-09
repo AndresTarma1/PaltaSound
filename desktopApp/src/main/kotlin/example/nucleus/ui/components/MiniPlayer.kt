@@ -815,7 +815,11 @@ private fun MiniPlayerWideRow(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PlayerVolumeControl(modifier = Modifier.padding(end = 6.dp))
+            PlayerVolumeControl(
+                modifier = Modifier.padding(end = 6.dp),
+                liquidGlass = liquidGlass,
+                hazeState = hazeState,
+            )
 
             if (liquidGlass && hazeState != null) {
                 GlassIconButton(
