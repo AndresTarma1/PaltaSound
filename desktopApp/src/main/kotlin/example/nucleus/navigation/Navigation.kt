@@ -186,15 +186,15 @@ fun NavigationDesktop(
 
 
     // Estado del Liquid Glass BETA para los componentes que lo consumen vía
-    // CompositionLocal (transporte de Now Playing, likes, chips).
+    // CompositionLocal (transporte de Now Playing, likes, chips, menús).
+    val hazeState = rememberHazeState()
     CompositionLocalProvider(
         LocalLiquidGlass provides liquidGlassEnabled,
-        LocalGlassHaze provides railHazeState,
+        LocalGlassHaze provides hazeState,
     ) {
     CompositionLocalProvider(LocalMiniPlayerInset provides floatingBottomInset) {
         SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
             val sharedTransitionScope = this
-            val hazeState = rememberHazeState()
             val miniPlayerSlot: @Composable (Modifier) -> Unit = { m ->
                 MiniPlayer(
                     isOnNowPlaying = isOnNowPlaying,
@@ -367,7 +367,7 @@ fun NavigationDesktop(
                                             // una capa cada frame tiene coste (GPU), así que en modo
                                             // barra u otros fondos se omite.
                                             .then(
-                                                if ((floatingMiniPlayer || dockedMiniPlayer) && !isOnNowPlaying && miniPlayerBackgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT) {
+                                                if (liquidGlassEnabled || ((floatingMiniPlayer || dockedMiniPlayer) && !isOnNowPlaying && miniPlayerBackgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT)) {
                                                     Modifier.hazeSource(hazeState)
                                                 } else Modifier
                                             )

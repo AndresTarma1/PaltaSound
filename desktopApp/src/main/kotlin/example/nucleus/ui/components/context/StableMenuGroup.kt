@@ -99,10 +99,10 @@ fun StableDropdownMenuGroup(
                 ambientResponse(0.16f)
                 optics {
                     copy(
-                        blurRadius = OpticalSizeValue.Fixed(28.dp),
-                        refractionStrength = 0.85f,
-                        refractionDisplacement = 52.dp,
-                        refractionHeightFraction = 0.26f,
+                        blurRadius = OpticalSizeValue.Fixed(34.dp),
+                        refractionStrength = 1f,
+                        refractionDisplacement = 64.dp,
+                        refractionHeightFraction = 0.28f,
                         depth = OpticalSizeValue.Fixed(1f),
                     )
                 }

@@ -291,6 +291,7 @@ fun NucleusApplicationScope.App(
 
     val uiScaleFactor by userPreferences.uiScale.collectAsState(1f)
     val backgroundAppStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
+    val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(false)
     // Fuente propia para el Glass de la navegación (BETA): muestrea solo el fondo
     // de la ventana (cover desenfocado / degradado / color), no el contenido.
     val railHazeState = rememberHazeState()
@@ -308,6 +309,8 @@ fun NucleusApplicationScope.App(
                 LocalPlaylistsViewModel provides playlistsViewModel,
                 LocalUserPreferences provides userPreferences,
                 LocalAnimationsEnabled provides animationsEnabled,
+                example.nucleus.ui.components.glass.LocalLiquidGlass provides liquidGlassEnabled,
+                example.nucleus.ui.components.glass.LocalGlassHaze provides railHazeState,
             ) {
                 // Widget de medios dentro de la barra de tareas de Windows (antes de la bandeja).
                 // Se compone en su propia ventana, pero hereda estos CompositionLocals y el tema.
