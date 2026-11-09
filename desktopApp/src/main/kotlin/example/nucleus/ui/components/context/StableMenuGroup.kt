@@ -1,10 +1,22 @@
 package example.nucleus.ui.components.context
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.MenuGroupShapes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.OpticalSizeValue
+import dev.chrisbanes.haze.glass.hazeGlass
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.themes.AppShapes
 
 /**
@@ -72,9 +84,45 @@ fun StableDropdownMenuGroup(
     content: @Composable () -> Unit,
 ) {
     val shape = groupContainerShape(groupIndex, groupCount)
-    // La clave del fix: inactiva == activa, asi que no hay morph. Ver la nota de arriba.
-    DropdownMenuGroup(shapes = MenuGroupShapes(shape = shape, inactiveShape = shape)) {
-        content()
+    val liquidGlass = LocalLiquidGlass.current
+    val hazeState = LocalGlassHaze.current
+    if (liquidGlass && hazeState != null) {
+        val colorScheme = androidx.compose.material3.MaterialTheme.colorScheme
+        val glassStyle = remember(shape, colorScheme.surfaceContainer) {
+            GlassStyle.regular.then {
+                backgroundColor(colorScheme.surfaceContainer.copy(alpha = 0.38f))
+                tint(colorScheme.surfaceContainer.copy(alpha = 0.1f))
+                shape(shape)
+                edgeShadow(Color.Transparent)
+                // Más reflexión que el glass normal para que el menú se lea como cristal.
+                specularIntensity(0.4f)
+                ambientResponse(0.16f)
+                optics {
+                    copy(
+                        blurRadius = OpticalSizeValue.Fixed(28.dp),
+                        refractionStrength = 0.85f,
+                        refractionDisplacement = 52.dp,
+                        refractionHeightFraction = 0.26f,
+                        depth = OpticalSizeValue.Fixed(1f),
+                    )
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .clip(shape)
+                .hazeGlass(
+                    input = HazeInput.Sources(hazeState),
+                    style = glassStyle,
+                ),
+        ) {
+            content()
+        }
+    } else {
+        // La clave del fix: inactiva == activa, asi que no hay morph. Ver la nota de arriba.
+        DropdownMenuGroup(shapes = MenuGroupShapes(shape = shape, inactiveShape = shape)) {
+            content()
+        }
     }
 }
 
@@ -86,7 +134,7 @@ fun StableDropdownMenuGroup(
  * `small` = 8dp = `CornerValueSmall`.
  */
 @Composable
-private fun groupContainerShape(groupIndex: Int, groupCount: Int): Shape {
+private fun groupContainerShape(groupIndex: Int, groupCount: Int): RoundedCornerShape {
     // No hace falta pasar los radios en dp: `RoundedCornerShape.topStart` ya es un `CornerSize`,
     // que es justo lo que acepta el constructor de cuatro esquinas.
     val outer = AppShapes.large.topStart
