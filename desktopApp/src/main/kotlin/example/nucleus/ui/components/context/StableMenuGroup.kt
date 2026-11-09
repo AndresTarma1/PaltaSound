@@ -1,6 +1,6 @@
 package example.nucleus.ui.components.context
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.MenuGroupShapes
@@ -90,8 +90,8 @@ fun StableDropdownMenuGroup(
         val colorScheme = androidx.compose.material3.MaterialTheme.colorScheme
         val glassStyle = remember(shape, colorScheme.surfaceContainer) {
             GlassStyle.regular.then {
-                backgroundColor(colorScheme.surfaceContainer.copy(alpha = 0.38f))
-                tint(colorScheme.surfaceContainer.copy(alpha = 0.1f))
+                backgroundColor(colorScheme.surfaceContainer.copy(alpha = 0.58f))
+                tint(colorScheme.surfaceContainer.copy(alpha = 0.18f))
                 shape(shape)
                 edgeShadow(Color.Transparent)
                 // Más reflexión que el glass normal para que el menú se lea como cristal.
@@ -108,7 +108,7 @@ fun StableDropdownMenuGroup(
                 }
             }
         }
-        Box(
+        Column(
             modifier = Modifier
                 .clip(shape)
                 .hazeGlass(
