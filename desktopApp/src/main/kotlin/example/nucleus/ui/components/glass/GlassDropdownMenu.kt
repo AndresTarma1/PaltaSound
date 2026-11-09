@@ -47,16 +47,10 @@ fun GlassDropdownMenu(
     val glassShape = (shape as? RoundedCornerShape) ?: RoundedCornerShape(16.dp)
 
     val style = if (useGlass) {
-        remember(colorScheme.surfaceContainer, glassShape) {
-            GlassStyle.regular.then {
-                backgroundColor(colorScheme.surfaceContainer.copy(alpha = 0.4f))
-                tint(colorScheme.surfaceContainer.copy(alpha = 0.1f))
-                shape(glassShape)
-                edgeShadow(Color.Transparent)
-                specularIntensity(0.18f)
-                ambientResponse(0.06f)
-            }
-        }
+        rememberLiquidGlassStyle(
+            shape = glassShape,
+            containerColor = colorScheme.surfaceContainer,
+        )
     } else null
 
     DropdownMenu(

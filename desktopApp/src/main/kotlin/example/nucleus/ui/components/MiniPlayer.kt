@@ -78,6 +78,7 @@ import example.nucleus.generated.resources.play_item
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.components.player.heroCoverElement
 import example.nucleus.ui.components.player.PlayerIconToggle
 import example.nucleus.ui.components.player.PlayerProgressRow
@@ -411,23 +412,10 @@ fun MiniPlayer(
 private fun rememberMiniPlayerGlassStyle(
     containerColor: Color,
     cornerShape: RoundedCornerShape,
-): GlassStyle = remember(containerColor, cornerShape) {
-    GlassStyle.regular.then {
-        tint(containerColor.copy(alpha = 0.01f))
-        shape(cornerShape)
-        // Más difusión y refracción que el Regular por defecto: el mini player
-        // es bajo y el ajuste responsive de Haze deja el fondo demasiado nítido.
-        optics {
-            copy(
-                blurRadius = OpticalSizeValue.Fixed(34.dp),
-                refractionStrength = 1f,
-                refractionDisplacement = 64.dp,
-                refractionHeightFraction = 0.28f,
-                depth = OpticalSizeValue.Fixed(1f),
-            )
-        }
-    }
-}
+): GlassStyle = rememberLiquidGlassStyle(
+    shape = cornerShape,
+    containerColor = containerColor,
+)
 
 /**
  * Ancho mínimo para el layout de tres zonas (portada · transporte · volumen/cola/expand).

@@ -29,6 +29,7 @@ fun BackgroundStyle(
     modifier: Modifier = Modifier,
     backgroundStyle: BackgroundStyle?,
     backgroundModifier: Modifier = Modifier,
+    contentModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     // Solo extrae paleta cuando realmente se necesita (GRADIENT). Evita decode+quantization
@@ -44,17 +45,20 @@ fun BackgroundStyle(
             artworkColors = artworkColors,
             modifier = modifier,
             backgroundModifier = backgroundModifier,
+            contentModifier = contentModifier,
             content = content
         )
         BackgroundStyle.BLURRED_COVER -> BackgroundWithBlur(
             imageUrl = imageUrl,
             modifier = modifier,
             backgroundModifier = backgroundModifier,
+            contentModifier = contentModifier,
             content = content
         )
         BackgroundStyle.SOLID_COLOR -> BackgroundWithSolidColor(
             modifier = modifier,
             backgroundModifier = backgroundModifier,
+            contentModifier = contentModifier,
             content = content
         )
         else -> content
@@ -65,6 +69,7 @@ fun BackgroundStyle(
 fun BackgroundWithSolidColor(
     modifier: Modifier,
     backgroundModifier: Modifier = Modifier,
+    contentModifier: Modifier = Modifier,
     content: @Composable (BoxScope.() -> Unit)
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -76,7 +81,7 @@ fun BackgroundWithSolidColor(
                 .then(backgroundModifier),
         )
         val rememberedContent = remember(content) { content }
-        rememberedContent()
+        Box(modifier = contentModifier.fillMaxSize()) { rememberedContent() }
     }
 }
 
@@ -87,6 +92,7 @@ fun BackgroundWithGradient(
     artworkColors: ArtworkColors,
     modifier: Modifier = Modifier,
     backgroundModifier: Modifier = Modifier,
+    contentModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surface
@@ -115,7 +121,7 @@ fun BackgroundWithGradient(
                 .then(backgroundModifier),
         )
         val rememberedContent = remember(content) { content }
-        rememberedContent()
+        Box(modifier = contentModifier.fillMaxSize()) { rememberedContent() }
     }
 }
 
@@ -126,6 +132,7 @@ fun BackgroundWithBlur(
     imageUrl: String?,
     modifier: Modifier = Modifier,
     backgroundModifier: Modifier = Modifier,
+    contentModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     val background = MaterialTheme.colorScheme.background
@@ -163,6 +170,6 @@ fun BackgroundWithBlur(
 
         // Slot de contenido estable
         val rememberedContent = remember(content) { content }
-        rememberedContent()
+        Box(modifier = contentModifier.fillMaxSize()) { rememberedContent() }
     }
 }

@@ -295,6 +295,7 @@ fun NucleusApplicationScope.App(
     // Fuente propia para el Glass de la navegación (BETA): muestrea solo el fondo
     // de la ventana (cover desenfocado / degradado / color), no el contenido.
     val railHazeState = rememberHazeState()
+    val appContentHazeState = rememberHazeState()
 
     AppTheme(artworkColors = artworkColors, userPreferences = userPreferences) {
 
@@ -310,7 +311,7 @@ fun NucleusApplicationScope.App(
                 LocalUserPreferences provides userPreferences,
                 LocalAnimationsEnabled provides animationsEnabled,
                 example.nucleus.ui.components.glass.LocalLiquidGlass provides liquidGlassEnabled,
-                example.nucleus.ui.components.glass.LocalGlassHaze provides railHazeState,
+                example.nucleus.ui.components.glass.LocalGlassHaze provides appContentHazeState,
             ) {
                 // Widget de medios dentro de la barra de tareas de Windows (antes de la bandeja).
                 // Se compone en su propia ventana, pero hereda estos CompositionLocals y el tema.
@@ -430,6 +431,7 @@ fun NucleusApplicationScope.App(
                             imageUrl = playerUiState.currentSong?.thumbnailUrl,
                             backgroundStyle = backgroundAppStyle,
                             backgroundModifier = Modifier.hazeSource(railHazeState),
+                            contentModifier = Modifier.hazeSource(appContentHazeState),
                         ) {
 
                             // Definida UNA vez y reutilizada por las dos ramas de abajo. No es que haya dos

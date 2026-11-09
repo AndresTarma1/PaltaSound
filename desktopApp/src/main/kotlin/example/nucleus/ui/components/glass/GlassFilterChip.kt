@@ -53,27 +53,22 @@ fun GlassFilterChip(
     val glassShape = (shape as? RoundedCornerShape) ?: RoundedCornerShape(50)
 
     val glassStyle = if (useGlass) {
-        remember(colorScheme.surfaceContainer, selected, glassShape) {
-            GlassStyle.regular.then {
-                backgroundColor(colorScheme.surfaceContainer.copy(alpha = if (selected) 0.5f else 0.3f))
-                tint(colorScheme.surfaceContainer.copy(alpha = 0.08f))
-                shape(glassShape)
-                edgeShadow(Color.Transparent)
-                specularIntensity(0.18f)
-                ambientResponse(0.06f)
-            }
-        }
+        rememberLiquidGlassStyle(
+            shape = glassShape,
+            selected = selected,
+            containerColor = colorScheme.surfaceContainer,
+        )
     } else null
 
     val interactionSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
-            .shadow(if (useGlass) 2.dp else 0.dp, shape, clip = false)
+            .shadow(if (useGlass) 1.dp else 0.dp, shape, clip = false)
             .then(
                 if (useGlass) {
                     Modifier.hazeGlass(
-                        input = HazeInput.Sources(hazeState!!),
+                        input = HazeInput.Sources(hazeState),
                         style = glassStyle!!,
                     )
                 } else {
