@@ -146,6 +146,7 @@ private object NoIndication : IndicationNodeFactory {
     override fun equals(other: Any?): Boolean = this === other
 }
 
+@OptIn(androidx.compose.ui.InternalComposeUiApi::class)
 @Composable
 fun NucleusApplicationScope.App(
     rootComponent: RootComponent,
@@ -295,6 +296,11 @@ fun NucleusApplicationScope.App(
     // Fuente propia para el Glass de la navegación (BETA): muestrea solo el fondo
     // de la ventana (cover desenfocado / degradado / color), no el contenido.
     val railHazeState = rememberHazeState()
+    val appContentHazeState = rememberHazeState()
+    // Fuente del MiniPlayer y menús sobre el contenido: Navigation le ata la
+    // fuente a la caja del contenido (patrón sibling). Estado aparte porque
+    // appContentHazeState vive en un ancestro y Behind ahí selecciona vacío.
+    val contentHazeState = rememberHazeState()
 
     AppTheme(artworkColors = artworkColors, userPreferences = userPreferences) {
 
@@ -310,7 +316,16 @@ fun NucleusApplicationScope.App(
                 LocalUserPreferences provides userPreferences,
                 LocalAnimationsEnabled provides animationsEnabled,
                 example.nucleus.ui.components.glass.LocalLiquidGlass provides liquidGlassEnabled,
-                example.nucleus.ui.components.glass.LocalGlassHaze provides railHazeState,
+                example.nucleus.ui.components.glass.LocalGlassHaze provides appContentHazeState,
+                example.nucleus.ui.components.glass.LocalContentHaze provides contentHazeState,
+                example.nucleus.ui.components.glass.LocalRailHaze provides railHazeState,
+                // Haze elige su respuesta claro/oscuro del host (en desktop,
+                // LocalSystemTheme = SO), no del tema de la app: con app clara
+                // en SO oscuro pintaba cristal oscuro. Se le entrega el tema
+                // real de la app para que el cristal la acompañe.
+                androidx.compose.ui.LocalSystemTheme provides
+                    if (isDark) androidx.compose.ui.SystemTheme.Dark
+                    else androidx.compose.ui.SystemTheme.Light,
             ) {
                 // Widget de medios dentro de la barra de tareas de Windows (antes de la bandeja).
                 // Se compone en su propia ventana, pero hereda estos CompositionLocals y el tema.
@@ -374,8 +389,6 @@ fun NucleusApplicationScope.App(
                         // arranca en blanco/black antes de que el arbol de Compose dibuje.
                         WindowBackground(MaterialTheme.colorScheme.background)
 
-                        // Estado de actualizaciones. En training no se comprueba: es red (no determinista
-                        // para la cache) y el resultado no se usa para nada en un training.
                         val updateStatus by appViewModel.updateStatus.collectAsState()
                         val showInstallPrompt by appViewModel.showInstallPrompt.collectAsState()
                         LaunchedEffect(Unit) {
@@ -429,6 +442,7 @@ fun NucleusApplicationScope.App(
                         BackgroundStyle(
                             imageUrl = playerUiState.currentSong?.thumbnailUrl,
                             backgroundStyle = backgroundAppStyle,
+                            modifier = Modifier.hazeSource(appContentHazeState),
                             backgroundModifier = Modifier.hazeSource(railHazeState),
                         ) {
 
@@ -515,7 +529,6 @@ fun NucleusApplicationScope.App(
                                                 rootComponent = rootComponent,
                                                 userPreferences = userPreferences,
                                                 appMode = appMode,
-                                                railHazeState = railHazeState,
                                             )
                                         }
                                     }

@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.heze.blur)
     implementation(libs.heze.blur.materials)
     implementation(libs.heze.glass)
+    implementation(libs.heze.glass.material3)
 
     implementation("ir.mahozad.multiplatform:wavy-slider:2.2.0")
 

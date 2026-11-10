@@ -63,6 +63,7 @@ import dev.chrisbanes.haze.blur.materials.HazeMaterials
 import dev.chrisbanes.haze.glass.GlassStyle
 import dev.chrisbanes.haze.glass.OpticalSizeValue
 import dev.chrisbanes.haze.glass.hazeGlass
+import dev.chrisbanes.haze.glass.hazeGlassContainer
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
 import example.nucleus.models.MediaMetadata
@@ -78,6 +79,8 @@ import example.nucleus.generated.resources.play_item
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.components.player.heroCoverElement
 import example.nucleus.ui.components.player.PlayerIconToggle
 import example.nucleus.ui.components.player.PlayerProgressRow
@@ -117,7 +120,7 @@ fun MiniPlayer(
     floating: Boolean = false,
     isDocked: Boolean = false,
     backgroundStyle: MiniPlayerBackgroundStyle = MiniPlayerBackgroundStyle.TRANSLUCENT,
-    hazeState: HazeState? = null,
+    hazeState: HazeState? = LocalGlassHaze.current,
     /** BETA: sustituye blur y botones por Liquid Glass (Haze Glass). */
     liquidGlass: Boolean = false,
     modifier: Modifier = Modifier,
@@ -199,17 +202,25 @@ fun MiniPlayer(
                     onClick = {},
                 )
                 .then(
-                    when (backgroundStyle) {
-                        MiniPlayerBackgroundStyle.TRANSLUCENT -> if (hazeState != null && liquidGlass) {
-                            val style = rememberMiniPlayerGlassStyle(
-                                containerColor = colorScheme.surfaceContainer,
-                                cornerShape = floatingShape,
-                            )
-                            Modifier.hazeGlass(
-                                input = HazeInput.Sources(hazeState),
-                                style = style,
-                            )
-                        } else if (hazeState != null) {
+                    when {
+                        liquidGlass -> {
+                            // Cristal Regular sobre el contenido real (Sources del
+                            // miniPlayerHazeState): la refracción/blur los aporta
+                            // el estilo, sin fondo extra que lo aplane.
+                            if (hazeState != null) {
+                                val style = rememberMiniPlayerGlassStyle(
+                                    containerColor = colorScheme.surfaceContainer,
+                                    cornerShape = floatingShape,
+                                )
+                                Modifier.hazeGlass(
+                                    input = HazeInput.Sources(hazeState),
+                                    style = style,
+                                )
+                            } else {
+                                Modifier
+                            }
+                        }
+                        backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null -> {
                             val style = HazeMaterials.ultraThin(
                                 containerColor = colorScheme.surfaceContainer,
                             )
@@ -217,7 +228,8 @@ fun MiniPlayer(
                                 input = HazeInput.Sources(hazeState),
                                 style = style,
                             )
-                        } else {
+                        }
+                        backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT -> {
                             Modifier.background(
                                 Brush.verticalGradient(
                                     colors = listOf(
@@ -230,13 +242,26 @@ fun MiniPlayer(
                         else -> Modifier.background(colorScheme.surfaceContainer)
                     },
                 )
-                .border(
-                    width = 1.dp,
-                    color = colorScheme.outlineVariant.copy(alpha = 0.55f),
-                    shape = floatingShape,
+                .then(
+                    if (liquidGlass) {
+                        // El borde lo dibuja el propio cristal (specular + edge);
+                        // este filete claro solo asegura el recorte sobre fondos
+                        // planos donde la refracción no da contraste.
+                        Modifier.border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.25f),
+                            shape = floatingShape,
+                        )
+                    } else {
+                        Modifier.border(
+                            width = 1.dp,
+                            color = colorScheme.outlineVariant.copy(alpha = 0.55f),
+                            shape = floatingShape,
+                        )
+                    },
                 ),
         ) {
-            if (backgroundStyle == MiniPlayerBackgroundStyle.COVER) {
+            if (backgroundStyle == MiniPlayerBackgroundStyle.COVER && !liquidGlass) {
                 MusicPlayerImage(
                     url = song.thumbnailUrl,
                     contentDescription = null,
@@ -273,17 +298,23 @@ fun MiniPlayer(
                     if (isOnNowPlaying || bgTransparent) {
                         Modifier.background(Color.Transparent)
                     } else {
-                        when (backgroundStyle) {
-                            MiniPlayerBackgroundStyle.TRANSLUCENT -> if (hazeState != null && liquidGlass) {
-                                val style = rememberMiniPlayerGlassStyle(
-                                    containerColor = colorScheme.surfaceContainer,
-                                    cornerShape = dockedGlassShape,
-                                )
-                                Modifier.hazeGlass(
-                                    input = HazeInput.Sources(hazeState),
-                                    style = style,
-                                )
-                            } else if (hazeState != null) {
+                        when {
+                            liquidGlass -> {
+                                // Igual que la flotante: Sources + estilo, sin fondo extra.
+                                if (hazeState != null) {
+                                    val style = rememberMiniPlayerGlassStyle(
+                                        containerColor = colorScheme.surfaceContainer,
+                                        cornerShape = dockedGlassShape,
+                                    )
+                                    Modifier.hazeGlass(
+                                        input = HazeInput.Sources(hazeState),
+                                        style = style,
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            }
+                            backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null -> {
                                 val style = HazeMaterials.ultraThin(
                                     containerColor = colorScheme.surfaceContainer,
                                 )
@@ -291,7 +322,8 @@ fun MiniPlayer(
                                     input = HazeInput.Sources(hazeState),
                                     style = style,
                                 )
-                            } else {
+                            }
+                            backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT -> {
                                 Modifier.background(
                                     Brush.verticalGradient(
                                         colors = listOf(
@@ -301,13 +333,12 @@ fun MiniPlayer(
                                     ),
                                 )
                             }
-                            MiniPlayerBackgroundStyle.SOLID -> Modifier.background(colorScheme.surfaceContainer)
-                            MiniPlayerBackgroundStyle.COVER -> Modifier.background(colorScheme.surfaceContainer)
+                            else -> Modifier.background(colorScheme.surfaceContainer)
                         }
                     }
                 ),
         ) {
-            if (backgroundStyle == MiniPlayerBackgroundStyle.COVER && !isOnNowPlaying && !bgTransparent) {
+            if (backgroundStyle == MiniPlayerBackgroundStyle.COVER && !isOnNowPlaying && !bgTransparent && !liquidGlass) {
                 MusicPlayerImage(
                     url = song.thumbnailUrl,
                     contentDescription = null,
@@ -352,22 +383,28 @@ fun MiniPlayer(
             }
         }
     } else {
-        val useHazeDocked = isDocked && backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null && !liquidGlass && !isOnNowPlaying && !bgTransparent
-        val useGlassDocked = isDocked && backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null && liquidGlass && !isOnNowPlaying && !bgTransparent
+        val useHazeBar = backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null && !liquidGlass && !isOnNowPlaying && !bgTransparent
+        val useGlassBar = liquidGlass && !isOnNowPlaying && !bgTransparent
         Surface(
             modifier = modifier
                 .fillMaxWidth()
                 .then(
-                    if (useGlassDocked) {
-                        val style = rememberMiniPlayerGlassStyle(
-                            containerColor = colorScheme.surfaceContainer,
-                            cornerShape = dockedGlassShape,
-                        )
-                        Modifier.hazeGlass(
-                            input = HazeInput.Sources(hazeState),
-                            style = style,
-                        )
-                    } else if (useHazeDocked) {
+                    if (useGlassBar) {
+                        // Sources del miniPlayerHazeState: en overlay refracta
+                        // las rutas; en barra, base esmerilada visible.
+                        if (hazeState != null) {
+                            val style = rememberMiniPlayerGlassStyle(
+                                containerColor = colorScheme.surfaceContainer,
+                                cornerShape = dockedGlassShape,
+                            )
+                            Modifier.hazeGlass(
+                                input = HazeInput.Sources(hazeState),
+                                style = style,
+                            )
+                        } else {
+                            Modifier
+                        }
+                    } else if (useHazeBar) {
                         val style = HazeMaterials.ultraThin(containerColor = colorScheme.surfaceContainer)
                         Modifier.hazeBlur(
                             input = HazeInput.Sources(hazeState),
@@ -376,7 +413,7 @@ fun MiniPlayer(
                     } else Modifier
                 )
                 .then(
-                    if (islands) {
+                    if (islands && !useGlassBar) {
                         Modifier
                             .padding(horizontal = dimens.surfaceGap, vertical = dimens.surfaceGap)
                             .border(
@@ -384,12 +421,15 @@ fun MiniPlayer(
                                 colorScheme.outlineVariant.copy(alpha = 0.7f),
                                 surfaceShape,
                             )
+                    } else if (islands) {
+                        Modifier
+                            .padding(horizontal = dimens.surfaceGap, vertical = dimens.surfaceGap)
                     } else {
                         Modifier
                     },
                 )
                 .height(dimens.miniPlayerHeight),
-            color = if (useHazeDocked || useGlassDocked) Color.Transparent else chromeSurface,
+            color = if (useHazeBar || useGlassBar) Color.Transparent else chromeSurface,
             shape = surfaceShape,
             tonalElevation = 2.dp,
             shadowElevation = if (islands) 2.dp else 0.dp,
@@ -411,23 +451,10 @@ fun MiniPlayer(
 private fun rememberMiniPlayerGlassStyle(
     containerColor: Color,
     cornerShape: RoundedCornerShape,
-): GlassStyle = remember(containerColor, cornerShape) {
-    GlassStyle.regular.then {
-        tint(containerColor.copy(alpha = 0.01f))
-        shape(cornerShape)
-        // Más difusión y refracción que el Regular por defecto: el mini player
-        // es bajo y el ajuste responsive de Haze deja el fondo demasiado nítido.
-        optics {
-            copy(
-                blurRadius = OpticalSizeValue.Fixed(34.dp),
-                refractionStrength = 1f,
-                refractionDisplacement = 64.dp,
-                refractionHeightFraction = 0.28f,
-                depth = OpticalSizeValue.Fixed(1f),
-            )
-        }
-    }
-}
+): GlassStyle = rememberLiquidGlassStyle(
+    shape = cornerShape,
+    containerColor = containerColor,
+)
 
 /**
  * Ancho mínimo para el layout de tres zonas (portada · transporte · volumen/cola/expand).
@@ -572,75 +599,86 @@ private fun MiniPlayerCompactRow(
             )
         }
 
-        LikeToggle(
-            liked = song.liked,
-            onToggle = { playerViewModel.toggleLike() },
-            liquidGlass = liquidGlass,
-            hazeState = hazeState,
-        )
-
-        if (liquidGlass && hazeState != null) {
-            GlassIconButton(
-                onClick = onToggleQueue,
-                imageVector = Icons.AutoMirrored.Filled.QueueMusic,
-                contentDescription = stringResource(Res.string.mp_queue),
+        // Cluster de acciones: contenedor Glass para que las lentes vecinas
+        // fusionen en una sola forma (mergeDistance) en vez de recortes sueltos.
+        val actionsGlass = liquidGlass && hazeState != null
+        Row(
+            modifier = Modifier.then(
+                if (actionsGlass) Modifier.hazeGlassContainer(mergeDistance = 12.dp) else Modifier,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            LikeToggle(
+                liked = song.liked,
+                onToggle = { playerViewModel.toggleLike() },
+                liquidGlass = liquidGlass,
                 hazeState = hazeState,
-                selected = isQueueVisible,
-                size = 36.dp,
-                iconSize = 20.dp,
             )
-        } else {
-            PlayerIconToggle(
-                selected = isQueueVisible,
-                onClick = onToggleQueue,
-                imageVector = Icons.AutoMirrored.Filled.QueueMusic,
-                contentDescription = stringResource(Res.string.mp_queue),
-                size = 36.dp,
-                iconSize = 20.dp,
-            )
-        }
 
-        if (liquidGlass && hazeState != null) {
-            GlassIconButton(
-                onClick = onNowPlaying,
-                imageVector = if (isOnNowPlaying) {
-                    Icons.Rounded.ExpandMore
-                } else {
-                    Icons.Rounded.ExpandLess
-                },
-                contentDescription = stringResource(Res.string.mp_expand),
-                hazeState = hazeState,
-                selected = isOnNowPlaying,
-                size = 40.dp,
-                iconSize = 24.dp,
-            )
-        } else {
-            FilledTonalIconButton(
-                onClick = onNowPlaying,
-                modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
-                shape = CircleShape,
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = if (isOnNowPlaying) {
-                        colorScheme.primaryContainer
-                    } else {
-                        colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
-                    },
-                    contentColor = if (isOnNowPlaying) {
-                        colorScheme.onPrimaryContainer
-                    } else {
-                        colorScheme.onSurfaceVariant
-                    },
-                ),
-            ) {
-                Icon(
+            if (actionsGlass) {
+                GlassIconButton(
+                    onClick = onToggleQueue,
+                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = stringResource(Res.string.mp_queue),
+                    hazeState = hazeState,
+                    selected = isQueueVisible,
+                    size = 36.dp,
+                    iconSize = 20.dp,
+                )
+            } else {
+                PlayerIconToggle(
+                    selected = isQueueVisible,
+                    onClick = onToggleQueue,
+                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = stringResource(Res.string.mp_queue),
+                    size = 36.dp,
+                    iconSize = 20.dp,
+                )
+            }
+
+            if (actionsGlass) {
+                GlassIconButton(
+                    onClick = onNowPlaying,
                     imageVector = if (isOnNowPlaying) {
                         Icons.Rounded.ExpandMore
                     } else {
                         Icons.Rounded.ExpandLess
                     },
                     contentDescription = stringResource(Res.string.mp_expand),
-                    modifier = Modifier.size(24.dp),
+                    hazeState = hazeState,
+                    selected = isOnNowPlaying,
+                    size = 40.dp,
+                    iconSize = 24.dp,
                 )
+            } else {
+                FilledTonalIconButton(
+                    onClick = onNowPlaying,
+                    modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (isOnNowPlaying) {
+                            colorScheme.primaryContainer
+                        } else {
+                            colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+                        },
+                        contentColor = if (isOnNowPlaying) {
+                            colorScheme.onPrimaryContainer
+                        } else {
+                            colorScheme.onSurfaceVariant
+                        },
+                    ),
+                ) {
+                    Icon(
+                        imageVector = if (isOnNowPlaying) {
+                            Icons.Rounded.ExpandMore
+                        } else {
+                            Icons.Rounded.ExpandLess
+                        },
+                        contentDescription = stringResource(Res.string.mp_expand),
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
     }
@@ -810,9 +848,15 @@ private fun MiniPlayerWideRow(
         }
 
         // —— DERECHA: volumen + cola + expand ——
+        // Contenedor Glass: las tres lentes fusionan bordes al estar juntas.
+        val rightGlass = liquidGlass && hazeState != null
         Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.End,
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (rightGlass) Modifier.hazeGlassContainer(mergeDistance = 12.dp) else Modifier,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PlayerVolumeControl(

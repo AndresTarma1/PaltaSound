@@ -31,7 +31,6 @@ import androidx.compose.material3.WideNavigationRailValue
 import androidx.compose.material3.rememberWideNavigationRailState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,9 +44,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.glass.GlassStyle
-import dev.chrisbanes.haze.glass.OpticalSizeValue
 import dev.chrisbanes.haze.glass.hazeGlass
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import kotlinx.coroutines.launch
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
@@ -74,26 +72,10 @@ internal fun GlassRailContainer(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    // GlassStyle compara por identidad: recordar por (color, forma).
-    val style = remember(colorScheme.surfaceContainer, shape) {
-        GlassStyle.regular.then {
-            backgroundColor(colorScheme.surfaceContainer.copy(alpha = 0.38f))
-            tint(colorScheme.surfaceContainer.copy(alpha = 0.10f))
-            shape(shape)
-            edgeShadow(Color.Transparent)
-            specularIntensity(0.15f)
-            ambientResponse(0.06f)
-            optics {
-                copy(
-                    blurRadius = OpticalSizeValue.Fixed(28.dp),
-                    refractionStrength = 0.25f,
-                    refractionDisplacement = 16.dp,
-                    refractionHeightFraction = 0.15f,
-                    depth = OpticalSizeValue.Fixed(1f),
-                )
-            }
-        }
-    }
+    val style = rememberLiquidGlassStyle(
+        shape = shape,
+        containerColor = colorScheme.surfaceContainer,
+    )
     // Sin clip ni border: GlassStyle.shape ya enmascara la refracción y el
     // clip recortaría la capa expandida del cristal.
     Box(

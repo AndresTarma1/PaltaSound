@@ -13,7 +13,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,9 +47,7 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.ExperimentalDecomposeApi
-import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 
 // Ahora (ojo: paquete "experimental", no se pueden mezclar con los anteriores)
 import com.arkivanov.decompose.extensions.compose.experimental.stack.ChildStack
@@ -62,7 +62,6 @@ import example.nucleus.data.repository.MiniPlayerStyle
 import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.UserPreferencesRepository
 import example.nucleus.ui.components.MiniPlayer
-import example.nucleus.ui.components.glass.LocalGlassHaze
 import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.dialogs.SnackBar
 import example.nucleus.ui.components.player.PlaybackQueuePanel
@@ -117,7 +116,6 @@ fun NavigationDesktop(
     rootComponent: RootComponent,
     userPreferences: UserPreferencesRepository,
     appMode: AppMode,
-    railHazeState: HazeState,
 ) {
     val childStack by rootComponent.childStack.subscribeAsState()
 
@@ -153,6 +151,11 @@ fun NavigationDesktop(
     val isOnNowPlaying = activeConfig is ScreenConfig.NowPlaying
     val animationsEnabled = LocalAnimationsEnabled.current
     val musicChrome = appMode == AppMode.MUSIC
+    // Fuente del cristal del MiniPlayer: la provee App (contentHazeState) y aquí
+    // se le ata la fuente a la caja del contenido (hermana-anterior de los
+    // overlays: patrón sibling de la guía). Estado aparte del appContentHazeState
+    // porque aquel vive en un hazeSource ancestro y Behind ahí selecciona vacío.
+    val miniPlayerHazeState = example.nucleus.ui.components.glass.LocalContentHaze.current
 
     LaunchedEffect(appMode) {
         if (!musicChrome) isQueueVisible = false
@@ -168,8 +171,10 @@ fun NavigationDesktop(
         miniPlayerStyle == MiniPlayerStyle.BAR && currentSong != null && musicChrome
 
     val dimens = LocalDimens.current
+    val glassNavVisible = liquidGlassEnabled && appMode == AppMode.MUSIC && !isOnNowPlaying
+    val glassNavInset = if (glassNavVisible) 112.dp else 0.dp
     // En Now Playing el mini player está oculto (pantalla completa): no hay inset que reservar.
-    val floatingBottomInset = if (isOnNowPlaying) {
+    val baseBottomInset = if (isOnNowPlaying) {
         0.dp
     } else when {
         floatingMiniPlayer -> dimens.miniPlayerHeight + dimens.miniPlayerFloatingMargin * 2
@@ -187,12 +192,10 @@ fun NavigationDesktop(
 
     // Estado del Liquid Glass BETA para los componentes que lo consumen vía
     // CompositionLocal (transporte de Now Playing, likes, chips, menús).
-    val hazeState = rememberHazeState()
     CompositionLocalProvider(
         LocalLiquidGlass provides liquidGlassEnabled,
-        LocalGlassHaze provides hazeState,
     ) {
-    CompositionLocalProvider(LocalMiniPlayerInset provides floatingBottomInset) {
+    CompositionLocalProvider(LocalMiniPlayerInset provides baseBottomInset) {
         SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
             val sharedTransitionScope = this
             val miniPlayerSlot: @Composable (Modifier) -> Unit = { m ->
@@ -215,28 +218,26 @@ fun NavigationDesktop(
                     floating = floatingMiniPlayer,
                     isDocked = dockedMiniPlayer,
                     backgroundStyle = miniPlayerBackgroundStyle,
-                    hazeState = hazeState,
                     liquidGlass = liquidGlassEnabled,
+                    hazeState = miniPlayerHazeState,
                 )
             }
         Surface(
             modifier = Modifier
                 .fillMaxSize()
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown && (event.key == Key.Escape || event.key == Key.Back)) {
-                        when {
-                            youtubeFullscreen -> {
-                                youtubePlayerService.setFullscreen(false)
-                                true
-                            }
-                            rootComponent.canGoBack() -> {
-                                rootComponent.onBack()
-                                true
-                            }
-                            else -> false
+                    event.type == KeyEventType.KeyDown && (event.key == Key.Escape || event.key == Key.Back) && when {
+                        youtubeFullscreen -> {
+                            youtubePlayerService.setFullscreen(false)
+                            true
                         }
-                    } else {
-                        false
+
+                        rootComponent.canGoBack() -> {
+                            rootComponent.onBack()
+                            true
+                        }
+
+                        else -> false
                     }
                 }
                 .pointerInput(youtubeFullscreen) {
@@ -272,7 +273,7 @@ fun NavigationDesktop(
                         // La ventana principal no cambia de layout al entrar en
                         // fullscreen: el vídeo se muestra en una ventana aparte.
                         AnimatedVisibility(
-                            visible = !isOnNowPlaying,
+                            visible = !isOnNowPlaying && !glassNavVisible,
                             enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
                             exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
                         ) {
@@ -282,25 +283,34 @@ fun NavigationDesktop(
                                     rootComponent = rootComponent,
                                 )
                             } else {
-                                when (navigationRailStyle) {
-                                    NavigationRailStyle.DEFAULT -> {
-                                        NavigationRailDefault(
-                                            activeConfig = activeConfig,
-                                            changeQueueVisible = { isQueueVisible = it },
-                                            rootComponent = rootComponent,
-                                            mainTabs = musicMainTabs,
-                                            bottomTabs = musicBottomTabs,
-                                        )
-                                    }
+                                if (glassNavVisible) {
+                                    LiquidGlassNavigationRail(
+                                        tabs = musicMainTabs + musicBottomTabs,
+                                        activeConfig = activeConfig,
+                                        onTabClick = { rootComponent.switchTab(it) },
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                    )
+                                } else {
+                                    when (navigationRailStyle) {
+                                        NavigationRailStyle.DEFAULT -> {
+                                            NavigationRailDefault(
+                                                activeConfig = activeConfig,
+                                                changeQueueVisible = { isQueueVisible = it },
+                                                rootComponent = rootComponent,
+                                                mainTabs = musicMainTabs,
+                                                bottomTabs = musicBottomTabs,
+                                            )
+                                        }
 
-                                    NavigationRailStyle.WIDE -> {
-                                        WideNavigationRail(
-                                            activeConfig = activeConfig,
-                                            changeQueueVisible = { isQueueVisible = it },
-                                            rootComponent = rootComponent,
-                                            mainTabs = musicMainTabs,
-                                            bottomTabs = musicBottomTabs,
-                                        )
+                                        NavigationRailStyle.WIDE -> {
+                                            WideNavigationRail(
+                                                activeConfig = activeConfig,
+                                                changeQueueVisible = { isQueueVisible = it },
+                                                rootComponent = rootComponent,
+                                                mainTabs = musicMainTabs,
+                                                bottomTabs = musicBottomTabs,
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -309,12 +319,7 @@ fun NavigationDesktop(
 
                         val islands = LocalLayoutMode.current == LayoutMode.ISLANDS
                         val square = LocalLayoutMode.current == LayoutMode.SQUARE
-                        // La forma sale de `dimens.surfaceCorner`, que ya es 0dp en ATTACHED y en
-                        // SQUARE y el radio del IslandStyle en ISLANDS (Dimens.kt). Antes esta
-                        // when decidia por su cuenta y ponia AppShapes.small en Square, o sea 8dp:
-                        // por eso el modo "cuadrado/bordes" seguia viéndose redondeado y solo se
-                        // notaba en las esquinas, contradiciendo al resto de superficies (el
-                        // MiniPlayer ya usaba RectangleShape). Ahora manda `dimens`, una sola fuente.
+
                         val contentShape: Shape =
                             if (dimens.surfaceCorner > 0.dp) {
                                 val roundedFullContent = if (isQueueVisible) dimens.surfaceCorner else 0.dp
@@ -361,19 +366,21 @@ fun NavigationDesktop(
                                                 )
                                                 else Modifier
                                             )
-                                            // El contenido de las rutas es la fuente del desenfoque
-                                            // de fondo del mini reproductor flotante (Haze). Solo se
-                                            // captura cuando la tarjeta flotante lo necesita: capturar
-                                            // una capa cada frame tiene coste (GPU), así que en modo
-                                            // barra u otros fondos se omite.
+                                            // Fuente del cristal del MiniPlayer: el contenido
+                                            // (hermano-anterior de sus overlays). Ver el comentario
+                                            // de miniPlayerHazeState arriba.
                                             .then(
-                                                if (liquidGlassEnabled || ((floatingMiniPlayer || dockedMiniPlayer) && !isOnNowPlaying && miniPlayerBackgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT)) {
-                                                    Modifier.hazeSource(hazeState)
-                                                } else Modifier
-                                            )
+                                                if (miniPlayerHazeState != null) {
+                                                    Modifier.hazeSource(miniPlayerHazeState)
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ),
                                     ) {
                                         Surface(
-                                            modifier = Modifier.fillMaxSize(),
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(start = glassNavInset),
                                             shape = contentShape,
                                             color = if (LocalIsSolidBackground.current) {
                                                 MaterialTheme.colorScheme.background
@@ -382,9 +389,6 @@ fun NavigationDesktop(
                                             },
                                             contentColor = MaterialTheme.colorScheme.onBackground,
                                         ) {
-                                            // Las rutas se renderizan a pantalla completa: su contenido pasa por
-                                            // debajo de la tarjeta flotante y cada screen suma LocalMiniPlayerInset
-                                            // a su contentPadding para que el scroll nunca quede oculto.
                                             ChildStack(
                                                 stack = rootComponent.childStack,
                                                 animation = if (animationsEnabled) stackAnimation(fade()) else stackAnimation { _, _, _, _ -> null },
@@ -404,14 +408,33 @@ fun NavigationDesktop(
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .align(Alignment.BottomCenter)
+                                            .align(Alignment.BottomCenter),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
                                         AnimatedVisibility(
                                             visible = (dockedMiniPlayer || floatingMiniPlayer) && !isOnNowPlaying,
                                             enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + slideInVertically(animationSpec = expressiveLayoutTween(), initialOffsetY = { it / 4 }) else EnterTransition.None,
                                             exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + slideOutVertically(animationSpec = expressiveLayoutTween(), targetOffsetY = { it / 4 }) else ExitTransition.None,
                                         ) {
-                                            miniPlayerSlot(Modifier.fillMaxWidth())
+                                            miniPlayerSlot(
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(start = glassNavInset),
+                                            )
+                                        }
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterStart)
+                                            .padding(8.dp),
+                                    ) {
+                                        if (glassNavVisible) {
+                                            LiquidGlassNavigationRail(
+                                                tabs = musicMainTabs + musicBottomTabs,
+                                                activeConfig = activeConfig,
+                                                onTabClick = { rootComponent.switchTab(it) },
+                                            )
                                         }
                                     }
                                 }
@@ -450,8 +473,6 @@ fun NavigationDesktop(
                                                     else Modifier
                                                 ),
                                             containerColor = Color.Transparent,
-                                            // La lista de la cola no debe quedar bajo el mini
-                                            // reproductor cuando este flota o está acoplado.
                                             bottomInset = LocalMiniPlayerInset.current,
                                         )
                                     }

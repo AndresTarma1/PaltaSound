@@ -1,7 +1,18 @@
 package example.nucleus.ui.components.glass
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.glass.GlassOptics
+import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.OpticalSizeValue
+import dev.chrisbanes.haze.glass.material3.material3
 
 /**
  * Interruptor BETA de Liquid Glass. Se provee una vez en [example.nucleus.navigation.NavigationDesktop]
@@ -15,3 +26,165 @@ val LocalLiquidGlass = compositionLocalOf { false }
  * La provee NavigationDesktop con el estado que muestrea la capa de fondo.
  */
 val LocalGlassHaze = compositionLocalOf<HazeState?> { null }
+
+/**
+ * Fuente del cristal del MiniPlayer y de los menús que flotan sobre el
+ * contenido (p. ej. el dropdown del title bar). La provee App y Navigation le
+ * ata la fuente a la caja del contenido (hermana-anterior de los overlays:
+ * patrón sibling de la guía). No reutilizar [LocalGlassHaze]: aquel vive en un
+ * hazeSource ancestro de toda la ventana y Behind ahí selecciona vacío.
+ */
+val LocalContentHaze = compositionLocalOf<HazeState?> { null }
+
+/**
+ * Fuente del cristal de la barra de navegación. La provee App con el
+ * railHazeState, atado a la capa de fondo ambiental (degradado/cover
+ * desenfocado). La rail va en flujo sin nada desplazándose detrás, así que
+ * muestrea el fondo de ventana completa en vez del contenido.
+ */
+val LocalRailHaze = compositionLocalOf<HazeState?> { null }
+
+/**
+ * Estilo Glass para superficies GRANDES con texto (barra del MiniPlayer, rails,
+ * tarjetas). Basado en `GlassStyle.regular` sin tocar la óptica: Regular ajusta
+ * blur/profundidad al lado más corto, así que una barra grande difumina y un
+ * control compacto conserva detalle refractado automáticamente.
+ *
+ * El color vive DENTRO del estilo (material3 + tint): no añadir
+ * `Modifier.background` encima, que aplana el cristal en una capa opaca.
+ */
+@Composable
+fun rememberLiquidGlassStyle(
+    shape: RoundedCornerShape = RoundedCornerShape(50),
+    selected: Boolean = false,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+): GlassStyle {
+    val colorScheme = MaterialTheme.colorScheme
+    val isDark = colorScheme.surface.luminance() < 0.5f
+    // Base translúcida REAL dentro del estilo: sobre fondos planos y oscuros la
+    // refracción no aporta contraste, así que la presencia del cristal la dan la
+    // base + el tint. Sin esto el cristal es invisible.
+    val base = containerColor.copy(alpha = if (isDark) 0.9f else 0.88f)
+    // Tint sutil estilo Apple: apenas tiñe en oscuro, algo más en claro para
+    // que el texto siga legible sin volver opaco el cristal.
+    val tint = if (selected) {
+        colorScheme.primary.copy(alpha = if (isDark) 0.22f else 0.28f)
+    } else if (isDark) {
+        Color.White.copy(alpha = 0.08f)
+    } else {
+        Color.White.copy(alpha = 0.18f)
+    }
+
+    val baseStyle = GlassStyle.regular.material3(
+        containerColor = containerColor,
+        tint = tint,
+    )
+    return remember(baseStyle, shape, selected, base, isDark) {
+        baseStyle.then {
+            backgroundColor(base)
+            shape(shape)
+            // Respuesta de luz de la guía: specular visible + elevación suave,
+            // sin sombra dura que recorte el cristal como un recuadro. En tema
+            // claro el ribete negro ensucia el borde: se quita.
+            specularIntensity(0.55f)
+            ambientResponse(0.3f)
+            edgeShadow(if (isDark) Color.Black.copy(alpha = 0.14f) else Color.Transparent)
+            // Dispersión contenida: iridiscencia en bordes sin artefactos.
+            chromaticAberrationStrength(0.12f)
+            // Esmerilado máximo y FIJO (no responsive): a estos radios nada
+            // detrás se distingue, en superficies grandes y pequeñas por igual.
+            optics {
+                copy(
+                    blurRadius = OpticalSizeValue.Fixed(28.dp),
+                    depth = OpticalSizeValue.Fixed(1f),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Estilo Glass para CONTROLES pequeños (IconButtons de transporte, cola,
+ * volumen, like). Basado en `GlassStyle.clear`: mismo blur fino a cualquier
+ * tamaño y refracción concentrada en una banda del borde que forma loops en
+ * las esquinas — la "lente" se lee como cristal sobre la barra, en vez de
+ * fundirse con ella como un círculo translúcido plano.
+ *
+ * Incluye la respuesta de interacción de la guía (pressed > hovered >
+ * focused): luz + refracción + escala. El [interactionSource] se pasa al
+ * modificador `hazeGlass`, no al estilo, así que un mismo estilo sirve para
+ * varios botones sin compartir estado.
+ */
+@Composable
+fun rememberLiquidGlassControlStyle(
+    shape: RoundedCornerShape = RoundedCornerShape(50),
+    selected: Boolean = false,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+): GlassStyle {
+    val colorScheme = MaterialTheme.colorScheme
+    val isDark = colorScheme.surface.luminance() < 0.5f
+    // Base con presencia: la lente tiene que leerse como píldora incluso sobre
+    // la barra oscura y plana, donde la refracción no da contraste.
+    val base = containerColor.copy(alpha = if (selected) 0.92f else if (isDark) 0.8f else 0.78f)
+    val tint = if (selected) {
+        colorScheme.primary.copy(alpha = if (isDark) 0.25f else 0.32f)
+    } else if (isDark) {
+        Color.White.copy(alpha = 0.12f)
+    } else {
+        Color.White.copy(alpha = 0.22f)
+    }
+
+    val baseStyle = GlassStyle.clear.material3(
+        containerColor = containerColor,
+        tint = tint,
+    )
+    return remember(baseStyle, shape, selected, base, isDark) {
+        baseStyle.then {
+            backgroundColor(base)
+            shape(shape)
+            specularIntensity(0.6f)
+            ambientResponse(0.35f)
+            edgeShadow(if (isDark) Color.Black.copy(alpha = 0.14f) else Color.Transparent)
+            chromaticAberrationStrength(0.15f)
+            // Mismo esmerilado que la barra: las lentes no dejan distinguir el
+            // fondo, pero conservan la refracción de borde de Clear.
+            optics {
+                copy(
+                    blurRadius = OpticalSizeValue.Fixed(28.dp),
+                    depth = OpticalSizeValue.Fixed(1f),
+                )
+            }
+            pressed {
+                lightingIntensity(1f)
+                refractionMultiplier(1.08f)
+                whitePointDelta(0.04f)
+                scale(0.98f)
+            }
+            hovered {
+                lightingIntensity(0.35f)
+            }
+            focused {
+                lightingIntensity(0.35f)
+            }
+        }
+    }
+}
+
+/**
+ * Tinte de base que asegura que el cristal se lea incluso sobre fondos
+ * degradados o ya desenfocados (donde el blur no aporta diferencia visible).
+ *
+ * @deprecated El fondo debe vivir DENTRO del GlassStyle (backgroundColor/tint
+ * de material3). Mantener un `Modifier.background` extra encima del cristal lo
+ * aplana. Solo se conserva por compatibilidad con llamadas antiguas.
+ */
+@Deprecated("El fondo vive dentro del GlassStyle; no añadir Modifier.background sobre hazeGlass.")
+@Composable
+fun liquidGlassFillColor(): Color {
+    val colorScheme = MaterialTheme.colorScheme
+    return if (colorScheme.surface.luminance() < 0.5f) {
+        colorScheme.surfaceContainer.copy(alpha = 0.5f)
+    } else {
+        Color.White.copy(alpha = 0.65f)
+    }
+}

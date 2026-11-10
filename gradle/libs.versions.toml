@@ -100,6 +100,7 @@ heze = { module = "dev.chrisbanes.haze:haze", version.ref = "heze"}
 heze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "heze"}
 heze-blur-materials = { module = "dev.chrisbanes.haze:haze-blur-materials", version.ref = "heze"}
 heze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "heze"}
+heze-glass-material3 = { module = "dev.chrisbanes.haze:haze-glass-material3", version.ref = "heze"}
 
 #Design
 compose-native-tray = {module= "io.github.kdroidfilter:composenativetray", version.ref= "composeNativeTray"}
