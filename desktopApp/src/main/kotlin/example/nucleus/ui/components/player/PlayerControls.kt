@@ -52,7 +52,6 @@ import example.nucleus.player.PlaybackState
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.glass.GlassStyle
-import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import dev.chrisbanes.haze.glass.hazeGlass
 import example.nucleus.ui.components.PlayerSeekBar
 import example.nucleus.ui.components.TimeText
@@ -590,10 +589,15 @@ private fun VolumeTrackCard(
     val useGlass = liquidGlass && hazeState != null
     val cardShape = AppShapes.large
     val glassStyle = if (useGlass) {
-        rememberLiquidGlassStyle(
-            shape = cardShape,
-            containerColor = colorScheme.surfaceContainer,
-        )
+        remember(colorScheme.surfaceContainer, isMuted, cardShape) {
+            GlassStyle.regular.then {
+                backgroundColor(colorScheme.surfaceContainer.copy(alpha = 0.35f))
+                tint(colorScheme.surfaceContainer.copy(alpha = 0.12f))
+                shape(cardShape)
+                specularIntensity(0.25f)
+                ambientResponse(0.1f)
+            }
+        }
     } else null
 
     Surface(

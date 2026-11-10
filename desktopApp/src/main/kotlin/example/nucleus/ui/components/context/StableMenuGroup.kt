@@ -17,7 +17,6 @@ import dev.chrisbanes.haze.glass.OpticalSizeValue
 import dev.chrisbanes.haze.glass.hazeGlass
 import example.nucleus.ui.components.glass.LocalGlassHaze
 import example.nucleus.ui.components.glass.LocalLiquidGlass
-import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.themes.AppShapes
 
 /**
@@ -88,10 +87,27 @@ fun StableDropdownMenuGroup(
     val liquidGlass = LocalLiquidGlass.current
     val hazeState = LocalGlassHaze.current
     if (liquidGlass && hazeState != null) {
-        val glassStyle = rememberLiquidGlassStyle(
-            shape = shape,
-            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
-        )
+        val colorScheme = androidx.compose.material3.MaterialTheme.colorScheme
+        val glassStyle = remember(shape, colorScheme.surfaceContainer) {
+            GlassStyle.regular.then {
+                backgroundColor(colorScheme.surfaceContainer.copy(alpha = 0.58f))
+                tint(colorScheme.surfaceContainer.copy(alpha = 0.18f))
+                shape(shape)
+                edgeShadow(Color.Transparent)
+                // Más reflexión que el glass normal para que el menú se lea como cristal.
+                specularIntensity(0.4f)
+                ambientResponse(0.16f)
+                optics {
+                    copy(
+                        blurRadius = OpticalSizeValue.Fixed(34.dp),
+                        refractionStrength = 1f,
+                        refractionDisplacement = 64.dp,
+                        refractionHeightFraction = 0.28f,
+                        depth = OpticalSizeValue.Fixed(1f),
+                    )
+                }
+            }
+        }
         Column(
             modifier = Modifier
                 .clip(shape)

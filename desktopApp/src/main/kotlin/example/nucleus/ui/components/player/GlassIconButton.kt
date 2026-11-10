@@ -9,6 +9,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -19,8 +20,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.glass.GlassStyle
 import dev.chrisbanes.haze.glass.hazeGlass
-import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 
 /**
  * Botón circular con material Liquid Glass (BETA).
@@ -44,11 +45,16 @@ fun GlassIconButton(
     iconSize: Dp = 22.dp,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val style = rememberLiquidGlassStyle(
-        shape = RoundedCornerShape(50),
-        selected = selected,
-        containerColor = colorScheme.surfaceContainer,
-    )
+    // GlassStyle compara por identidad: recordar por (color, selected).
+    val style = remember(colorScheme.surfaceContainer, selected) {
+        GlassStyle.regular.then {
+            backgroundColor(colorScheme.surfaceContainer.copy(alpha = if (selected) 0.45f else 0.28f))
+            tint(colorScheme.surfaceContainer.copy(alpha = 0.08f))
+            shape(RoundedCornerShape(50))
+            specularIntensity(0.2f)
+            ambientResponse(0.08f)
+        }
+    }
     Box(
         modifier = modifier
             .size(size)
