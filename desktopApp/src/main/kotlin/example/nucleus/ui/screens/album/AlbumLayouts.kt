@@ -45,6 +45,7 @@ import example.nucleus.ui.screens.playlist.MultiSongSelectionBar
 import example.nucleus.ui.screens.playlist.SongListItem
 import example.nucleus.ui.screens.shared.CollectionCompactBreakpoint
 import example.nucleus.ui.screens.shared.CollectionAmbientBackdrop
+import example.nucleus.ui.screens.shared.CollectionAmbientWash
 import example.nucleus.ui.screens.shared.CollectionCompactCoverSize
 import example.nucleus.ui.screens.shared.CollectionHeroActionRow
 import example.nucleus.ui.screens.shared.CollectionStickyHeaderBar
@@ -209,6 +210,12 @@ internal fun AlbumWideLayout(
 
     // Scrollbar al borde derecho de la pantalla (misma geometría que playlist).
     Box(Modifier.fillMaxSize()) {
+        // Resplandor a pantalla completa detrás de todo.
+        CollectionAmbientWash(
+            thumbnailUrl = albumPage.album.thumbnail,
+            placeholder = PlaceholderType.ALBUM,
+            modifier = Modifier.fillMaxSize(),
+        )
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -291,6 +298,12 @@ internal fun AlbumCompactLayout(
     onNavigate: (ScreenConfig) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
+        // Resplandor a pantalla completa detrás de todo.
+        CollectionAmbientWash(
+            thumbnailUrl = albumPage.album.thumbnail,
+            placeholder = PlaceholderType.ALBUM,
+            modifier = Modifier.fillMaxSize(),
+        )
         val lazyColumnState = rememberLazyListState()
 
         val showStickHeader by remember {

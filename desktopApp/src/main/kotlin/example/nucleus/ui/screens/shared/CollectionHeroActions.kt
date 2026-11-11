@@ -107,19 +107,19 @@ private val CollectionHeroPlayMinWidth: Dp = 100.dp
 private val CollectionHeroActionGap: Dp = 8.dp
 
 /**
- * Fondo ambiental para cabeceras de playlist/álbum: la portada desenfocada
- * como resplandor + degradado al color de superficie para fundirse con la
- * lista. Decodificada pequeña (va toda difuminada) para no pesar.
+ * Resplandor ambiental a pantalla completa: la portada desenfocada + degradado
+ * a superficie. Va como primer hijo del contenedor de la pantalla, detrás de
+ * todo (el fondo de la superficie es sólido y lo taparía si fuera al revés).
+ * Decodificada pequeña (va toda difuminada) para no pesar.
  */
 @Composable
-fun CollectionAmbientBackdrop(
+fun CollectionAmbientWash(
     thumbnailUrl: String?,
     placeholder: PlaceholderType,
     modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
 ) {
     val surface = MaterialTheme.colorScheme.surface
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(modifier = modifier) {
         MusicPlayerImage(
             url = thumbnailUrl,
             contentDescription = null,
@@ -141,6 +141,27 @@ fun CollectionAmbientBackdrop(
                         1.0f to surface,
                     ),
                 ),
+        )
+    }
+}
+
+/**
+ * Fondo ambiental para cabeceras de playlist/álbum: la portada desenfocada
+ * como resplandor + degradado al color de superficie para fundirse con la
+ * lista. Decodificada pequeña (va toda difuminada) para no pesar.
+ */
+@Composable
+fun CollectionAmbientBackdrop(
+    thumbnailUrl: String?,
+    placeholder: PlaceholderType,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        CollectionAmbientWash(
+            thumbnailUrl = thumbnailUrl,
+            placeholder = placeholder,
+            modifier = Modifier.matchParentSize(),
         )
         Column(
             modifier = Modifier.fillMaxWidth(),
