@@ -1,5 +1,6 @@
 package example.nucleus.ui.screens.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -145,24 +146,34 @@ fun AppearanceSettingsGroup() {
         DropdownSelector(
             label = stringResource(Res.string.app_background_style),
             icon = Icons.Rounded.Wallpaper,
-            currentValue = appBackgroundStyle.displayName(),
+            currentValue = if (liquidGlassEnabled) {
+                stringResource(Res.string.background_locked_by_glass)
+            } else {
+                appBackgroundStyle.displayName()
+            },
             expanded = showAppBackgroundDropdown,
             segmentedShape = ListItemDefaults.segmentedShapes(index = 2, count = 5),
             onExpandedChange = { showAppBackgroundDropdown = it },
             options = BackgroundStyle.entries.map { it to it.displayName() },
             isSelected = { it == appBackgroundStyle },
             onSelect = { viewModel.setAppBackgroundStyle(it); showAppBackgroundDropdown = false },
+            enabled = !liquidGlassEnabled,
         )
         DropdownSelector(
             label = stringResource(Res.string.navigation_rail_style),
             icon = Icons.Rounded.Menu,
-            currentValue = navigationRailStyle.displayName(),
+            currentValue = if (liquidGlassEnabled) {
+                stringResource(Res.string.navigation_rail_fab)
+            } else {
+                navigationRailStyle.displayName()
+            },
             expanded = showNavigationRailStyle,
             segmentedShape = ListItemDefaults.segmentedShapes(index = 3, count = 5),
             onExpandedChange = { showNavigationRailStyle = it },
             options = NavigationRailStyle.entries.map { it to it.displayName() },
             isSelected = { it == navigationRailStyle },
             onSelect = { viewModel.setNavigationRailStyle(it); showNavigationRailStyle = false },
+            enabled = !liquidGlassEnabled,
         )
         SettingsSwitch(
             icon = { Icon(Icons.Rounded.BlurOn, null) },
@@ -171,8 +182,19 @@ fun AppearanceSettingsGroup() {
             shapes = ListItemDefaults.segmentedShapes(index = 4, count = 5),
             colors = colors,
             state = liquidGlassEnabled,
-            onCheckedChange = { viewModel.setLiquidGlassEnabled(it) }
+            onCheckedChange = {
+                // El cristal solo rinde sobre fondo sólido: al activarlo se fija
+                // y el selector de fondo queda bloqueado (ver DropdownSelector).
+                if (it) viewModel.setAppBackgroundStyle(BackgroundStyle.SOLID_COLOR)
+                viewModel.setLiquidGlassEnabled(it)
+            }
         )
+
+        AnimatedVisibility(
+            visible = liquidGlassEnabled
+        ){
+            LiquidGlassSettings()
+        }
     }
 }
 

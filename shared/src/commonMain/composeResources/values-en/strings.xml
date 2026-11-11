@@ -79,6 +79,11 @@
     <string name="dynamic_colors">Dynamic colors from artwork</string>
     <string name="liquid_glass_beta">Liquid Glass (Beta)</string>
     <string name="liquid_glass_beta_subtitle">Glass on mini player, rail and buttons</string>
+    <string name="liquid_glass_blur">Frost</string>
+    <string name="liquid_glass_opacity">Base opacity</string>
+    <string name="liquid_glass_specular">Edge shine</string>
+    <string name="liquid_glass_refraction">Refraction</string>
+    <string name="background_locked_by_glass">Solid (pinned by Liquid Glass)</string>
     <string name="section_player">Player</string>
     <string name="section_mini_player">Mini player</string>
     <string name="section_now_playing">Now Playing</string>
@@ -480,6 +485,7 @@
     <string name="dark_level_black">AMOLED (pure black)</string>
     <string name="navigation_rail_default">Default</string>
     <string name="navigation_rail_wide">Wide</string>
+    <string name="navigation_rail_fab">Floating menu</string>
     <string name="layout_islands">Dynamic islands</string>
     <string name="layout_attached">Attached / compact</string>
     <string name="layout_square">Square / borders</string>

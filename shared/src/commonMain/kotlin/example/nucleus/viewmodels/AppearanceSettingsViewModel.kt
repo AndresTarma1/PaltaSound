@@ -57,6 +57,18 @@ class AppearanceSettingsViewModel(
     val liquidGlassEnabled: StateFlow<Boolean> = preferencesRepository.liquidGlassEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val liquidGlassBlur: StateFlow<Float> = preferencesRepository.liquidGlassBlur
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 28f)
+
+    val liquidGlassBaseAlpha: StateFlow<Float> = preferencesRepository.liquidGlassBaseAlpha
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.9f)
+
+    val liquidGlassSpecular: StateFlow<Float> = preferencesRepository.liquidGlassSpecular
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.55f)
+
+    val liquidGlassRefraction: StateFlow<Float> = preferencesRepository.liquidGlassRefraction
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.8f)
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { preferencesRepository.setThemeMode(mode) }
     }
@@ -110,5 +122,21 @@ fun setIslandStyle(style: IslandStyle) {
 
     fun setLiquidGlassEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setLiquidGlassEnabled(enabled) }
+    }
+
+    fun setLiquidGlassBlur(blurDp: Float) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassBlur(blurDp) }
+    }
+
+    fun setLiquidGlassBaseAlpha(alpha: Float) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassBaseAlpha(alpha) }
+    }
+
+    fun setLiquidGlassSpecular(intensity: Float) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassSpecular(intensity) }
+    }
+
+    fun setLiquidGlassRefraction(strength: Float) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassRefraction(strength) }
     }
 }

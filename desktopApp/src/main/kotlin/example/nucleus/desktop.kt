@@ -3,6 +3,8 @@ package example.nucleus
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,9 +54,14 @@ import androidx.compose.ui.unit.sp
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.glass.GlassDropdownMenu
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.rememberLiquidGlassControlStyle
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.AccountInfo
 import dev.nucleusframework.composenativetray.tray.api.Tray
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.glass.hazeGlass
 import example.nucleus.data.repository.AppMode
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
@@ -67,6 +75,44 @@ private fun TitleBarNavButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val useGlass = LocalLiquidGlass.current
+    val hazeState = LocalContentHaze.current
+    // La titlebar está sobre el contenido: la fuente queda fuera de rango y la
+    // lente vive de su base esmerilada (consistente con el resto del cristal).
+    if (useGlass && enabled && hazeState != null) {
+        val interaction = remember { MutableInteractionSource() }
+        val style = rememberLiquidGlassControlStyle(
+            shape = RoundedCornerShape(10.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        )
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .hazeGlass(
+                    input = HazeInput.Sources(hazeState),
+                    style = style,
+                    interactionSource = interaction,
+                )
+                .clickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onClick,
+                )
+                .focusable(interactionSource = interaction)
+                .pointerHoverIcon(PointerIcon.Hand)
+                .padding(6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        return
+    }
     Box(
         modifier = Modifier
             .size(30.dp)

@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -97,9 +98,14 @@ internal fun <T> DropdownSelector(
     isSelected: (T) -> Boolean,
     onSelect: (T) -> Unit,
     paletteItem: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val colors = LocalSettingsColors.current
-    Box {
+    Box(
+        modifier = Modifier.then(
+            if (enabled) Modifier else Modifier.alpha(0.55f),
+        ),
+    ) {
         SettingsMenuLink(
             icon = { Icon(icon, null) },
             title = { Text(label) },
@@ -107,10 +113,13 @@ internal fun <T> DropdownSelector(
             shapes = segmentedShape,
             colors = colors,
             action = {
-                IconButton(onClick = { onExpandedChange(!expanded) }) {
+                IconButton(
+                    onClick = { onExpandedChange(!expanded) },
+                    enabled = enabled,
+                ) {
                     Icon(Icons.Rounded.ChevronRight, null)
                     GlassDropdownMenu(
-                        expanded = expanded,
+                        expanded = expanded && enabled,
                         onDismissRequest = { onExpandedChange(false) },
                         offset = DpOffset(x = 16.dp, y = 0.dp),
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -145,7 +154,7 @@ internal fun <T> DropdownSelector(
                     }
                 }
             },
-            onClick = { onExpandedChange(!expanded) }
+            onClick = { if (enabled) onExpandedChange(!expanded) }
         )
     }
 }

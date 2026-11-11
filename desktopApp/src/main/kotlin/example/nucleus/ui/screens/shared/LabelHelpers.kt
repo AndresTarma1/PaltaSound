@@ -67,6 +67,7 @@ fun DarkLevel.displayName(): String = when (this) {
 fun NavigationRailStyle.displayName(): String = when (this) {
     NavigationRailStyle.DEFAULT -> stringResource(Res.string.navigation_rail_default)
     NavigationRailStyle.WIDE -> stringResource(Res.string.navigation_rail_wide)
+    NavigationRailStyle.FAB -> stringResource(Res.string.navigation_rail_fab)
 }
 
 @Composable

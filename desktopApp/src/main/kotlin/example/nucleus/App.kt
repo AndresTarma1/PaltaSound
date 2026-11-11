@@ -293,6 +293,23 @@ fun NucleusApplicationScope.App(
     val uiScaleFactor by userPreferences.uiScale.collectAsState(1f)
     val backgroundAppStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
     val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(false)
+    // El cristal solo rinde sobre fondo SÓLIDO: con superficies transparentes
+    // (degradado/desenfocado) la fuente queda con huecos y el blur no cubre.
+    // Se fija al activar el interruptor y el selector de fondo se bloquea.
+    val effectiveLiquidGlass = liquidGlassEnabled && backgroundAppStyle == BackgroundStyle.SOLID_COLOR
+    // Ajustes del material (sliders de Ajustes → preview en vivo).
+    val glassBlur by userPreferences.liquidGlassBlur.collectAsState(28f)
+    val glassBaseAlpha by userPreferences.liquidGlassBaseAlpha.collectAsState(0.9f)
+    val glassSpecular by userPreferences.liquidGlassSpecular.collectAsState(0.55f)
+    val glassRefraction by userPreferences.liquidGlassRefraction.collectAsState(0.8f)
+    val glassTuning = remember(glassBlur, glassBaseAlpha, glassSpecular, glassRefraction) {
+        example.nucleus.ui.components.glass.LiquidGlassTuning(
+            blurDp = glassBlur,
+            baseAlpha = glassBaseAlpha,
+            specular = glassSpecular,
+            refraction = glassRefraction,
+        )
+    }
     // Fuente propia para el Glass de la navegación (BETA): muestrea solo el fondo
     // de la ventana (cover desenfocado / degradado / color), no el contenido.
     val railHazeState = rememberHazeState()
@@ -315,7 +332,8 @@ fun NucleusApplicationScope.App(
                 LocalPlaylistsViewModel provides playlistsViewModel,
                 LocalUserPreferences provides userPreferences,
                 LocalAnimationsEnabled provides animationsEnabled,
-                example.nucleus.ui.components.glass.LocalLiquidGlass provides liquidGlassEnabled,
+                example.nucleus.ui.components.glass.LocalLiquidGlass provides effectiveLiquidGlass,
+                example.nucleus.ui.components.glass.LocalLiquidGlassTuning provides glassTuning,
                 example.nucleus.ui.components.glass.LocalGlassHaze provides appContentHazeState,
                 example.nucleus.ui.components.glass.LocalContentHaze provides contentHazeState,
                 example.nucleus.ui.components.glass.LocalRailHaze provides railHazeState,
@@ -443,7 +461,14 @@ fun NucleusApplicationScope.App(
                             imageUrl = playerUiState.currentSong?.thumbnailUrl,
                             backgroundStyle = backgroundAppStyle,
                             modifier = Modifier.hazeSource(appContentHazeState),
-                            backgroundModifier = Modifier.hazeSource(railHazeState),
+                            // El fondo ambiental es SEGUNDA fuente del cristal del
+                            // player/menús: con fondo desenfocado/degradado el Surface
+                            // del contenido es transparente y la fuente del contenido
+                            // queda con huecos (el blur "no rinde"); el fondo cubre
+                            // ventana completa y siempre aporta datos.
+                            backgroundModifier = Modifier
+                                .hazeSource(railHazeState)
+                                .hazeSource(contentHazeState),
                         ) {
 
                             // Definida UNA vez y reutilizada por las dos ramas de abajo. No es que haya dos

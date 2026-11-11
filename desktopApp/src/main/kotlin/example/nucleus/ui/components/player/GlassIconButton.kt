@@ -51,11 +51,20 @@ fun GlassIconButton(
     contentTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     size: Dp = 40.dp,
     iconSize: Dp = 22.dp,
+    // Overrides explícitos para el preview de Ajustes (ver estilos).
+    blurDp: Float? = null,
+    baseAlpha: Float? = null,
+    specular: Float? = null,
+    refraction: Float? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val style = rememberLiquidGlassControlStyle(
         selected = selected,
         containerColor = colorScheme.surfaceContainer,
+        blurDp = blurDp,
+        baseAlpha = baseAlpha,
+        specular = specular,
+        refraction = refraction,
     )
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -68,11 +77,12 @@ fun GlassIconButton(
                 style = style,
                 interactionSource = interactionSource,
             )
-            // Filete claro sobre el cristal: garantiza que la lente se recorte
-            // incluso sobre fondos planos donde la refracción no da contraste.
+            // Filete claro sutil sobre el cristal: ayuda a recortar la lente
+            // sobre fondos planos sin tapar el specular. Antes al 35% y se
+            // comía el efecto; al 15% solo define.
             .border(
                 width = 1.dp,
-                color = Color.White.copy(alpha = 0.35f),
+                color = Color.White.copy(alpha = 0.15f),
                 shape = CircleShape,
             )
             .clickable(

@@ -22,6 +22,8 @@ import example.nucleus.generated.resources.*
 import example.nucleus.models.MediaMetadata
 import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.EqualizerDialog
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.LocalTitleBarOverlayInset
 import example.nucleus.utils.LocalUserPreferences
@@ -181,22 +183,40 @@ fun NowPlayingLayout(
                 // Colapsar (volver) — solo en el layout ancho; en compacto va al final de la
                 // fila de transporte. El mini player está oculto en Now Playing.
                 if (!isCompact) {
-                    IconButton(
-                        onClick = onCollapse,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp, bottom = 8.dp)
-                            .size(40.dp)
-                            .autoHideChrome(autoHide, sink = 16.dp)
-                            .onHover { autoHide.chromeHover = it }
-                            .pointerHoverIcon(PointerIcon.Hand),
-                    ) {
-                        Icon(
+                    val collapseGlass = LocalLiquidGlass.current
+                    val collapseHaze = LocalContentHaze.current
+                    if (collapseGlass && collapseHaze != null) {
+                        GlassIconButton(
+                            onClick = onCollapse,
                             imageVector = Icons.Rounded.ExpandMore,
                             contentDescription = stringResource(Res.string.mp_collapse),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(26.dp),
+                            hazeState = collapseHaze,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 12.dp, bottom = 8.dp)
+                                .autoHideChrome(autoHide, sink = 16.dp)
+                                .onHover { autoHide.chromeHover = it },
+                            size = 40.dp,
+                            iconSize = 26.dp,
                         )
+                    } else {
+                        IconButton(
+                            onClick = onCollapse,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 12.dp, bottom = 8.dp)
+                                .size(40.dp)
+                                .autoHideChrome(autoHide, sink = 16.dp)
+                                .onHover { autoHide.chromeHover = it }
+                                .pointerHoverIcon(PointerIcon.Hand),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ExpandMore,
+                                contentDescription = stringResource(Res.string.mp_collapse),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(26.dp),
+                            )
+                        }
                     }
                 }
             }

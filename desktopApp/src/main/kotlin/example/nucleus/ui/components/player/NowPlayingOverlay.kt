@@ -16,6 +16,8 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.glass.GlassDropdownMenu
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.generated.resources.Res
@@ -110,17 +112,30 @@ fun NowPlayingTopActions(
         }
 
         Box {
-            IconButton(
-                onClick = { onMenuToggle(true) },
-                modifier = Modifier
-                    .size(40.dp)
-                    .pointerHoverIcon(PointerIcon.Hand),
-            ) {
-                Icon(
-                    Icons.Filled.MoreVert,
+            val moreGlass = LocalLiquidGlass.current
+            val moreHaze = LocalContentHaze.current
+            if (moreGlass && moreHaze != null) {
+                GlassIconButton(
+                    onClick = { onMenuToggle(true) },
+                    imageVector = Icons.Filled.MoreVert,
                     contentDescription = stringResource(Res.string.more_options),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    hazeState = moreHaze,
+                    size = 40.dp,
+                    iconSize = 22.dp,
                 )
+            } else {
+                IconButton(
+                    onClick = { onMenuToggle(true) },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .pointerHoverIcon(PointerIcon.Hand),
+                ) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(Res.string.more_options),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             GlassDropdownMenu(
                 expanded = showMenu,

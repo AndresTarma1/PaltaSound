@@ -61,7 +61,7 @@ enum class MiniPlayerBackgroundStyle {
 
 /** Estilos del navigationRail **/
 enum class NavigationRailStyle{
-    DEFAULT, WIDE
+    DEFAULT, WIDE, FAB
 }
 
 /**
@@ -284,6 +284,10 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val LOG_VERBOSE = booleanPreferencesKey("log_verbose")
         val SABR_ENABLED = booleanPreferencesKey("sabr_enabled")
         val LIQUID_GLASS_ENABLED = booleanPreferencesKey("liquid_glass_enabled")
+        val LIQUID_GLASS_BLUR = floatPreferencesKey("liquid_glass_blur")
+        val LIQUID_GLASS_BASE_ALPHA = floatPreferencesKey("liquid_glass_base_alpha")
+        val LIQUID_GLASS_SPECULAR = floatPreferencesKey("liquid_glass_specular")
+        val LIQUID_GLASS_REFRACTION = floatPreferencesKey("liquid_glass_refraction")
     }
 
 
@@ -665,6 +669,35 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setLiquidGlassEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_ENABLED] = enabled }
+    }
+
+    /**
+     * Ajustes del material Liquid Glass. El cristal solo se aplica con fondo
+     * [BackgroundStyle.SOLID_COLOR] (ver gate en App/Navigation): con superficies
+     * transparentes la fuente del cristal queda con huecos y el blur no rinde.
+     */
+    val liquidGlassBlur: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_BLUR] ?: 28f }
+
+    suspend fun setLiquidGlassBlur(blurDp: Float) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_BLUR] = blurDp.coerceIn(0f, 48f) }
+    }
+
+    val liquidGlassBaseAlpha: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_BASE_ALPHA] ?: 0.9f }
+
+    suspend fun setLiquidGlassBaseAlpha(alpha: Float) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_BASE_ALPHA] = alpha.coerceIn(0.3f, 0.98f) }
+    }
+
+    val liquidGlassSpecular: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_SPECULAR] ?: 0.55f }
+
+    suspend fun setLiquidGlassSpecular(intensity: Float) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_SPECULAR] = intensity.coerceIn(0f, 1f) }
+    }
+
+    val liquidGlassRefraction: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_REFRACTION] ?: 0.8f }
+
+    suspend fun setLiquidGlassRefraction(strength: Float) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_REFRACTION] = strength.coerceIn(0f, 1f) }
     }
 
     val themeMode: Flow<ThemeMode> = dataStore.data.map { preferences ->

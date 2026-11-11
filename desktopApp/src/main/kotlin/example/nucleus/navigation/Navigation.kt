@@ -56,6 +56,7 @@ import com.arkivanov.decompose.extensions.compose.experimental.stack.animation.s
 
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import example.nucleus.data.repository.AppMode
+import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
 import example.nucleus.data.repository.MiniPlayerStyle
@@ -144,6 +145,9 @@ fun NavigationDesktop(
     val miniPlayerStyle by userPreferences.miniPlayerStyle.collectAsState(MiniPlayerStyle.BAR)
     val miniPlayerBackgroundStyle by userPreferences.miniPlayerBackgroundStyle.collectAsState(MiniPlayerBackgroundStyle.TRANSLUCENT)
     val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(false)
+    // Mismo gate que en App: el cristal solo rinde sobre fondo sólido.
+    val appBgStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
+    val effectiveLiquidGlass = liquidGlassEnabled && appBgStyle == BackgroundStyle.SOLID_COLOR
 
     val playerState by playerViewModel.uiState.collectAsState()
     var isQueueVisible by remember { mutableStateOf(false) }
@@ -173,6 +177,11 @@ fun NavigationDesktop(
     val dimens = LocalDimens.current
     val glassNavVisible = liquidGlassEnabled && appMode == AppMode.MUSIC && !isOnNowPlaying
     val glassNavInset = if (glassNavVisible) 112.dp else 0.dp
+    // En modo cristal no hay rail: la navegación ES el FAB apilado sobre el
+    // player (nada al lado, para no descuadrar el layout).
+    val fabMenuVisible =
+        appMode == AppMode.MUSIC && !isOnNowPlaying &&
+            (effectiveLiquidGlass || navigationRailStyle == NavigationRailStyle.FAB)
     // En Now Playing el mini player está oculto (pantalla completa): no hay inset que reservar.
     val baseBottomInset = if (isOnNowPlaying) {
         0.dp
@@ -193,7 +202,7 @@ fun NavigationDesktop(
     // Estado del Liquid Glass BETA para los componentes que lo consumen vía
     // CompositionLocal (transporte de Now Playing, likes, chips, menús).
     CompositionLocalProvider(
-        LocalLiquidGlass provides liquidGlassEnabled,
+        LocalLiquidGlass provides effectiveLiquidGlass,
     ) {
     CompositionLocalProvider(LocalMiniPlayerInset provides baseBottomInset) {
         SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
@@ -218,7 +227,7 @@ fun NavigationDesktop(
                     floating = floatingMiniPlayer,
                     isDocked = dockedMiniPlayer,
                     backgroundStyle = miniPlayerBackgroundStyle,
-                    liquidGlass = liquidGlassEnabled,
+                    liquidGlass = effectiveLiquidGlass,
                     hazeState = miniPlayerHazeState,
                 )
             }
@@ -284,12 +293,7 @@ fun NavigationDesktop(
                                 )
                             } else {
                                 if (glassNavVisible) {
-                                    LiquidGlassNavigationRail(
-                                        tabs = musicMainTabs + musicBottomTabs,
-                                        activeConfig = activeConfig,
-                                        onTabClick = { rootComponent.switchTab(it) },
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                                    )
+
                                 } else {
                                     when (navigationRailStyle) {
                                         NavigationRailStyle.DEFAULT -> {
@@ -311,6 +315,8 @@ fun NavigationDesktop(
                                                 bottomTabs = musicBottomTabs,
                                             )
                                         }
+
+                                        NavigationRailStyle.FAB -> {}
                                     }
                                 }
                             }
@@ -411,6 +417,17 @@ fun NavigationDesktop(
                                             .align(Alignment.BottomCenter),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
+                                        // FAB apilado ENCIMA del player (nada al lado): no
+                                        // toca el layout, solo flota sobre el contenido.
+                                        if (fabMenuVisible) {
+                                            NavigationFabMenu(
+                                                mainTabs = musicMainTabs,
+                                                bottomTabs = musicBottomTabs,
+                                                activeConfig = activeConfig,
+                                                onTabClick = { rootComponent.switchTab(it) },
+                                                modifier = Modifier.padding(bottom = 10.dp),
+                                            )
+                                        }
                                         AnimatedVisibility(
                                             visible = (dockedMiniPlayer || floatingMiniPlayer) && !isOnNowPlaying,
                                             enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + slideInVertically(animationSpec = expressiveLayoutTween(), initialOffsetY = { it / 4 }) else EnterTransition.None,
@@ -420,20 +437,6 @@ fun NavigationDesktop(
                                                 Modifier
                                                     .fillMaxWidth()
                                                     .padding(start = glassNavInset),
-                                            )
-                                        }
-                                    }
-
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.CenterStart)
-                                            .padding(8.dp),
-                                    ) {
-                                        if (glassNavVisible) {
-                                            LiquidGlassNavigationRail(
-                                                tabs = musicMainTabs + musicBottomTabs,
-                                                activeConfig = activeConfig,
-                                                onTabClick = { rootComponent.switchTab(it) },
                                             )
                                         }
                                     }

@@ -81,6 +81,11 @@
     <string name="dynamic_colors">Colores dinámicos desde la carátula</string>
     <string name="liquid_glass_beta">Liquid Glass (Beta)</string>
     <string name="liquid_glass_beta_subtitle">Cristal en mini reproductor, barra y botones</string>
+    <string name="liquid_glass_blur">Esmerilado</string>
+    <string name="liquid_glass_opacity">Opacidad de la base</string>
+    <string name="liquid_glass_specular">Brillo del borde</string>
+    <string name="liquid_glass_refraction">Refracción</string>
+    <string name="background_locked_by_glass">Sólido (fijado por Liquid Glass)</string>
     <string name="section_player">Reproductor</string>
     <string name="section_mini_player">Mini reproductor</string>
     <string name="section_now_playing">Now Playing</string>
@@ -488,6 +493,7 @@
     <string name="dark_level_black">AMOLED (negro puro)</string>
     <string name="navigation_rail_default">Por defecto</string>
     <string name="navigation_rail_wide">Expandible</string>
+    <string name="navigation_rail_fab">Menú flotante</string>
     <string name="layout_islands">Islas dinámicas</string>
     <string name="layout_attached">Pegado / compacto</string>
     <string name="layout_square">Cuadrado / bordes</string>

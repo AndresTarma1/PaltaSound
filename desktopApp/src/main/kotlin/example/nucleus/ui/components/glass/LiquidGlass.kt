@@ -22,6 +22,21 @@ import dev.chrisbanes.haze.glass.material3.material3
 val LocalLiquidGlass = compositionLocalOf { false }
 
 /**
+ * Ajustes del material Liquid Glass configurables desde Ajustes. Se provee en
+ * App desde las preferencias; los estilos lo leen, así que mover un slider
+ * actualiza cristal, lentes y menús en vivo. La refracción se aplica a ambos
+ * estilos por igual (barra Regular y lentes Clear).
+ */
+data class LiquidGlassTuning(
+    val blurDp: Float = 28f,
+    val baseAlpha: Float = 0.9f,
+    val specular: Float = 0.55f,
+    val refraction: Float = 0.8f,
+)
+
+val LocalLiquidGlassTuning = compositionLocalOf { LiquidGlassTuning() }
+
+/**
  * Fuente Haze compartida para los materiales Glass (fondo real de la ventana).
  * La provee NavigationDesktop con el estado que muestrea la capa de fondo.
  */
@@ -46,9 +61,8 @@ val LocalRailHaze = compositionLocalOf<HazeState?> { null }
 
 /**
  * Estilo Glass para superficies GRANDES con texto (barra del MiniPlayer, rails,
- * tarjetas). Basado en `GlassStyle.regular` sin tocar la óptica: Regular ajusta
- * blur/profundidad al lado más corto, así que una barra grande difumina y un
- * control compacto conserva detalle refractado automáticamente.
+ * tarjetas). Basado en `GlassStyle.regular`; blur, base, specular y refracción
+ * salen del ajuste de usuario ([LocalLiquidGlassTuning]).
  *
  * El color vive DENTRO del estilo (material3 + tint): no añadir
  * `Modifier.background` encima, que aplana el cristal en una capa opaca.
@@ -58,13 +72,26 @@ fun rememberLiquidGlassStyle(
     shape: RoundedCornerShape = RoundedCornerShape(50),
     selected: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    // Overrides explícitos (los usa el preview de Ajustes con sus sliders; si
+    // son null se lee LocalLiquidGlassTuning). Separan "llega el valor" de
+    // "Haze lo aplica" a la hora de depurar.
+    blurDp: Float? = null,
+    baseAlpha: Float? = null,
+    specular: Float? = null,
+    refraction: Float? = null,
 ): GlassStyle {
     val colorScheme = MaterialTheme.colorScheme
     val isDark = colorScheme.surface.luminance() < 0.5f
+    val tuning = LocalLiquidGlassTuning.current
+    val blur = blurDp ?: tuning.blurDp
+    val alpha = baseAlpha ?: tuning.baseAlpha
+    val spec = specular ?: tuning.specular
+    val refr = refraction ?: tuning.refraction
     // Base translúcida REAL dentro del estilo: sobre fondos planos y oscuros la
     // refracción no aporta contraste, así que la presencia del cristal la dan la
-    // base + el tint. Sin esto el cristal es invisible.
-    val base = containerColor.copy(alpha = if (isDark) 0.9f else 0.88f)
+    // base + el tint. Sin esto el cristal es invisible. La opacidad sale del
+    // ajuste de usuario (misma para claro/oscuro: la apariencia ya la iguala Haze).
+    val base = containerColor.copy(alpha = alpha)
     // Tint sutil estilo Apple: apenas tiñe en oscuro, algo más en claro para
     // que el texto siga legible sin volver opaco el cristal.
     val tint = if (selected) {
@@ -79,24 +106,25 @@ fun rememberLiquidGlassStyle(
         containerColor = containerColor,
         tint = tint,
     )
-    return remember(baseStyle, shape, selected, base, isDark) {
+    return remember(baseStyle, shape, selected, base, isDark, blur, spec, refr) {
         baseStyle.then {
             backgroundColor(base)
             shape(shape)
             // Respuesta de luz de la guía: specular visible + elevación suave,
             // sin sombra dura que recorte el cristal como un recuadro. En tema
             // claro el ribete negro ensucia el borde: se quita.
-            specularIntensity(0.55f)
+            specularIntensity(spec)
             ambientResponse(0.3f)
             edgeShadow(if (isDark) Color.Black.copy(alpha = 0.14f) else Color.Transparent)
             // Dispersión contenida: iridiscencia en bordes sin artefactos.
             chromaticAberrationStrength(0.12f)
-            // Esmerilado máximo y FIJO (no responsive): a estos radios nada
-            // detrás se distingue, en superficies grandes y pequeñas por igual.
+            // Esmerilado del ajuste de usuario: a estos radios nada detrás se
+            // distingue, en superficies grandes y pequeñas por igual.
             optics {
                 copy(
-                    blurRadius = OpticalSizeValue.Fixed(28.dp),
+                    blurRadius = OpticalSizeValue.Fixed(blur.dp),
                     depth = OpticalSizeValue.Fixed(1f),
+                    refractionStrength = refr,
                 )
             }
         }
@@ -105,10 +133,10 @@ fun rememberLiquidGlassStyle(
 
 /**
  * Estilo Glass para CONTROLES pequeños (IconButtons de transporte, cola,
- * volumen, like). Basado en `GlassStyle.clear`: mismo blur fino a cualquier
- * tamaño y refracción concentrada en una banda del borde que forma loops en
- * las esquinas — la "lente" se lee como cristal sobre la barra, en vez de
- * fundirse con ella como un círculo translúcido plano.
+ * volumen, like). Basado en `GlassStyle.clear`: refracción concentrada en una
+ * banda del borde que forma loops en las esquinas — la "lente" se lee como
+ * cristal sobre la barra, en vez de fundirse con ella como un círculo
+ * translúcido plano. Blur y refracción salen del ajuste de usuario.
  *
  * Incluye la respuesta de interacción de la guía (pressed > hovered >
  * focused): luz + refracción + escala. El [interactionSource] se pasa al
@@ -120,12 +148,25 @@ fun rememberLiquidGlassControlStyle(
     shape: RoundedCornerShape = RoundedCornerShape(50),
     selected: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    blurDp: Float? = null,
+    baseAlpha: Float? = null,
+    specular: Float? = null,
+    refraction: Float? = null,
 ): GlassStyle {
     val colorScheme = MaterialTheme.colorScheme
     val isDark = colorScheme.surface.luminance() < 0.5f
+    val tuning = LocalLiquidGlassTuning.current
+    val alpha = baseAlpha ?: tuning.baseAlpha
+    val blur = blurDp ?: tuning.blurDp
+    val spec = (specular ?: tuning.specular) + 0.05f
+    val refr = refraction ?: tuning.refraction
     // Base con presencia: la lente tiene que leerse como píldora incluso sobre
-    // la barra oscura y plana, donde la refracción no da contraste.
-    val base = containerColor.copy(alpha = if (selected) 0.92f else if (isDark) 0.8f else 0.78f)
+    // la barra oscura y plana, donde la refracción no da contraste. Un punto
+    // por debajo de la barra para jerarquía, salvo seleccionada.
+    val base = containerColor.copy(
+        alpha = (if (selected) alpha + 0.02f else alpha - 0.1f)
+            .coerceIn(0.3f, 1f),
+    )
     val tint = if (selected) {
         colorScheme.primary.copy(alpha = if (isDark) 0.25f else 0.32f)
     } else if (isDark) {
@@ -138,11 +179,11 @@ fun rememberLiquidGlassControlStyle(
         containerColor = containerColor,
         tint = tint,
     )
-    return remember(baseStyle, shape, selected, base, isDark) {
+    return remember(baseStyle, shape, selected, base, isDark, blur, spec, refr) {
         baseStyle.then {
             backgroundColor(base)
             shape(shape)
-            specularIntensity(0.6f)
+            specularIntensity(spec.coerceAtMost(1f))
             ambientResponse(0.35f)
             edgeShadow(if (isDark) Color.Black.copy(alpha = 0.14f) else Color.Transparent)
             chromaticAberrationStrength(0.15f)
@@ -150,8 +191,9 @@ fun rememberLiquidGlassControlStyle(
             // fondo, pero conservan la refracción de borde de Clear.
             optics {
                 copy(
-                    blurRadius = OpticalSizeValue.Fixed(28.dp),
+                    blurRadius = OpticalSizeValue.Fixed(blur.dp),
                     depth = OpticalSizeValue.Fixed(1f),
+                    refractionStrength = refr,
                 )
             }
             pressed {
