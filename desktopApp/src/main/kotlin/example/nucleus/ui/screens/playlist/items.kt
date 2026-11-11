@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import example.nucleus.data.repository.BackgroundStyle
-import example.nucleus.data.repository.NavigationRailStyle
-import example.nucleus.utils.LocalUserPreferences
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.glass.hazeGlass
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -183,15 +185,20 @@ internal fun MultiSongSelectionBar(
 
     if (selectedSongs.isEmpty()) return
 
-    // El FAB de navegación flota centrado sobre el contenido: si está visible,
-    // la barra sube por encima de él además de sobre el player.
-    val prefs = LocalUserPreferences.current
-    val glassOn by prefs.liquidGlassEnabled.collectAsState(false)
-    val appBg by prefs.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
-    val railStyle by prefs.navigationRailStyle.collectAsState(NavigationRailStyle.DEFAULT)
-    val fabVisible = (glassOn && appBg == BackgroundStyle.SOLID_COLOR) || railStyle == NavigationRailStyle.FAB
+    // Con el player flotante/dockeado (overlay encima), la barra quedaba tapada:
+    // se eleva con el mismo inset que reserva el contenido.
     val playerInset = LocalMiniPlayerInset.current
-    val bottomPad = 16.dp + playerInset + if (fabVisible) 66.dp else 0.dp
+    val bottomPad = 16.dp + playerInset
+    val barGlass = LocalLiquidGlass.current
+    val barHaze = LocalRailHaze.current ?: LocalContentHaze.current
+    val useBarGlass = barGlass && barHaze != null
+    val barShape = AppShapes.xLarge as? RoundedCornerShape ?: RoundedCornerShape(16.dp)
+    val barStyle = if (useBarGlass) {
+        rememberLiquidGlassStyle(
+            shape = barShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        )
+    } else null
 
     if (showRemoveConfirm) {
         ConfirmDestructiveActionDialog(
@@ -211,17 +218,24 @@ internal fun MultiSongSelectionBar(
 
     Surface(
         tonalElevation = 0.dp,
-        shadowElevation = 6.dp,
+        shadowElevation = if (useBarGlass) 0.dp else 6.dp,
         shape = AppShapes.xLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        // Con el player flotante/dockeado (overlay encima), la barra quedaba
-        // tapada: se eleva por encima con el mismo inset que reserva el contenido.
-        modifier = modifier.padding(
-            start = 16.dp,
-            end = 16.dp,
-            top = 16.dp,
-            bottom = bottomPad,
-        ),
+        color = if (useBarGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = bottomPad,
+            )
+            .then(
+                if (useBarGlass) {
+                    Modifier.hazeGlass(
+                        input = HazeInput.Sources(barHaze),
+                        style = barStyle!!,
+                    )
+                } else Modifier,
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
