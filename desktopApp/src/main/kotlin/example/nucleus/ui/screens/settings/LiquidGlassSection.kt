@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -201,40 +202,49 @@ private fun LiquidGlassPreview() {
             )
             .hazeSource(previewHaze),
     ) {
-        // Mini lista: filas con portada de color + texto blanco nítido. La
-        // última fila queda justo detrás de la barra de cristal.
-        Column(
+        // Capa de contenido CON la fuente: hermana-anterior del cristal (patrón
+        // sibling). Si la fuente fuera este Box exterior (ancestro del cristal),
+        // Behind seleccionaría vacío y los sliders no se notarían.
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .fillMaxSize()
+                .hazeSource(previewHaze),
         ) {
-            rowColors.forEach { cover ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(cover),
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Mini lista: filas con portada de color + texto blanco nítido. La
+            // última fila queda justo detrás de la barra de cristal.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                rowColors.forEach { cover ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Box(
                             modifier = Modifier
-                                .width(140.dp)
-                                .height(12.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(Color.White.copy(alpha = 0.95f)),
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(cover),
                         )
-                        Box(
-                            modifier = Modifier
-                                .width(100.dp)
-                                .height(10.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(Color.White.copy(alpha = 0.6f)),
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .width(140.dp)
+                                    .height(12.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color.White.copy(alpha = 0.95f)),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(100.dp)
+                                    .height(10.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color.White.copy(alpha = 0.6f)),
+                            )
+                        }
                     }
                 }
             }

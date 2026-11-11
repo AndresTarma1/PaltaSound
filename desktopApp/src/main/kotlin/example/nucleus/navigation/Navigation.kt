@@ -176,9 +176,9 @@ fun NavigationDesktop(
 
     val dimens = LocalDimens.current
     val glassNavVisible = liquidGlassEnabled && appMode == AppMode.MUSIC && !isOnNowPlaying
-    val glassNavInset = if (glassNavVisible) 112.dp else 0.dp
     // En modo cristal no hay rail: la navegación ES el FAB apilado sobre el
-    // player (nada al lado, para no descuadrar el layout).
+    // player (nada al lado, para no descuadrar el layout). Sin inset lateral:
+    // la rail que lo pedía ya no existe.
     val fabMenuVisible =
         appMode == AppMode.MUSIC && !isOnNowPlaying &&
             (effectiveLiquidGlass || navigationRailStyle == NavigationRailStyle.FAB)
@@ -384,9 +384,7 @@ fun NavigationDesktop(
                                             ),
                                     ) {
                                         Surface(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(start = glassNavInset),
+                                            modifier = Modifier.fillMaxSize(),
                                             shape = contentShape,
                                             color = if (LocalIsSolidBackground.current) {
                                                 MaterialTheme.colorScheme.background
@@ -417,7 +415,7 @@ fun NavigationDesktop(
                                             .align(Alignment.BottomCenter),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
-                                        // FAB apilado ENCIMA del player (nada al lado): no
+                                        // FAB apilado ENCIMA del player, a la izquierda: no
                                         // toca el layout, solo flota sobre el contenido.
                                         if (fabMenuVisible) {
                                             NavigationFabMenu(
@@ -425,7 +423,9 @@ fun NavigationDesktop(
                                                 bottomTabs = musicBottomTabs,
                                                 activeConfig = activeConfig,
                                                 onTabClick = { rootComponent.switchTab(it) },
-                                                modifier = Modifier.padding(bottom = 10.dp),
+                                                modifier = Modifier
+                                                    .align(Alignment.Start)
+                                                    .padding(start = 16.dp, bottom = 10.dp),
                                             )
                                         }
                                         AnimatedVisibility(
@@ -433,11 +433,7 @@ fun NavigationDesktop(
                                             enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + slideInVertically(animationSpec = expressiveLayoutTween(), initialOffsetY = { it / 4 }) else EnterTransition.None,
                                             exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + slideOutVertically(animationSpec = expressiveLayoutTween(), targetOffsetY = { it / 4 }) else ExitTransition.None,
                                         ) {
-                                            miniPlayerSlot(
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(start = glassNavInset),
-                                            )
+                                            miniPlayerSlot(Modifier.fillMaxWidth())
                                         }
                                     }
                                 }
