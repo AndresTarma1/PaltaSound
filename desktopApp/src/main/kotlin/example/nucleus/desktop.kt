@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -188,7 +189,7 @@ fun TitleBarScope.DesktopTitleBar(
             onClick = { showMenu = true },
         ) {
             if (isSyncing) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                CircularWavyProgressIndicator(Modifier.size(14.dp))
             } else if (accountInfo?.thumbnailUrl != null) {
                 MusicPlayerImage(
                     url = accountInfo.thumbnailUrl,
@@ -231,7 +232,7 @@ fun TitleBarScope.DesktopTitleBar(
                         placeholderType = PlaceholderType.ARTIST,
                     )
                     Column {
-                        Text(accountInfo.name, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                        Text(accountInfo.name, maxLines = 1)
                         accountInfo.email?.let {
                             Text(
                                 it,

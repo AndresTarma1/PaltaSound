@@ -6,11 +6,13 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -25,13 +27,17 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.*
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.rememberLiquidGlassControlStyle
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.player.GlassIconButton
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
@@ -52,6 +58,10 @@ import example.nucleus.viewmodels.ArtistManagerViewModel
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.*
 import com.metrolist.innertube.pages.ArtistPage
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.glass.hazeGlass
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.utils.upscaleThumbnailUrl
@@ -245,6 +255,12 @@ fun ArtistBanner(
     // Aumentamos la resolución a 1440 para que no se pixele en monitores grandes
     val urlImage = upscaleThumbnailUrl(artistPage.artist.thumbnail, 1200)
 
+    // Fuente del cristal de los botones: la propia foto (hermana-anterior de
+    // los botones, patrón sibling). Refractan la portada de verdad.
+    val bannerHaze = rememberHazeState()
+    val bannerGlass = LocalLiquidGlass.current
+    val lensContainer = Color(0xFF1B1B1B)
+
     // Memorizamos los gradientes para ahorrar CPU
     val verticalGradient = remember(surfaceColor) {
         Brush.verticalGradient(
@@ -274,18 +290,24 @@ fun ArtistBanner(
             .height(520.dp) // Permite que el contenedor crezca si es necesario
             .animateContentSize(if (LocalAnimationsEnabled.current) expressiveTween(expressiveFadeDuration) else snap()) // Suaviza el cambio de tamaño al expandir el texto
     ) {
-        MusicPlayerImage(
-            url = urlImage,
-            contentDescription = artistPage.artist.title,
-            modifier = Modifier.fillMaxSize(),
-            shape = RectangleShape,
-            placeholderType = PlaceholderType.ARTIST,
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.TopCenter,
-            // La URL se pide a 1200px; sin override MusicPlayerImage decodifica a 384px y se ve borrosa
-            // al estirarse al banner (igual que hace Metrolist con AsyncImage + resize(1200, 1200)).
-            coilSizeOverride = 1200,
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(bannerHaze),
+        ) {
+            MusicPlayerImage(
+                url = urlImage,
+                contentDescription = artistPage.artist.title,
+                modifier = Modifier.fillMaxSize(),
+                shape = RectangleShape,
+                placeholderType = PlaceholderType.ARTIST,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                // La URL se pide a 1200px; sin override MusicPlayerImage decodifica a 384px y se ve borrosa
+                // al estirarse al banner (igual que hace Metrolist con AsyncImage + resize(1200, 1200)).
+                coilSizeOverride = 1200,
+            )
+        }
 
         // Capa de gradiente vertical
         Box(
@@ -369,66 +391,136 @@ fun ArtistBanner(
                 }
             }
 
-            // M3E hero actions: primary play pill + tonal shuffle/radio + outlined subscribe
+            // M3E hero actions: play pill + shuffle/radio + subscribe. Con cristal
+            // son lentes oscuras sobre la foto (siempre legibles en claro y
+            // oscuro); sin cristal, los botones clásicos de antes.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                ExtendedFloatingActionButton(
-                    text = {
-                        Text(
-                            text = stringResource(Res.string.play_item),
-                            style = MaterialTheme.typography.ctaLabel,
-                            maxLines = 1,
-                        )
-                    },
-                    icon = {
-                        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(24.dp))
-                    },
-                    onClick = { if (hasPlayable) actions.onPlayArtist() },
-                    expanded = true,
-                    containerColor = Color.White,
-                    contentColor = Color.Black,
-                    elevation = FloatingActionButtonDefaults.elevation(2.dp, 4.dp),
-                    shape = AppShapes.extraLarge,
-                    modifier = Modifier
-                        .height(52.dp)
-                        .defaultMinSize(minWidth = 112.dp)
-                        .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
-                )
-
-                FilledTonalIconButton(
-                    onClick = { if (hasPlayable) actions.onShuffleArtist() },
-                    enabled = hasPlayable,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
-                    shape = circleAwareShape(),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.22f),
-                        contentColor = Color.White,
-                        disabledContainerColor = Color.White.copy(alpha = 0.08f),
-                        disabledContentColor = Color.White.copy(alpha = 0.35f),
-                    ),
-                ) {
-                    Icon(Icons.Rounded.Shuffle, stringResource(Res.string.shuffle), modifier = Modifier.size(22.dp))
+                if (bannerGlass) {
+                    val playInteraction = remember { MutableInteractionSource() }
+                    val playStyle = rememberLiquidGlassControlStyle(
+                        shape = RoundedCornerShape(50),
+                        containerColor = lensContainer,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .height(52.dp)
+                            .defaultMinSize(minWidth = 112.dp)
+                            .hazeGlass(
+                                input = HazeInput.Sources(bannerHaze),
+                                style = playStyle,
+                                interactionSource = playInteraction,
+                            )
+                            .clickable(
+                                interactionSource = playInteraction,
+                                indication = null,
+                                enabled = hasPlayable,
+                                role = Role.Button,
+                                onClick = { if (hasPlayable) actions.onPlayArtist() },
+                            )
+                            .focusable(interactionSource = playInteraction)
+                            .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default)
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                            Text(
+                                text = stringResource(Res.string.play_item),
+                                style = MaterialTheme.typography.ctaLabel,
+                                color = Color.White,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                } else {
+                    ExtendedFloatingActionButton(
+                        text = {
+                            Text(
+                                text = stringResource(Res.string.play_item),
+                                style = MaterialTheme.typography.ctaLabel,
+                                maxLines = 1,
+                            )
+                        },
+                        icon = {
+                            Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(24.dp))
+                        },
+                        onClick = { if (hasPlayable) actions.onPlayArtist() },
+                        expanded = true,
+                        containerColor = Color.White,
+                        contentColor = Color.Black,
+                        elevation = FloatingActionButtonDefaults.elevation(2.dp, 4.dp),
+                        shape = AppShapes.extraLarge,
+                        modifier = Modifier
+                            .height(52.dp)
+                            .defaultMinSize(minWidth = 112.dp)
+                            .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
+                    )
                 }
 
-                FilledTonalIconButton(
-                    onClick = { if (hasPlayable) actions.onRadioArtist() },
-                    enabled = hasPlayable,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
-                    shape = circleAwareShape(),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.22f),
-                        contentColor = Color.White,
-                        disabledContainerColor = Color.White.copy(alpha = 0.08f),
-                        disabledContentColor = Color.White.copy(alpha = 0.35f),
-                    ),
-                ) {
-                    Icon(Icons.Rounded.Radio, stringResource(Res.string.radio_text), modifier = Modifier.size(22.dp))
+                if (bannerGlass && hasPlayable) {
+                    GlassIconButton(
+                        onClick = { actions.onShuffleArtist() },
+                        imageVector = Icons.Rounded.Shuffle,
+                        contentDescription = stringResource(Res.string.shuffle),
+                        hazeState = bannerHaze,
+                        contentTint = Color.White,
+                        containerColor = lensContainer,
+                        size = 48.dp,
+                        iconSize = 22.dp,
+                    )
+                } else {
+                    FilledTonalIconButton(
+                        onClick = { if (hasPlayable) actions.onShuffleArtist() },
+                        enabled = hasPlayable,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
+                        shape = circleAwareShape(),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.22f),
+                            contentColor = Color.White,
+                            disabledContainerColor = Color.White.copy(alpha = 0.08f),
+                            disabledContentColor = Color.White.copy(alpha = 0.35f),
+                        ),
+                    ) {
+                        Icon(Icons.Rounded.Shuffle, stringResource(Res.string.shuffle), modifier = Modifier.size(22.dp))
+                    }
+                }
+
+                if (bannerGlass && hasPlayable) {
+                    GlassIconButton(
+                        onClick = { actions.onRadioArtist() },
+                        imageVector = Icons.Rounded.Radio,
+                        contentDescription = stringResource(Res.string.radio_text),
+                        hazeState = bannerHaze,
+                        contentTint = Color.White,
+                        containerColor = lensContainer,
+                        size = 48.dp,
+                        iconSize = 22.dp,
+                    )
+                } else {
+                    FilledTonalIconButton(
+                        onClick = { if (hasPlayable) actions.onRadioArtist() },
+                        enabled = hasPlayable,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
+                        shape = circleAwareShape(),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.22f),
+                            contentColor = Color.White,
+                            disabledContainerColor = Color.White.copy(alpha = 0.08f),
+                            disabledContentColor = Color.White.copy(alpha = 0.35f),
+                        ),
+                    ) {
+                        Icon(Icons.Rounded.Radio, stringResource(Res.string.radio_text), modifier = Modifier.size(22.dp))
+                    }
                 }
 
                 val subscribedText = stringResource(Res.string.subscribed)
@@ -438,7 +530,44 @@ fun ArtistBanner(
                     artistPage.subscriberCountText?.let { append("  $it") }
                 }
 
-                OutlinedButton(
+                if (bannerGlass) {
+                    val subInteraction = remember { MutableInteractionSource() }
+                    val subStyle = rememberLiquidGlassControlStyle(
+                        shape = RoundedCornerShape(50),
+                        selected = isSaved,
+                        containerColor = lensContainer,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .height(48.dp)
+                            .hazeGlass(
+                                input = HazeInput.Sources(bannerHaze),
+                                style = subStyle,
+                                interactionSource = subInteraction,
+                            )
+                            .clickable(
+                                interactionSource = subInteraction,
+                                indication = null,
+                                role = Role.Button,
+                                onClick = actions.onToggleSave,
+                            )
+                            .focusable(interactionSource = subInteraction)
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .padding(horizontal = 18.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            if (isSaved) {
+                                Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            }
+                            Text(subLabel, style = MaterialTheme.typography.ctaLabel, color = Color.White, maxLines = 1)
+                        }
+                    }
+                } else {
+                    OutlinedButton(
                     onClick = actions.onToggleSave,
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color.White,
@@ -463,4 +592,4 @@ fun ArtistBanner(
             }
         }
     }
-}
+}}

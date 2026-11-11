@@ -89,17 +89,22 @@ fun rememberLiquidGlassStyle(
     val refr = refraction ?: tuning.refraction
     // Base translúcida REAL dentro del estilo: sobre fondos planos y oscuros la
     // refracción no aporta contraste, así que la presencia del cristal la dan la
-    // base + el tint. Sin esto el cristal es invisible. La opacidad sale del
-    // ajuste de usuario (misma para claro/oscuro: la apariencia ya la iguala Haze).
-    val base = containerColor.copy(alpha = alpha)
+    // base + el tint. Sin esto el cristal es invisible. En claro la base es
+    // BLANCA a propósito (no del contenedor): garantiza cristal legible sobre
+    // cualquier contenido, venga la respuesta de Haze clara u oscura.
+    val base = if (isDark) {
+        containerColor.copy(alpha = alpha)
+    } else {
+        Color.White.copy(alpha = (alpha + 0.02f).coerceAtMost(1f))
+    }
     // Tint sutil estilo Apple: apenas tiñe en oscuro, algo más en claro para
     // que el texto siga legible sin volver opaco el cristal.
     val tint = if (selected) {
-        colorScheme.primary.copy(alpha = if (isDark) 0.22f else 0.28f)
+        colorScheme.primary.copy(alpha = if (isDark) 0.22f else 0.35f)
     } else if (isDark) {
         Color.White.copy(alpha = 0.08f)
     } else {
-        Color.White.copy(alpha = 0.18f)
+        Color.White.copy(alpha = 0.30f)
     }
 
     val baseStyle = GlassStyle.regular.material3(
@@ -160,19 +165,25 @@ fun rememberLiquidGlassControlStyle(
     val blur = blurDp ?: tuning.blurDp
     val spec = (specular ?: tuning.specular) + 0.05f
     val refr = refraction ?: tuning.refraction
-    // Base con presencia: la lente tiene que leerse como píldora incluso sobre
-    // la barra oscura y plana, donde la refracción no da contraste. Un punto
-    // por debajo de la barra para jerarquía, salvo seleccionada.
-    val base = containerColor.copy(
-        alpha = (if (selected) alpha + 0.02f else alpha - 0.1f)
-            .coerceIn(0.3f, 1f),
-    )
+    // Base con presencia: en oscuro sale del contenedor; en claro es BLANCA a
+    // propósito para que la lente nunca salga oscura sobre portadas, venga la
+    // respuesta de Haze clara u oscura. Un punto por debajo de la barra para
+    // jerarquía, salvo seleccionada.
+    val lightBase = (if (selected) alpha + 0.02f else alpha - 0.08f).coerceIn(0.3f, 1f)
+    val base = if (isDark) {
+        containerColor.copy(
+            alpha = (if (selected) alpha + 0.02f else alpha - 0.1f)
+                .coerceIn(0.3f, 1f),
+        )
+    } else {
+        Color.White.copy(alpha = lightBase)
+    }
     val tint = if (selected) {
-        colorScheme.primary.copy(alpha = if (isDark) 0.25f else 0.32f)
+        colorScheme.primary.copy(alpha = if (isDark) 0.25f else 0.35f)
     } else if (isDark) {
         Color.White.copy(alpha = 0.12f)
     } else {
-        Color.White.copy(alpha = 0.22f)
+        Color.White.copy(alpha = 0.30f)
     }
 
     val baseStyle = GlassStyle.clear.material3(

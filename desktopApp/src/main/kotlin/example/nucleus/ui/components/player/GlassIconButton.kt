@@ -49,6 +49,9 @@ fun GlassIconButton(
     selected: Boolean = false,
     selectedTint: Color = MaterialTheme.colorScheme.primary,
     contentTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    // Base del cristal: por defecto el contenedor del tema; sobre fotos se
+    // pasa una oscura para que el icono claro siempre lea.
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     size: Dp = 40.dp,
     iconSize: Dp = 22.dp,
     // Overrides explícitos para el preview de Ajustes (ver estilos).
@@ -60,7 +63,7 @@ fun GlassIconButton(
     val colorScheme = MaterialTheme.colorScheme
     val style = rememberLiquidGlassControlStyle(
         selected = selected,
-        containerColor = colorScheme.surfaceContainer,
+        containerColor = containerColor,
         blurDp = blurDp,
         baseAlpha = baseAlpha,
         specular = specular,
