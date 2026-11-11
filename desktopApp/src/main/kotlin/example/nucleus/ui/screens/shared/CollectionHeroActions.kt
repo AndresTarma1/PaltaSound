@@ -2,14 +2,18 @@ package example.nucleus.ui.screens.shared
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -39,7 +43,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -59,6 +67,8 @@ import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.components.glass.rememberLiquidGlassControlStyle
 import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
+import example.nucleus.ui.components.images.MusicPlayerImage
+import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.player.GlassIconButton
 import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.themes.AppShapes
@@ -96,6 +106,50 @@ private val CollectionHeroIconSize: Dp = 22.dp
 private val CollectionHeroPlayHeight: Dp = 52.dp
 private val CollectionHeroPlayMinWidth: Dp = 100.dp
 private val CollectionHeroActionGap: Dp = 8.dp
+
+/**
+ * Fondo ambiental para cabeceras de playlist/álbum: la portada desenfocada
+ * como resplandor + degradado al color de superficie para fundirse con la
+ * lista. Decodificada pequeña (va toda difuminada) para no pesar.
+ */
+@Composable
+fun CollectionAmbientBackdrop(
+    thumbnailUrl: String?,
+    placeholder: PlaceholderType,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val surface = MaterialTheme.colorScheme.surface
+    Box(modifier = modifier.fillMaxWidth()) {
+        MusicPlayerImage(
+            url = thumbnailUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(64.dp)
+                .alpha(0.45f),
+            placeholderType = placeholder,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            coilSizeOverride = 128,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to surface.copy(alpha = 0.25f),
+                        0.55f to surface.copy(alpha = 0.72f),
+                        1.0f to surface,
+                    ),
+                ),
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            content = content,
+        )
+    }
+}
 
 /**
  * Shared album/playlist hero actions — same order and sizes:

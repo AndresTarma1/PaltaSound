@@ -37,6 +37,7 @@ import example.nucleus.ui.components.layout.appScrollContentPadding
 import example.nucleus.ui.screens.PlaylistActions
 import example.nucleus.ui.screens.PlaylistScreenState
 import example.nucleus.ui.screens.shared.CollectionCompactBreakpoint
+import example.nucleus.ui.screens.shared.CollectionAmbientBackdrop
 import example.nucleus.ui.screens.shared.CollectionCompactCoverSize
 import example.nucleus.ui.screens.shared.CollectionHeroActionRow
 import example.nucleus.ui.screens.shared.CollectionHeroIconButton
@@ -423,7 +424,12 @@ internal fun PlaylistInfoPanel(
     isFullyDownloaded: () -> Boolean,
     onDownloadClick: () -> Unit
 ) {
-    // Author chip
+    // Resplandor ambiental de la portada detrás de toda la cabecera.
+    CollectionAmbientBackdrop(
+        thumbnailUrl = playlistPage.playlist.thumbnail,
+        placeholder = PlaceholderType.PLAYLIST,
+    ) {
+        // Author chip
     playlistPage.playlist.author?.let { author ->
         AssistChip(
             onClick = {},
@@ -581,4 +587,5 @@ internal fun PlaylistInfoPanel(
         isFullyDownloaded = isFullyDownloaded(),
         onDownloadClick = onDownloadClick,
     )
+    }
 }

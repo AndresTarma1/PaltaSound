@@ -44,6 +44,7 @@ import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.ui.screens.playlist.MultiSongSelectionBar
 import example.nucleus.ui.screens.playlist.SongListItem
 import example.nucleus.ui.screens.shared.CollectionCompactBreakpoint
+import example.nucleus.ui.screens.shared.CollectionAmbientBackdrop
 import example.nucleus.ui.screens.shared.CollectionCompactCoverSize
 import example.nucleus.ui.screens.shared.CollectionHeroActionRow
 import example.nucleus.ui.screens.shared.CollectionStickyHeaderBar
@@ -484,7 +485,12 @@ internal fun AlbumInfoPanel(
     onShuffle: () -> Unit,
     onNavigate: (ScreenConfig) -> Unit,
 ) {
-    val firstArtist = albumPage.album.artists?.firstOrNull()
+    // Resplandor ambiental de la portada detrás de toda la cabecera.
+    CollectionAmbientBackdrop(
+        thumbnailUrl = albumPage.album.thumbnail,
+        placeholder = PlaceholderType.ALBUM,
+    ) {
+        val firstArtist = albumPage.album.artists?.firstOrNull()
 
     Surface(
         shape = AppShapes.large,
@@ -571,4 +577,5 @@ internal fun AlbumInfoPanel(
         isFullyDownloaded = isFullyDownloaded,
         onDownloadClick = onDownloadClick,
     )
+    }
 }
