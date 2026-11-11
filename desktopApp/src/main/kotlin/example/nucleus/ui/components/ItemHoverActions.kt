@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.glass.LocalContentHaze
 import example.nucleus.ui.components.glass.LocalGlassHaze
 import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.components.player.GlassIconButton
 import example.nucleus.ui.helpers.contextMenuArea
 import example.nucleus.ui.helpers.onHover
@@ -71,7 +72,7 @@ fun HoverCornerActionButton(
     var isButtonHovered by remember { mutableStateOf(false) }
 
     val useGlass = LocalLiquidGlass.current
-    val hazeState = LocalContentHaze.current ?: LocalGlassHaze.current
+    val hazeState = LocalRailHaze.current ?: LocalContentHaze.current
     if (useGlass && hazeState != null) {
         // Lente sobre la portada: conserva el reveal por hover y avisa al
         // padre para que no parpadee al cruzar al botón.

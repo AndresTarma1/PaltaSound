@@ -2,7 +2,9 @@
 
 package example.nucleus.ui.components.player
 
+import dev.chrisbanes.haze.hazeSource
 import example.nucleus.ui.components.glass.GlassAlertDialog
+import example.nucleus.ui.components.glass.LocalContentHaze
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
@@ -140,7 +142,13 @@ fun PlaybackQueuePanel(
     }
 
     Surface(
-        modifier = modifier,
+        modifier = modifier.then(
+            // Fuente para los menús flotantes (p. ej. el dropdown del title
+            // bar cuando la cola está abierta): los popups no tienen ancestro
+            // con este estado y seleccionan todas las fuentes, incluida esta.
+            // El cristal propio del panel usa el fondo ambiental, sin conflicto.
+            LocalContentHaze.current?.let { Modifier.hazeSource(it) } ?: Modifier,
+        ),
         color = containerColor,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,

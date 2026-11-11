@@ -23,6 +23,7 @@ import example.nucleus.generated.resources.*
 import example.nucleus.generated.resources.Res
 import example.nucleus.ui.components.glass.LocalContentHaze
 import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.components.glass.rememberLiquidGlassControlStyle
 import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.themes.AppShapes
@@ -90,7 +91,7 @@ internal fun NowPlayingIconTabs(
     val queueLabel = stringResource(Res.string.tab_queue)
     val colorScheme = MaterialTheme.colorScheme
     val useGlass = LocalLiquidGlass.current
-    val tabsHaze = LocalContentHaze.current
+    val tabsHaze = LocalRailHaze.current ?: LocalContentHaze.current
     val glassTabs = useGlass && tabsHaze != null
     val trackStyle = if (glassTabs) {
         rememberLiquidGlassStyle(

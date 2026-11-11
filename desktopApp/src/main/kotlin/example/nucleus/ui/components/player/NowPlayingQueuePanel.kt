@@ -2,7 +2,9 @@
 
 package example.nucleus.ui.components.player
 
+import dev.chrisbanes.haze.hazeSource
 import example.nucleus.ui.components.glass.GlassAlertDialog
+import example.nucleus.ui.components.glass.LocalContentHaze
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -139,7 +141,11 @@ fun NowPlayingQueuePanel(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = 4.dp)
+            .then(
+                // Igual que PlaybackQueuePanel: fuente para menús flotantes.
+                LocalContentHaze.current?.let { Modifier.hazeSource(it) } ?: Modifier,
+            ),
     ) {
         NowPlayingQueueHeader(
             state = state,

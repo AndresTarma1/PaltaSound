@@ -30,9 +30,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -137,6 +139,7 @@ private fun TitleBarNavButton(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TitleBarScope.DesktopTitleBar(
     currentSong: String?,
@@ -189,7 +192,8 @@ fun TitleBarScope.DesktopTitleBar(
             onClick = { showMenu = true },
         ) {
             if (isSyncing) {
-                CircularWavyProgressIndicator(Modifier.size(14.dp))
+                LoadingIndicator(Modifier.size(14.dp))
+                //CircularWavyProgressIndicator(Modifier.size(14.dp))
             } else if (accountInfo?.thumbnailUrl != null) {
                 MusicPlayerImage(
                     url = accountInfo.thumbnailUrl,

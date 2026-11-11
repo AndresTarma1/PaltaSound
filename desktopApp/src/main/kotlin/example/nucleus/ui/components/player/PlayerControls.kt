@@ -58,8 +58,8 @@ import dev.chrisbanes.haze.glass.hazeGlassContainer
 import example.nucleus.ui.components.PlayerSeekBar
 import example.nucleus.ui.components.TimeText
 import example.nucleus.ui.components.glass.LocalContentHaze
-import example.nucleus.ui.components.glass.LocalGlassHaze
 import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.helpers.onHover
 import example.nucleus.ui.helpers.pointerScrollToInt
 import example.nucleus.ui.themes.AppShapes
@@ -132,7 +132,7 @@ fun PlayerTransportRow(
     modifier: Modifier = Modifier,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     liquidGlass: Boolean = LocalLiquidGlass.current,
-    hazeState: HazeState? = LocalContentHaze.current ?: LocalGlassHaze.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     val state by playerViewModel.uiState.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
@@ -381,7 +381,7 @@ fun PlayerVolumeControl(
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
     liquidGlass: Boolean = LocalLiquidGlass.current,
-    hazeState: HazeState? = LocalContentHaze.current ?: LocalGlassHaze.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     PlayerVolumeTooltip(
         modifier = modifier,
@@ -439,7 +439,7 @@ fun PlayerVolumeTooltip(
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
     liquidGlass: Boolean = LocalLiquidGlass.current,
-    hazeState: HazeState? = LocalContentHaze.current ?: LocalGlassHaze.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     val volume by playerViewModel.volume.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
@@ -720,7 +720,7 @@ fun PlayerVolumeVertical(
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
     liquidGlass: Boolean = LocalLiquidGlass.current,
-    hazeState: HazeState? = LocalContentHaze.current ?: LocalGlassHaze.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     PlayerVolumeTooltip(
         modifier = modifier,
@@ -741,7 +741,7 @@ fun LikeToggle(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     liquidGlass: Boolean = LocalLiquidGlass.current,
-    hazeState: HazeState? = LocalContentHaze.current ?: LocalGlassHaze.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     if (liquidGlass && hazeState != null) {

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.glass.LocalContentHaze
 import example.nucleus.ui.components.glass.LocalGlassHaze
 import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 
 /**
  * Botón de acción de item (⋮ de filas y tarjetas, play rápido...) con cristal
@@ -44,7 +45,7 @@ fun GlassItemActionButton(
     fallbackContainer: Color? = null,
 ) {
     val useGlass = LocalLiquidGlass.current
-    val hazeState = LocalContentHaze.current ?: LocalGlassHaze.current
+    val hazeState = LocalRailHaze.current ?: LocalContentHaze.current
     if (useGlass && hazeState != null) {
         GlassIconButton(
             onClick = onClick,
