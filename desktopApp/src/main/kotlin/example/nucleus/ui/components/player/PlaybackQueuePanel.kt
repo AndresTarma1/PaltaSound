@@ -310,16 +310,13 @@ private fun QueueHeader(
             )
 
             Box {
-                IconButton(
+                GlassItemActionButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(Res.string.options),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(Res.string.options),
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
                 QueueActionsMenu(
                     expanded = showMenu,
                     onDismiss = { showMenu = false },

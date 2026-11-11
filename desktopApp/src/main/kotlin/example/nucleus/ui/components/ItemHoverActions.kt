@@ -23,7 +23,12 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.player.GlassIconButton
 import example.nucleus.ui.helpers.contextMenuArea
+import example.nucleus.ui.helpers.onHover
 
 @Composable
 fun BoxForContainerContextMenuItem(
@@ -64,6 +69,29 @@ fun HoverCornerActionButton(
     onButtonHoverChange: (Boolean) -> Unit = {}
 ) {
     var isButtonHovered by remember { mutableStateOf(false) }
+
+    val useGlass = LocalLiquidGlass.current
+    val hazeState = LocalContentHaze.current ?: LocalGlassHaze.current
+    if (useGlass && hazeState != null) {
+        // Lente sobre la portada: conserva el reveal por hover y avisa al
+        // padre para que no parpadee al cruzar al botón.
+        GlassIconButton(
+            onClick = onClick,
+            imageVector = icon,
+            contentDescription = contentDescription,
+            hazeState = hazeState,
+            modifier = modifier
+                .graphicsLayer { alpha = if (visible) 1f else 0f }
+                .onHover {
+                    isButtonHovered = it
+                    onButtonHoverChange(it)
+                },
+            contentTint = Color.White,
+            size = size,
+            iconSize = iconSize,
+        )
+        return
+    }
 
     Box(
         modifier = modifier.graphicsLayer { alpha = if (visible) 1f else 0f },

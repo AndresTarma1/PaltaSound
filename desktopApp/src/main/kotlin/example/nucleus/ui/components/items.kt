@@ -65,8 +65,13 @@ import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
 import example.nucleus.ui.components.context.SongContextMenuPopup
 import example.nucleus.ui.components.context.CollectionContextMenuPopup
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.player.GlassIconButton
+import example.nucleus.ui.components.player.GlassItemActionButton
 import example.nucleus.ui.helpers.animateDesktopPressScale
 import example.nucleus.ui.helpers.contextMenuArea
 import example.nucleus.ui.helpers.desktopInteractiveSurface
@@ -446,50 +451,35 @@ fun MediaGridItem(
                     }
 
                     if (showImageActions) {
-                        // Scrim circular detras del icono: sin el, el "mas" desaparece
-                        // sobre portadas claras. Siempre visible, igual que en las filas.
-                        Box(
+                        // Lente sobre la portada en modo cristal; scrim clásico si no.
+                        GlassItemActionButton(
+                            onClick = openMenuFromButton,
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(Res.string.options),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(6.dp)
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.40f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            IconButton(
-                                onClick = openMenuFromButton,
-                                modifier = menuButtonModifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.MoreVert,
-                                    stringResource(Res.string.options),
-                                    modifier = Modifier.size(18.dp),
-                                    tint = Color.White
-                                )
-                            }
-                        }
+                                .padding(6.dp),
+                            size = 32.dp,
+                            iconSize = 18.dp,
+                            contentTint = Color.White,
+                            fallbackContainer = Color.Black.copy(alpha = 0.40f),
+                        )
                     }
 
                     if (onPlay != null && showImageActions) {
-                        FilledIconButton(
+                        GlassItemActionButton(
                             onClick = onPlay,
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = stringResource(Res.string.play_item),
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .padding(6.dp)
-                                .size(34.dp)
                                 .alpha(playAlpha),
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = Color.Black.copy(alpha = 0.55f),
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Icon(
-                                Icons.Filled.PlayArrow,
-                                contentDescription = stringResource(Res.string.play_item),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                            size = 34.dp,
+                            iconSize = 20.dp,
+                            contentTint = Color.White,
+                            fallbackContainer = Color.Black.copy(alpha = 0.55f),
+                        )
                     }
                 }
             }
@@ -708,37 +698,50 @@ fun YoutubeListItem(
             },
             trailingContent = {
                 if (item is SongItem || isEpisodeItem || isCollectionItem) {
-                    // El icono se ve siempre; solo el fondo tonal aparece cuando el raton
-                    // esta sobre el, no sobre la fila entera.
-                    var isButtonHovered by remember { mutableStateOf(false) }
-                    val bgAlpha by animateFloatAsState(
-                        targetValue = if (isButtonHovered) 1f else 0f,
-                        animationSpec = expressiveFadeTween(),
-                        label = "rowMenuBg",
-                    )
-                    Box(
-                        modifier = Modifier.size(36.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .alpha(bgAlpha)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        )
-                        IconButton(
+                    // En cristal, lente directa (su hover ya responde). En clásico,
+                    // el icono se ve siempre y el fondo tonal aparece al hover.
+                    val useRowGlass = LocalLiquidGlass.current
+                    val rowGlassHaze = LocalContentHaze.current ?: LocalGlassHaze.current
+                    if (useRowGlass && rowGlassHaze != null) {
+                        GlassIconButton(
                             onClick = { showMenu = true },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .onHover { isButtonHovered = it },
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(Res.string.more_options),
+                            hazeState = rowGlassHaze,
+                            size = 36.dp,
+                            iconSize = 18.dp,
+                        )
+                    } else {
+                        var isButtonHovered by remember { mutableStateOf(false) }
+                        val bgAlpha by animateFloatAsState(
+                            targetValue = if (isButtonHovered) 1f else 0f,
+                            animationSpec = expressiveFadeTween(),
+                            label = "rowMenuBg",
+                        )
+                        Box(
+                            modifier = Modifier.size(36.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = stringResource(Res.string.more_options),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp),
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .alpha(bgAlpha)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                             )
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .onHover { isButtonHovered = it },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = stringResource(Res.string.more_options),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
                         }
                     }
                 }

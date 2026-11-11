@@ -81,6 +81,7 @@ import example.nucleus.ui.components.formatVideoDuration
 import example.nucleus.ui.components.artwork.rememberArtworkColors
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.player.GlassItemActionButton
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
 import example.nucleus.viewmodels.YouTubeHomeUiState
@@ -551,13 +552,11 @@ private fun VideoCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = { }) {
-                Icon(
-                    Icons.Filled.MoreVert,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            GlassItemActionButton(
+                onClick = { },
+                imageVector = Icons.Filled.MoreVert,
+                contentDescription = null,
+            )
         }
     }
 }

@@ -352,19 +352,13 @@ private fun NowPlayingQueueHeader(
             }
 
             Box {
-                IconButton(
+                GlassItemActionButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .pointerHoverIcon(PointerIcon.Hand),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(Res.string.options),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(Res.string.options),
+                    size = 36.dp,
+                    iconSize = 18.dp,
+                )
 
                 QueueActionsMenu(
                     expanded = showMenu,

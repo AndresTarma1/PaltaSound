@@ -68,6 +68,7 @@ import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.ui.helpers.desktopClickableCursor
 import example.nucleus.ui.components.glass.GlassDropdownMenu
+import example.nucleus.ui.components.player.GlassItemActionButton
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.ctaLabel
@@ -493,17 +494,13 @@ private fun RoomContent(
                     if (isHost && !member.isMe) {
                         var showMenu by remember { mutableStateOf(false) }
                         Box {
-                            IconButton(
+                            GlassItemActionButton(
                                 onClick = { showMenu = true },
-                                modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
-                            ) {
-                                Icon(
-                                    Icons.Filled.MoreVert,
-                                    contentDescription = stringResource(Res.string.lt_member_options),
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = stringResource(Res.string.lt_member_options),
+                                size = 40.dp,
+                                iconSize = 20.dp,
+                            )
                             GlassDropdownMenu(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false },

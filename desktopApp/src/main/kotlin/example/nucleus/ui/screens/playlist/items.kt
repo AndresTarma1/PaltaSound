@@ -36,6 +36,8 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import example.nucleus.ui.components.player.GlassItemActionButton
+import example.nucleus.ui.components.player.LikeToggle
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -434,17 +436,18 @@ internal fun SongListItem(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    IconButton(onClick = { playerViewModel.toggleLikeForSong(song) }, modifier = Modifier.size(36.dp)) {
-                                        Icon(
-                                            if (liked) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                                            null,
-                                            modifier = Modifier.size(20.dp),
-                                            tint = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    IconButton(onClick = openMenuFromButton, modifier = menuButtonModifier.size(36.dp)) {
-                                        Icon(Icons.Default.MoreVert, null, modifier = Modifier.size(20.dp))
-                                    }
+                                    LikeToggle(
+                                        liked = liked,
+                                        onToggle = { playerViewModel.toggleLikeForSong(song) },
+                                    )
+                                    GlassItemActionButton(
+                                        onClick = openMenuFromButton,
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = null,
+                                        modifier = menuButtonModifier,
+                                        size = 36.dp,
+                                        iconSize = 20.dp,
+                                    )
                                 }
                             }
 
