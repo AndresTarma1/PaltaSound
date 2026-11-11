@@ -8,8 +8,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -42,11 +40,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -61,13 +58,12 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.play_item
+import example.nucleus.ui.components.artwork.rememberArtworkColors
 import example.nucleus.ui.components.glass.LocalContentHaze
 import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.components.glass.rememberLiquidGlassControlStyle
 import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
-import example.nucleus.ui.components.images.MusicPlayerImage
-import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.player.GlassIconButton
 import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.themes.AppShapes
@@ -107,68 +103,35 @@ private val CollectionHeroPlayMinWidth: Dp = 100.dp
 private val CollectionHeroActionGap: Dp = 8.dp
 
 /**
- * Resplandor ambiental a pantalla completa: la portada desenfocada + degradado
- * a superficie. Va como primer hijo del contenedor de la pantalla, detrás de
- * todo (el fondo de la superficie es sólido y lo taparía si fuera al revés).
- * Decodificada pequeña (va toda difuminada) para no pesar.
+ * Difuminado ambiental que se expande desde la cabecera hacia el resto de la
+ * pantalla: resplandor del color vibrante de la portada que se disipa. Sin
+ * blur duplicado — es solo degradado. En wide se expande en horizontal (el
+ * panel va a la izquierda); en compacto, en vertical desde arriba.
  */
 @Composable
 fun CollectionAmbientWash(
     thumbnailUrl: String?,
-    placeholder: PlaceholderType,
+    horizontal: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val surface = MaterialTheme.colorScheme.surface
-    Box(modifier = modifier) {
-        MusicPlayerImage(
-            url = thumbnailUrl,
-            contentDescription = null,
-            modifier = Modifier
-                .matchParentSize()
-                .blur(48.dp)
-                .alpha(0.6f),
-            placeholderType = placeholder,
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            coilSizeOverride = 128,
+    val palette = rememberArtworkColors(thumbnailUrl)
+    val glow = palette.vibrant
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val peak = if (isDark) 0.32f else 0.22f
+    val brush = if (horizontal) {
+        Brush.horizontalGradient(
+            0.0f to glow.copy(alpha = peak),
+            0.55f to glow.copy(alpha = peak * 0.35f),
+            1.0f to Color.Transparent,
         )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        0.0f to surface.copy(alpha = 0.15f),
-                        0.55f to surface.copy(alpha = 0.70f),
-                        1.0f to surface,
-                    ),
-                ),
+    } else {
+        Brush.verticalGradient(
+            0.0f to glow.copy(alpha = peak),
+            0.50f to glow.copy(alpha = peak * 0.35f),
+            1.0f to Color.Transparent,
         )
     }
-}
-
-/**
- * Fondo ambiental para cabeceras de playlist/álbum: la portada desenfocada
- * como resplandor + degradado al color de superficie para fundirse con la
- * lista. Decodificada pequeña (va toda difuminada) para no pesar.
- */
-@Composable
-fun CollectionAmbientBackdrop(
-    thumbnailUrl: String?,
-    placeholder: PlaceholderType,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Box(modifier = modifier.fillMaxWidth()) {
-        CollectionAmbientWash(
-            thumbnailUrl = thumbnailUrl,
-            placeholder = placeholder,
-            modifier = Modifier.matchParentSize(),
-        )
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            content = content,
-        )
-    }
+    Box(modifier = modifier.background(brush))
 }
 
 /**

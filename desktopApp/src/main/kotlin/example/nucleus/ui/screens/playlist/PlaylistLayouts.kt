@@ -37,7 +37,6 @@ import example.nucleus.ui.components.layout.appScrollContentPadding
 import example.nucleus.ui.screens.PlaylistActions
 import example.nucleus.ui.screens.PlaylistScreenState
 import example.nucleus.ui.screens.shared.CollectionCompactBreakpoint
-import example.nucleus.ui.screens.shared.CollectionAmbientBackdrop
 import example.nucleus.ui.screens.shared.CollectionAmbientWash
 import example.nucleus.ui.screens.shared.CollectionCompactCoverSize
 import example.nucleus.ui.screens.shared.CollectionHeroActionRow
@@ -168,10 +167,11 @@ internal fun PlaylistWideLayout(
 
     // Scrollbar anclado al borde derecho de la pantalla (no al final de la columna de la lista).
     Box(Modifier.fillMaxSize()) {
-        // Resplandor a pantalla completa detrás de todo.
+        // Resplandor a pantalla completa detrás de todo: se expande en
+        // horizontal desde el panel (wide).
         CollectionAmbientWash(
             thumbnailUrl = playlistPage.playlist.thumbnail,
-            placeholder = PlaceholderType.PLAYLIST,
+            horizontal = true,
             modifier = Modifier.fillMaxSize(),
         )
         Row(
@@ -241,10 +241,11 @@ internal fun PlaylistCompactLayout(
     onSongPlay: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        // Resplandor a pantalla completa detrás de todo.
+        // Resplandor a pantalla completa detrás de todo: se expande en
+        // vertical desde la cabecera (compacto).
         CollectionAmbientWash(
             thumbnailUrl = playlistPage.playlist.thumbnail,
-            placeholder = PlaceholderType.PLAYLIST,
+            horizontal = false,
             modifier = Modifier.fillMaxSize(),
         )
         val lazyColumnState = rememberLazyListState()
@@ -437,12 +438,7 @@ internal fun PlaylistInfoPanel(
     isFullyDownloaded: () -> Boolean,
     onDownloadClick: () -> Unit
 ) {
-    // Resplandor ambiental de la portada detrás de toda la cabecera.
-    CollectionAmbientBackdrop(
-        thumbnailUrl = playlistPage.playlist.thumbnail,
-        placeholder = PlaceholderType.PLAYLIST,
-    ) {
-        // Author chip
+    // Author chip
     playlistPage.playlist.author?.let { author ->
         AssistChip(
             onClick = {},
@@ -600,5 +596,5 @@ internal fun PlaylistInfoPanel(
         isFullyDownloaded = isFullyDownloaded(),
         onDownloadClick = onDownloadClick,
     )
-    }
+
 }

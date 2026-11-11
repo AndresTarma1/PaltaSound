@@ -44,7 +44,6 @@ import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.ui.screens.playlist.MultiSongSelectionBar
 import example.nucleus.ui.screens.playlist.SongListItem
 import example.nucleus.ui.screens.shared.CollectionCompactBreakpoint
-import example.nucleus.ui.screens.shared.CollectionAmbientBackdrop
 import example.nucleus.ui.screens.shared.CollectionAmbientWash
 import example.nucleus.ui.screens.shared.CollectionCompactCoverSize
 import example.nucleus.ui.screens.shared.CollectionHeroActionRow
@@ -210,10 +209,11 @@ internal fun AlbumWideLayout(
 
     // Scrollbar al borde derecho de la pantalla (misma geometría que playlist).
     Box(Modifier.fillMaxSize()) {
-        // Resplandor a pantalla completa detrás de todo.
+        // Resplandor a pantalla completa detrás de todo: se expande en
+        // horizontal desde el panel (wide).
         CollectionAmbientWash(
             thumbnailUrl = albumPage.album.thumbnail,
-            placeholder = PlaceholderType.ALBUM,
+            horizontal = true,
             modifier = Modifier.fillMaxSize(),
         )
         Row(
@@ -298,10 +298,11 @@ internal fun AlbumCompactLayout(
     onNavigate: (ScreenConfig) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        // Resplandor a pantalla completa detrás de todo.
+        // Resplandor a pantalla completa detrás de todo: se expande en
+        // vertical desde la cabecera (compacto).
         CollectionAmbientWash(
             thumbnailUrl = albumPage.album.thumbnail,
-            placeholder = PlaceholderType.ALBUM,
+            horizontal = false,
             modifier = Modifier.fillMaxSize(),
         )
         val lazyColumnState = rememberLazyListState()
@@ -498,12 +499,7 @@ internal fun AlbumInfoPanel(
     onShuffle: () -> Unit,
     onNavigate: (ScreenConfig) -> Unit,
 ) {
-    // Resplandor ambiental de la portada detrás de toda la cabecera.
-    CollectionAmbientBackdrop(
-        thumbnailUrl = albumPage.album.thumbnail,
-        placeholder = PlaceholderType.ALBUM,
-    ) {
-        val firstArtist = albumPage.album.artists?.firstOrNull()
+    val firstArtist = albumPage.album.artists?.firstOrNull()
 
     Surface(
         shape = AppShapes.large,
@@ -590,5 +586,4 @@ internal fun AlbumInfoPanel(
         isFullyDownloaded = isFullyDownloaded,
         onDownloadClick = onDownloadClick,
     )
-    }
 }
