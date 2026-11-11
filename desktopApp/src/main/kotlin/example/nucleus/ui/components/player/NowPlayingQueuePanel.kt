@@ -344,19 +344,14 @@ private fun NowPlayingQueueHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            IconButton(
+            GlassItemActionButton(
                 onClick = onToggleLock,
-                modifier = Modifier
-                    .size(36.dp)
-                    .pointerHoverIcon(PointerIcon.Hand),
-            ) {
-                Icon(
-                    imageVector = if (queueLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
-                    contentDescription = null,
-                    tint = if (queueLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
+                imageVector = if (queueLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
+                contentDescription = null,
+                selected = queueLocked,
+                size = 36.dp,
+                iconSize = 18.dp,
+            )
 
             Box {
                 GlassItemActionButton(

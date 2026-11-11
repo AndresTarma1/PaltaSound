@@ -339,16 +339,13 @@ private fun QueueHeader(
             }
 
             if (showCloseButton) {
-                IconButton(
+                GlassItemActionButton(
                     onClick = onDismiss,
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(Res.string.close_queue),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(Res.string.close_queue),
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
             }
         }
 

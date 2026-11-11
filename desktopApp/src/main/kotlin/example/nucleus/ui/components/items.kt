@@ -66,8 +66,8 @@ import example.nucleus.ui.components.layout.HorizontalScrollableRow
 import example.nucleus.ui.components.context.SongContextMenuPopup
 import example.nucleus.ui.components.context.CollectionContextMenuPopup
 import example.nucleus.ui.components.glass.LocalContentHaze
-import example.nucleus.ui.components.glass.LocalGlassHaze
 import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.player.GlassIconButton
@@ -700,8 +700,10 @@ fun YoutubeListItem(
                 if (item is SongItem || isEpisodeItem || isCollectionItem) {
                     // En cristal, lente directa (su hover ya responde). En clásico,
                     // el icono se ve siempre y el fondo tonal aparece al hover.
+                    // Fuente ambiental: la fila vive dentro del contenido y el
+                    // estado del contenido ahí selecciona vacío (solo rines).
                     val useRowGlass = LocalLiquidGlass.current
-                    val rowGlassHaze = LocalContentHaze.current ?: LocalGlassHaze.current
+                    val rowGlassHaze = LocalRailHaze.current ?: LocalContentHaze.current
                     if (useRowGlass && rowGlassHaze != null) {
                         GlassIconButton(
                             onClick = { showMenu = true },
