@@ -184,15 +184,12 @@ internal fun MultiSongSelectionBar(
     val allSelected = allSongIds.isNotEmpty() && selectedSongs.size == allSongIds.size
 
     if (selectedSongs.isEmpty()) return
-
-    // Con el player flotante/dockeado (overlay encima), la barra quedaba tapada:
-    // se eleva con el mismo inset que reserva el contenido.
     val playerInset = LocalMiniPlayerInset.current
     val bottomPad = 16.dp + playerInset
     val barGlass = LocalLiquidGlass.current
     val barHaze = LocalRailHaze.current ?: LocalContentHaze.current
     val useBarGlass = barGlass && barHaze != null
-    val barShape = AppShapes.xLarge as? RoundedCornerShape ?: RoundedCornerShape(16.dp)
+    val barShape = AppShapes.xLarge
     val barStyle = if (useBarGlass) {
         rememberLiquidGlassStyle(
             shape = barShape,

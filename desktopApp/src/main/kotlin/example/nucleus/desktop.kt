@@ -21,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
@@ -183,8 +182,8 @@ fun TitleBarScope.DesktopTitleBar(
         )
     }
 
-    // Cuenta + selector de modo. Sin sesión el menú sigue disponible para
-    // cambiar entre Música y YouTube; el bloque de sincronización se oculta.
+    // Cuenta + menú. Sin sesión el menú sigue disponible (volver a Música si
+    // hiciera falta); el bloque de sincronización se oculta.
     Box(modifier = Modifier.align(Alignment.End).padding(end = 4.dp)) {
         var showMenu by remember { mutableStateOf(false) }
         IconButton(
@@ -265,17 +264,7 @@ fun TitleBarScope.DesktopTitleBar(
                     showMenu = false
                 },
             )
-            DropdownMenuItem(
-                text = { Text(stringResource(Res.string.mode_youtube)) },
-                leadingIcon = { Icon(Icons.Filled.PlayCircle, contentDescription = null) },
-                trailingIcon = {
-                    if (appMode == AppMode.YOUTUBE) Icon(Icons.Filled.Check, contentDescription = null)
-                },
-                onClick = {
-                    onModeChange(AppMode.YOUTUBE)
-                    showMenu = false
-                },
-            )
+            // Sin opción de YouTube: ese modo aún no entra en main.
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             if (isLoggedIn && appMode == AppMode.MUSIC) {
                 DropdownMenuItem(
