@@ -8,7 +8,9 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -20,10 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.glass.hazeGlassContainer
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppScrollbarGutter
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
+import example.nucleus.ui.components.glass.GlassSegmentPill
+import example.nucleus.ui.components.glass.GlassSegmentTrack
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.screens.settings.*
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
@@ -135,6 +143,48 @@ private fun SettingsCategoryTabs(
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val segHaze = LocalRailHaze.current ?: LocalContentHaze.current
+    val segGlass = LocalLiquidGlass.current && segHaze != null
+    if (segGlass) {
+        GlassSegmentTrack(hazeState = segHaze, modifier = modifier) {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
+                    .hazeGlassContainer(mergeDistance = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SettingsCategory.entries.forEach { cat ->
+                    val isSelected = cat == selected
+                    GlassSegmentPill(
+                        selected = isSelected,
+                        onClick = { onSelect(cat) },
+                        hazeState = segHaze,
+                    ) {
+                        Icon(
+                            cat.icon, null,
+                            tint = if (isSelected) {
+                                colorScheme.primary
+                            } else {
+                                colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+                            },
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            stringResource(cat.titleRes),
+                            style = MaterialTheme.typography.labelLargeEmphasized,
+                            color = if (isSelected) {
+                                colorScheme.onSurface
+                            } else {
+                                colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
@@ -185,32 +235,79 @@ private fun NarrowSettingsLayout(
     val animationsEnabled = LocalAnimationsEnabled.current
     Column(modifier = Modifier.fillMaxSize()) {
         val selectedTabIndex = SettingsCategory.entries.indexOf(selected)
-        // Top tabs para narrow
-        SecondaryTabRow(
-            selectedTabIndex = selectedTabIndex,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            divider = {},
-            indicator = {
-                TabRowDefaults.SecondaryIndicator(
-                    Modifier.tabIndicatorOffset(selectedTabIndex, matchContentSize = false),
-                )
-            },
-        ) {
-            SettingsCategory.entries.forEach { cat ->
-                Tab(
-                    selected = cat == selected,
-                    onClick = { onSelect(cat) },
-                    text = {
-                        Text(
-                            stringResource(cat.titleRes),
-                            style = MaterialTheme.typography.labelLargeEmphasized,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    icon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp)) },
-                )
+        val narrowHaze = LocalRailHaze.current ?: LocalContentHaze.current
+        val narrowGlass = LocalLiquidGlass.current && narrowHaze != null
+        if (narrowGlass) {
+            // Pista fija esmerilada con las píldoras deslizables dentro (mismo
+            // lenguaje que la variante ancha y que Now Playing).
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                GlassSegmentTrack(
+                    hazeState = narrowHaze,
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 4.dp, vertical = 4.dp)
+                            .hazeGlassContainer(mergeDistance = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SettingsCategory.entries.forEach { cat ->
+                            val isSelected = cat == selected
+                            GlassSegmentPill(
+                                selected = isSelected,
+                                onClick = { onSelect(cat) },
+                                hazeState = narrowHaze,
+                            ) {
+                                Icon(cat.icon, null, modifier = Modifier.size(18.dp))
+                                Text(
+                                    stringResource(cat.titleRes),
+                                    style = MaterialTheme.typography.labelLargeEmphasized,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.onSurface
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Top tabs para narrow
+            SecondaryTabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                divider = {},
+                indicator = {
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(selectedTabIndex, matchContentSize = false),
+                    )
+                },
+            ) {
+                SettingsCategory.entries.forEach { cat ->
+                    Tab(
+                        selected = cat == selected,
+                        onClick = { onSelect(cat) },
+                        text = {
+                            Text(
+                                stringResource(cat.titleRes),
+                                style = MaterialTheme.typography.labelLargeEmphasized,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        icon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp)) },
+                    )
+                }
             }
         }
 

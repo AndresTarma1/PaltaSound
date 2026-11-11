@@ -11,6 +11,8 @@ import androidx.compose.runtime.*
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.ui.screens.shared.displayName
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.data.repository.*
 import example.nucleus.viewmodels.AppearanceSettingsViewModel
 import example.nucleus.generated.resources.*
@@ -42,29 +44,63 @@ fun AppearanceSettingsGroup() {
     var showAppBackgroundDropdown by remember { mutableStateOf(false) }
 
     // Presets
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        listOf(
-            stringResource(Res.string.preset_compact) to {
-                viewModel.setLayoutMode(LayoutMode.SQUARE)
-                viewModel.setUiScale(0.90f)
-                viewModel.setAnimationsEnabled(false)
-            },
-            stringResource(Res.string.preset_comfortable) to {
-                viewModel.setLayoutMode(LayoutMode.ATTACHED)
-                viewModel.setUiScale(1.00f)
-                viewModel.setAnimationsEnabled(true)
-            },
-            stringResource(Res.string.preset_accessible) to {
-                viewModel.setLayoutMode(LayoutMode.ATTACHED)
-                viewModel.setUiScale(1.20f)
-                viewModel.setAnimationsEnabled(true)
-            },
-        ).forEach { (label, action) ->
-            Button(onClick = action, modifier = Modifier.weight(1f)) {
-                Text(label)
+    val presetsGlass = LocalLiquidGlass.current
+    if (presetsGlass) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(
+                stringResource(Res.string.preset_compact) to {
+                    viewModel.setLayoutMode(LayoutMode.SQUARE)
+                    viewModel.setUiScale(0.90f)
+                    viewModel.setAnimationsEnabled(false)
+                },
+                stringResource(Res.string.preset_comfortable) to {
+                    viewModel.setLayoutMode(LayoutMode.ATTACHED)
+                    viewModel.setUiScale(1.00f)
+                    viewModel.setAnimationsEnabled(true)
+                },
+                stringResource(Res.string.preset_accessible) to {
+                    viewModel.setLayoutMode(LayoutMode.ATTACHED)
+                    viewModel.setUiScale(1.20f)
+                    viewModel.setAnimationsEnabled(true)
+                },
+            ).forEach { (label, action) ->
+                GlassTextPillButton(
+                    onClick = action,
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    fallbackContainer = MaterialTheme.colorScheme.primaryContainer,
+                    fallbackContent = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(
+                stringResource(Res.string.preset_compact) to {
+                    viewModel.setLayoutMode(LayoutMode.SQUARE)
+                    viewModel.setUiScale(0.90f)
+                    viewModel.setAnimationsEnabled(false)
+                },
+                stringResource(Res.string.preset_comfortable) to {
+                    viewModel.setLayoutMode(LayoutMode.ATTACHED)
+                    viewModel.setUiScale(1.00f)
+                    viewModel.setAnimationsEnabled(true)
+                },
+                stringResource(Res.string.preset_accessible) to {
+                    viewModel.setLayoutMode(LayoutMode.ATTACHED)
+                    viewModel.setUiScale(1.20f)
+                    viewModel.setAnimationsEnabled(true)
+                },
+            ).forEach { (label, action) ->
+                Button(onClick = action, modifier = Modifier.weight(1f)) {
+                    Text(label)
+                }
             }
         }
     }
