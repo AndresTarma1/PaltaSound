@@ -14,8 +14,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import example.nucleus.data.repository.BackgroundStyle
+import example.nucleus.data.repository.NavigationRailStyle
+import example.nucleus.utils.LocalUserPreferences
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -71,6 +75,7 @@ import example.nucleus.ui.helpers.rememberSongDownloadState
 import example.nucleus.ui.helpers.rememberSongLikedState
 import example.nucleus.ui.screens.shared.formatDuration
 import example.nucleus.ui.themes.AppShapes
+import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.mediaItemTitle
 import example.nucleus.utils.LocalSnackbarHostState
 import example.nucleus.utils.LocalSnackbarScope
@@ -178,6 +183,16 @@ internal fun MultiSongSelectionBar(
 
     if (selectedSongs.isEmpty()) return
 
+    // El FAB de navegación flota centrado sobre el contenido: si está visible,
+    // la barra sube por encima de él además de sobre el player.
+    val prefs = LocalUserPreferences.current
+    val glassOn by prefs.liquidGlassEnabled.collectAsState(false)
+    val appBg by prefs.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
+    val railStyle by prefs.navigationRailStyle.collectAsState(NavigationRailStyle.DEFAULT)
+    val fabVisible = (glassOn && appBg == BackgroundStyle.SOLID_COLOR) || railStyle == NavigationRailStyle.FAB
+    val playerInset = LocalMiniPlayerInset.current
+    val bottomPad = 16.dp + playerInset + if (fabVisible) 66.dp else 0.dp
+
     if (showRemoveConfirm) {
         ConfirmDestructiveActionDialog(
             title = stringResource(Res.string.confirm_delete_songs_title),
@@ -199,7 +214,14 @@ internal fun MultiSongSelectionBar(
         shadowElevation = 6.dp,
         shape = AppShapes.xLarge,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier.padding(16.dp)
+        // Con el player flotante/dockeado (overlay encima), la barra quedaba
+        // tapada: se eleva por encima con el mismo inset que reserva el contenido.
+        modifier = modifier.padding(
+            start = 16.dp,
+            end = 16.dp,
+            top = 16.dp,
+            bottom = bottomPad,
+        ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
