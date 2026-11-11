@@ -39,11 +39,17 @@ import androidx.compose.ui.unit.dp
 import example.nucleus.navigation.ScreenConfig
 import com.metrolist.innertube.YouTube
 import example.nucleus.ui.components.ExpressiveEmptyState
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.player.GlassIconButton
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.helpers.desktopClickableCursor
 import example.nucleus.ui.helpers.desktopInteractiveSurface
 import example.nucleus.ui.utils.circleAwareShape
+import example.nucleus.ui.screens.shared.CollectionHeroIconButton
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.ctaLabel
@@ -158,17 +164,31 @@ fun AccountScreen(
                 },
                 actions = {
                     if (state.uiState is AccountState.LoggedIn) {
-                        FilledTonalIconButton(
-                            onClick = actions.onLogout,
-                            modifier = Modifier.desktopClickableCursor(),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error,
-                            ),
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Logout,
+                        val logoutGlass = LocalLiquidGlass.current
+                        val logoutHaze = LocalRailHaze.current ?: LocalContentHaze.current
+                        if (logoutGlass && logoutHaze != null) {
+                            GlassIconButton(
+                                onClick = actions.onLogout,
+                                imageVector = Icons.AutoMirrored.Filled.Logout,
                                 contentDescription = stringResource(Res.string.logout),
+                                hazeState = logoutHaze,
+                                contentTint = MaterialTheme.colorScheme.error,
+                                size = 40.dp,
+                                iconSize = 20.dp,
                             )
+                        } else {
+                            FilledTonalIconButton(
+                                onClick = actions.onLogout,
+                                modifier = Modifier.desktopClickableCursor(),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error,
+                                ),
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Logout,
+                                    contentDescription = stringResource(Res.string.logout),
+                                )
+                            }
                         }
                     }
                 },
@@ -381,21 +401,15 @@ private fun LoginSection(
             }
 
             if (browsers.isNotEmpty()) {
-                TextButton(
+                GlassTextPillButton(
                     onClick = { showAdvanced = !showAdvanced },
-                    modifier = Modifier.desktopClickableCursor(),
-                    shape = AppShapes.extraLarge,
-                ) {
-                    Icon(
-                        if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        null, Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        stringResource(Res.string.import_from_browser),
-                        style = MaterialTheme.typography.labelLargeEmphasized,
-                    )
-                }
+                    text = stringResource(Res.string.import_from_browser),
+                    leadingIcon = if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    iconSize = 18.dp,
+                    textStyle = MaterialTheme.typography.labelLargeEmphasized,
+                    fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                    fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
 
                 AnimatedVisibility(
                     visible = showAdvanced,
@@ -568,19 +582,21 @@ private fun LoginSection(
                 }
             }
 
-            Button(
+            GlassTextPillButton(
                 onClick = onLogin,
+                text = stringResource(Res.string.login_title),
+                leadingIcon = Icons.AutoMirrored.Filled.Login,
                 enabled = cookieInput.isNotBlank(),
+                selected = true,
+                contentTint = MaterialTheme.colorScheme.primary,
+                iconSize = 20.dp,
+                textStyle = MaterialTheme.typography.ctaLabel,
+                fallbackContainer = MaterialTheme.colorScheme.primary,
+                fallbackContent = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
-                    .desktopClickableCursor(enabled = cookieInput.isNotBlank()),
-                shape = AppShapes.extraLarge,
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(Res.string.login_title), style = MaterialTheme.typography.ctaLabel)
-            }
+                    .height(52.dp),
+            )
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
@@ -666,24 +682,24 @@ private fun ErrorSection(message: String, onRetry: () -> Unit, onReset: () -> Un
                 modifier = Modifier.heightIn(max = 280.dp),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
+                GlassTextPillButton(
                     onClick = onReset,
-                    shape = AppShapes.extraLarge,
-                    modifier = Modifier.desktopClickableCursor(),
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(Res.string.back_to_login), style = MaterialTheme.typography.ctaLabel)
-                }
-                Button(
+                    text = stringResource(Res.string.back_to_login),
+                    leadingIcon = Icons.Default.Close,
+                    iconSize = 16.dp,
+                    textStyle = MaterialTheme.typography.ctaLabel,
+                )
+                GlassTextPillButton(
                     onClick = onRetry,
-                    shape = AppShapes.extraLarge,
-                    modifier = Modifier.desktopClickableCursor(),
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(Res.string.retry), style = MaterialTheme.typography.ctaLabel)
-                }
+                    text = stringResource(Res.string.retry),
+                    leadingIcon = Icons.Default.Refresh,
+                    selected = true,
+                    contentTint = MaterialTheme.colorScheme.primary,
+                    iconSize = 16.dp,
+                    textStyle = MaterialTheme.typography.ctaLabel,
+                    fallbackContainer = MaterialTheme.colorScheme.primary,
+                    fallbackContent = MaterialTheme.colorScheme.onPrimary,
+                )
             }
         }
     }
@@ -865,24 +881,13 @@ private fun PlaylistsSection(
                 stringResource(Res.string.your_playlists),
                 style = MaterialTheme.typography.titleLargeEmphasized,
             )
-            FilledTonalIconButton(
+            CollectionHeroIconButton(
                 onClick = onRefresh,
                 enabled = !isLoading,
-                modifier = Modifier.desktopClickableCursor(enabled = !isLoading),
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = stringResource(Res.string.cd_refresh),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+                active = false,
+                isLoading = isLoading,
+                icon = Icons.Default.Refresh,
+            )
         }
 
         when {
@@ -1129,33 +1134,31 @@ private fun CookieExpiredSection(
                 }
             }
 
-            Button(
+            GlassTextPillButton(
                 onClick = onRenew,
+                text = stringResource(Res.string.renew_session),
+                leadingIcon = Icons.Default.Refresh,
                 enabled = cookieInput.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .desktopClickableCursor(enabled = cookieInput.isNotBlank()),
-                shape = AppShapes.extraLarge,
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(Res.string.renew_session), style = MaterialTheme.typography.ctaLabel)
-            }
+                selected = true,
+                contentTint = MaterialTheme.colorScheme.primary,
+                iconSize = 20.dp,
+                textStyle = MaterialTheme.typography.ctaLabel,
+                fallbackContainer = MaterialTheme.colorScheme.primary,
+                fallbackContent = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
-            OutlinedButton(
+            GlassTextPillButton(
                 onClick = onLogout,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .desktopClickableCursor(),
-                shape = AppShapes.extraLarge,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(Res.string.logout), style = MaterialTheme.typography.ctaLabel)
-            }
+                text = stringResource(Res.string.logout),
+                leadingIcon = Icons.AutoMirrored.Filled.Logout,
+                contentTint = MaterialTheme.colorScheme.error,
+                iconSize = 18.dp,
+                textStyle = MaterialTheme.typography.ctaLabel,
+                fallbackContainer = MaterialTheme.colorScheme.errorContainer,
+                fallbackContent = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
