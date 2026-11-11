@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -125,20 +124,20 @@ fun CollectionAmbientBackdrop(
             url = thumbnailUrl,
             contentDescription = null,
             modifier = Modifier
-                .fillMaxSize()
-                .blur(64.dp)
-                .alpha(0.45f),
+                .matchParentSize()
+                .blur(48.dp)
+                .alpha(0.6f),
             placeholderType = placeholder,
             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
             coilSizeOverride = 128,
         )
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .background(
                     Brush.verticalGradient(
-                        0.0f to surface.copy(alpha = 0.25f),
-                        0.55f to surface.copy(alpha = 0.72f),
+                        0.0f to surface.copy(alpha = 0.15f),
+                        0.55f to surface.copy(alpha = 0.70f),
                         1.0f to surface,
                     ),
                 ),
