@@ -6,13 +6,11 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -27,17 +25,16 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.*
 import example.nucleus.ui.components.glass.LocalLiquidGlass
-import example.nucleus.ui.components.glass.rememberLiquidGlassControlStyle
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.player.GlassIconButton
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
@@ -399,45 +396,22 @@ fun ArtistBanner(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (bannerGlass) {
-                    val playInteraction = remember { MutableInteractionSource() }
-                    val playStyle = rememberLiquidGlassControlStyle(
-                        shape = RoundedCornerShape(50),
+                    GlassTextPillButton(
+                        onClick = { if (hasPlayable) actions.onPlayArtist() },
+                        text = stringResource(Res.string.play_item),
+                        leadingIcon = Icons.Rounded.PlayArrow,
+                        enabled = hasPlayable,
+                        hazeState = bannerHaze,
                         containerColor = lensContainer,
-                    )
-                    Box(
+                        contentTint = Color.White,
+                        fallbackContainer = Color.White,
+                        fallbackContent = Color.Black,
+                        iconSize = 24.dp,
+                        textStyle = MaterialTheme.typography.ctaLabel,
                         modifier = Modifier
                             .height(52.dp)
-                            .defaultMinSize(minWidth = 112.dp)
-                            .hazeGlass(
-                                input = HazeInput.Sources(bannerHaze),
-                                style = playStyle,
-                                interactionSource = playInteraction,
-                            )
-                            .clickable(
-                                interactionSource = playInteraction,
-                                indication = null,
-                                enabled = hasPlayable,
-                                role = Role.Button,
-                                onClick = { if (hasPlayable) actions.onPlayArtist() },
-                            )
-                            .focusable(interactionSource = playInteraction)
-                            .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default)
-                            .padding(horizontal = 20.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                            Text(
-                                text = stringResource(Res.string.play_item),
-                                style = MaterialTheme.typography.ctaLabel,
-                                color = Color.White,
-                                maxLines = 1,
-                            )
-                        }
-                    }
+                            .defaultMinSize(minWidth = 112.dp),
+                    )
                 } else {
                     ExtendedFloatingActionButton(
                         text = {
@@ -531,41 +505,24 @@ fun ArtistBanner(
                 }
 
                 if (bannerGlass) {
-                    val subInteraction = remember { MutableInteractionSource() }
-                    val subStyle = rememberLiquidGlassControlStyle(
-                        shape = RoundedCornerShape(50),
+                    GlassTextPillButton(
+                        onClick = actions.onToggleSave,
+                        text = subLabel,
+                        leadingIcon = if (isSaved) Icons.Rounded.Check else null,
                         selected = isSaved,
+                        hazeState = bannerHaze,
                         containerColor = lensContainer,
+                        contentTint = Color.White,
+                        fallbackContainer = if (isSaved) {
+                            Color.White.copy(alpha = 0.18f)
+                        } else {
+                            Color.Transparent
+                        },
+                        fallbackContent = Color.White,
+                        iconSize = 18.dp,
+                        textStyle = MaterialTheme.typography.ctaLabel,
+                        modifier = Modifier.height(48.dp),
                     )
-                    Box(
-                        modifier = Modifier
-                            .height(48.dp)
-                            .hazeGlass(
-                                input = HazeInput.Sources(bannerHaze),
-                                style = subStyle,
-                                interactionSource = subInteraction,
-                            )
-                            .clickable(
-                                interactionSource = subInteraction,
-                                indication = null,
-                                role = Role.Button,
-                                onClick = actions.onToggleSave,
-                            )
-                            .focusable(interactionSource = subInteraction)
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .padding(horizontal = 18.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            if (isSaved) {
-                                Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            }
-                            Text(subLabel, style = MaterialTheme.typography.ctaLabel, color = Color.White, maxLines = 1)
-                        }
-                    }
                 } else {
                     OutlinedButton(
                     onClick = actions.onToggleSave,

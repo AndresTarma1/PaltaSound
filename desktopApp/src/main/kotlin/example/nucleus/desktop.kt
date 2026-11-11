@@ -236,7 +236,12 @@ fun TitleBarScope.DesktopTitleBar(
                         placeholderType = PlaceholderType.ARTIST,
                     )
                     Column {
-                        Text(accountInfo.name, maxLines = 1)
+                        Text(
+                            text = accountInfo.name,
+                            style = MaterialTheme.typography.titleLargeEmphasized,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
                         accountInfo.email?.let {
                             Text(
                                 it,

@@ -2,7 +2,11 @@ package example.nucleus.ui.screens.shared
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -11,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -31,16 +36,31 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.glass.hazeGlass
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.play_item
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
+import example.nucleus.ui.components.glass.rememberLiquidGlassControlStyle
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
+import example.nucleus.ui.components.player.GlassIconButton
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.ctaLabel
 import example.nucleus.ui.themes.expressiveFadeTween
@@ -148,37 +168,20 @@ fun CollectionHeroPlayButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ExtendedFloatingActionButton(
+    GlassTextPillButton(
         onClick = { if (!isLoading) onClick() },
-        shape = AppShapes.extraLarge,
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        elevation = FloatingActionButtonDefaults.elevation(2.dp, 4.dp),
+        text = stringResource(Res.string.play_item),
+        leadingIcon = if (isLoading) null else Icons.Default.PlayArrow,
+        selected = true,
+        enabled = !isLoading,
+        loading = isLoading,
+        contentTint = MaterialTheme.colorScheme.primary,
+        iconSize = 24.dp,
+        textStyle = MaterialTheme.typography.ctaLabel,
         modifier = modifier
             .height(CollectionHeroPlayHeight)
-            .defaultMinSize(minWidth = CollectionHeroPlayMinWidth, minHeight = CollectionHeroPlayHeight)
-            .pointerHoverIcon(if (isLoading) PointerIcon.Default else PointerIcon.Hand),
-    ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(22.dp),
-                strokeWidth = 2.5.dp,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = stringResource(Res.string.play_item),
-                style = MaterialTheme.typography.ctaLabel,
-                maxLines = 1,
-            )
-        }
-    }
+            .defaultMinSize(minWidth = CollectionHeroPlayMinWidth, minHeight = CollectionHeroPlayHeight),
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -192,6 +195,54 @@ fun CollectionHeroIconButton(
     enabled: Boolean = true,
     useWavyProgress: Boolean = false,
 ) {
+    val useGlass = LocalLiquidGlass.current
+    val hazeState = LocalRailHaze.current ?: LocalContentHaze.current
+    val colorScheme = MaterialTheme.colorScheme
+    val clickable = enabled || isLoading
+    if (useGlass && hazeState != null) {
+        // Lente con el mismo Crossfade de carga del clásico.
+        val interaction = remember { MutableInteractionSource() }
+        val style = rememberLiquidGlassControlStyle(
+            shape = RoundedCornerShape(50),
+            selected = active,
+            containerColor = colorScheme.surfaceContainer,
+        )
+        Box(
+            modifier = modifier
+                .size(CollectionHeroActionSize)
+                .hazeGlass(
+                    input = HazeInput.Sources(hazeState),
+                    style = style,
+                    interactionSource = interaction,
+                )
+                .clip(RoundedCornerShape(50))
+                .clickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    enabled = clickable,
+                    role = Role.Button,
+                    onClick = onClick,
+                )
+                .focusable(enabled = clickable, interactionSource = interaction)
+                .pointerHoverIcon(
+                    if (enabled && !isLoading) PointerIcon.Hand else PointerIcon.Default,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            CollectionHeroIconContent(
+                isLoading = isLoading,
+                useWavyProgress = useWavyProgress,
+                icon = icon,
+                contentColor = if (active) {
+                    colorScheme.primary
+                } else {
+                    colorScheme.onSurfaceVariant
+                },
+            )
+        }
+        return
+    }
+
     val containerColor = if (active) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
     } else {
@@ -219,32 +270,48 @@ fun CollectionHeroIconButton(
             disabledContentColor = contentColor,
         ),
     ) {
-        val animationsEnabled = LocalAnimationsEnabled.current
-        Crossfade(
-            targetState = isLoading,
-            animationSpec = if (animationsEnabled) expressiveFadeTween() else snap(),
-            label = "collection_hero_icon",
-        ) { loading ->
-            if (loading) {
-                if (useWavyProgress) {
-                    CircularWavyProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                } else {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = contentColor,
-                    )
-                }
+        CollectionHeroIconContent(
+            isLoading = isLoading,
+            useWavyProgress = useWavyProgress,
+            icon = icon,
+            contentColor = contentColor,
+        )
+    }
+}
+
+@Composable
+private fun CollectionHeroIconContent(
+    isLoading: Boolean,
+    useWavyProgress: Boolean,
+    icon: ImageVector,
+    contentColor: androidx.compose.ui.graphics.Color,
+) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    Crossfade(
+        targetState = isLoading,
+        animationSpec = if (animationsEnabled) expressiveFadeTween() else snap(),
+        label = "collection_hero_icon",
+    ) { loading ->
+        if (loading) {
+            if (useWavyProgress) {
+                CircularWavyProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                )
             } else {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(CollectionHeroIconSize),
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = contentColor,
                 )
             }
+        } else {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(CollectionHeroIconSize),
+            )
         }
     }
 }
@@ -263,13 +330,67 @@ fun CollectionStickyHeaderBar(
     playContentDescription: String,
     modifier: Modifier = Modifier,
 ) {
+    val useStickyGlass = LocalLiquidGlass.current
+    val stickyHaze = LocalRailHaze.current ?: LocalContentHaze.current
+    val stickyBarStyle = if (useStickyGlass && stickyHaze != null) {
+        rememberLiquidGlassStyle(
+            shape = RoundedCornerShape(0.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        )
+    } else null
+
+    if (useStickyGlass && stickyHaze != null) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .hazeGlass(
+                    input = HazeInput.Sources(stickyHaze),
+                    style = stickyBarStyle!!,
+                ),
+        ) {
+            CollectionStickyHeaderRow(
+                title = title,
+                isDownloading = isDownloading,
+                isFullyDownloaded = isFullyDownloaded,
+                onDownloadClick = onDownloadClick,
+                onPlayClick = onPlayClick,
+                playContentDescription = playContentDescription,
+                hazeState = stickyHaze,
+            )
+        }
+        return
+    }
+
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f),
         tonalElevation = 2.dp,
         shadowElevation = 0.dp,
         modifier = modifier.fillMaxWidth(),
     ) {
-        Row(
+        CollectionStickyHeaderRow(
+            title = title,
+            isDownloading = isDownloading,
+            isFullyDownloaded = isFullyDownloaded,
+            onDownloadClick = onDownloadClick,
+            onPlayClick = onPlayClick,
+            playContentDescription = playContentDescription,
+            hazeState = null,
+        )
+    }
+}
+
+@Composable
+private fun CollectionStickyHeaderRow(
+    title: String,
+    isDownloading: Boolean,
+    isFullyDownloaded: Boolean,
+    onDownloadClick: () -> Unit,
+    onPlayClick: () -> Unit,
+    playContentDescription: String,
+    hazeState: HazeState?,
+    modifier: Modifier = Modifier,
+) {
+    Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 56.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
@@ -294,23 +415,34 @@ fun CollectionStickyHeaderBar(
                 useWavyProgress = true,
             )
 
-            FilledTonalIconButton(
-                onClick = onPlayClick,
-                modifier = Modifier
-                    .size(CollectionHeroActionSize)
-                    .pointerHoverIcon(PointerIcon.Hand),
-                shape = circleAwareShape(),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
-            ) {
-                Icon(
+            if (hazeState != null) {
+                GlassIconButton(
+                    onClick = onPlayClick,
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = playContentDescription,
-                    modifier = Modifier.size(22.dp),
+                    hazeState = hazeState,
+                    selected = true,
+                    size = CollectionHeroActionSize,
+                    iconSize = 22.dp,
                 )
+            } else {
+                FilledTonalIconButton(
+                    onClick = onPlayClick,
+                    modifier = Modifier
+                        .size(CollectionHeroActionSize)
+                        .pointerHoverIcon(PointerIcon.Hand),
+                    shape = circleAwareShape(),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = playContentDescription,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
         }
     }
-}

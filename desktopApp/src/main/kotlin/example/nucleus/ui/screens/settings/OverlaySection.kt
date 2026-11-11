@@ -14,6 +14,7 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
 import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.overlay.HotkeyCombo.Companion.DEFAULT
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.viewmodels.OverlaySettingsViewModel
 import example.nucleus.generated.resources.*
@@ -63,9 +64,12 @@ fun OverlaySettingsGroup(
                 subtitle = { Text(overlayHotkeyLabel.ifBlank { defaultHotkeyLabel }) },
                 colors = colors,
                 action = {
-                    FilledTonalButton(onClick = onOpenCapture) {
-                        Text(stringResource(Res.string.overlay_shortcut_set))
-                    }
+                    GlassTextPillButton(
+                        onClick = onOpenCapture,
+                        text = stringResource(Res.string.overlay_shortcut_set),
+                        fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                        fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 },
                 onClick = onOpenCapture
             )

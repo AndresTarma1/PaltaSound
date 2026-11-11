@@ -40,9 +40,10 @@ fun GlassItemActionButton(
     iconSize: Dp = 18.dp,
     contentTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     selected: Boolean = false,
-    // Fondo del modo clásico (p. ej. scrim negro sobre portadas). En cristal
-    // no se usa: la base vive dentro del estilo.
+    // Fondo y tinta del modo clásico (p. ej. scrim negro sobre portadas, tonal
+    // en barras). En cristal no se usan: viven dentro del estilo.
     fallbackContainer: Color? = null,
+    fallbackContent: Color = contentTint,
 ) {
     val useGlass = LocalLiquidGlass.current
     val hazeState = LocalRailHaze.current ?: LocalContentHaze.current
@@ -80,7 +81,7 @@ fun GlassItemActionButton(
                 Icon(
                     imageVector = imageVector,
                     contentDescription = contentDescription,
-                    tint = contentTint,
+                    tint = fallbackContent,
                     modifier = Modifier.size(iconSize),
                 )
             }

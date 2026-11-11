@@ -214,51 +214,66 @@ internal fun MultiSongSelectionBar(
             )
             if (onSelectAll != null && allSongIds.isNotEmpty()) {
                 if (allSelected) {
-                    FilledTonalIconButton(
+                    GlassItemActionButton(
                         onClick = onClearSelection,
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Icon(Icons.Default.Clear, stringResource(Res.string.cd_deselect_all))
-                    }
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = stringResource(Res.string.cd_deselect_all),
+                        size = 40.dp,
+                        iconSize = 24.dp,
+                        fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                        fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 } else {
-                    FilledTonalIconButton(
+                    GlassItemActionButton(
                         onClick = onSelectAll,
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Icon(Icons.Default.AddBox, stringResource(Res.string.cd_select_all))
-                    }
+                        imageVector = Icons.Default.AddBox,
+                        contentDescription = stringResource(Res.string.cd_select_all),
+                        size = 40.dp,
+                        iconSize = 24.dp,
+                        fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                        fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 }
             }
-            FilledTonalIconButton(
+            GlassItemActionButton(
                 onClick = { showPlaylistDialog = true },
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, stringResource(Res.string.cd_add_to_playlist))
-            }
-            FilledTonalIconButton(
+                imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                contentDescription = stringResource(Res.string.cd_add_to_playlist),
+                size = 40.dp,
+                iconSize = 24.dp,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            GlassItemActionButton(
                 onClick = { downloadViewModel.downloadAll(selectedSongs) },
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(Icons.Default.Download, stringResource(Res.string.cd_download))
-            }
+                imageVector = Icons.Default.Download,
+                contentDescription = stringResource(Res.string.cd_download),
+                size = 40.dp,
+                iconSize = 24.dp,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
             if (isLocalPlaylist && onRemoveFromPlaylist != null) {
-                FilledTonalIconButton(
+                GlassItemActionButton(
                     onClick = { showRemoveConfirm = true },
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    ),
-                ) {
-                    Icon(Icons.Default.Delete, stringResource(Res.string.cd_remove_from_playlist))
-                }
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(Res.string.cd_remove_from_playlist),
+                    size = 40.dp,
+                    iconSize = 24.dp,
+                    contentTint = MaterialTheme.colorScheme.error,
+                    fallbackContainer = MaterialTheme.colorScheme.errorContainer,
+                    fallbackContent = MaterialTheme.colorScheme.onErrorContainer,
+                )
             }
-            FilledTonalIconButton(
+            GlassItemActionButton(
                 onClick = onClearSelection,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(Icons.Default.Close, stringResource(Res.string.btn_cancel))
-            }
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(Res.string.btn_cancel),
+                size = 40.dp,
+                iconSize = 24.dp,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
         }
     }
 
