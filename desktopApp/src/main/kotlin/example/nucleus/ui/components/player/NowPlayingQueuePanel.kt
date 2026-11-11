@@ -2,6 +2,7 @@
 
 package example.nucleus.ui.components.player
 
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -227,7 +228,7 @@ fun NowPlayingQueuePanel(
     }
 
     if (showSaveQueueDialog) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showSaveQueueDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 0.dp,

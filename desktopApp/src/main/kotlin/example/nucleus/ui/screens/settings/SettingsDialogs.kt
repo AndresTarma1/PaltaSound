@@ -5,6 +5,7 @@ import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -65,7 +66,7 @@ private fun OverlayCaptureDialog(onDismiss: () -> Unit) {
         }
         onDispose { hotkeyManager.cancelCapture() }
     }
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 0.dp,
@@ -82,7 +83,7 @@ private fun OverlayCaptureDialog(onDismiss: () -> Unit) {
 @Composable
 private fun YtmSyncWarningDialog(onDismiss: () -> Unit) {
     val viewModel: SyncSettingsViewModel = koinInject()
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 0.dp,
@@ -104,7 +105,7 @@ private fun YtmSyncWarningDialog(onDismiss: () -> Unit) {
 @Composable
 private fun ClearDownloadsDialog(onDismiss: () -> Unit) {
     val downloadViewModel = LocalDownloadViewModel.current
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 0.dp,

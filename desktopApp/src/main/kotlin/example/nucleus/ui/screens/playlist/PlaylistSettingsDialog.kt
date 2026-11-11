@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -67,7 +68,7 @@ fun PlaylistSettingsDialog(
     var name by remember(playlistTitle) { mutableStateOf(playlistTitle) }
     val nameChanged = name.trim().isNotBlank() && name.trim() != playlistTitle
 
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,

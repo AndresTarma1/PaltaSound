@@ -27,6 +27,7 @@ import example.nucleus.data.repository.SeekBarStyle
 import example.nucleus.data.repository.ThemePalette
 import example.nucleus.ui.components.PlayerSeekBar
 import example.nucleus.ui.components.glass.GlassDropdownMenu
+import example.nucleus.ui.components.glass.GlassDialogSurface
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.systemFontFamily
@@ -387,12 +388,12 @@ internal fun ResponsiveSettingsDialog(
             val dialogWidth = (maxWidth * 0.9f).coerceAtMost(480.dp)
             val maxDialogHeight = maxHeight * 0.85f
 
-            Surface(
+            GlassDialogSurface(
                 modifier = Modifier
                     .width(dialogWidth)
                     .heightIn(max = maxDialogHeight),
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp,
             ) {
                 Column(modifier = Modifier.height(IntrinsicSize.Min)) {

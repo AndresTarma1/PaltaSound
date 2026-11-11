@@ -2,6 +2,7 @@
 
 package example.nucleus.ui.components.player
 
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
@@ -240,7 +241,7 @@ fun PlaybackQueuePanel(
     }
 
     if (showSaveQueueDialog) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showSaveQueueDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 0.dp,

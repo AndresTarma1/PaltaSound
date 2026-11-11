@@ -37,10 +37,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.glass.hazeGlass
 import example.nucleus.download.DownloadState
 import com.metrolist.innertube.models.SongItem
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.themes.AppShapes
 import org.jetbrains.compose.resources.stringResource
 
@@ -246,16 +252,43 @@ fun CollectionContextMenuContent(
             (if (onShuffle != null) 1 else 0)
 
     Column(modifier = Modifier.width(260.dp)) {
-        Surface(
-            shape = AppShapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 0.dp,
-        ) {
+        // Título con el mismo cristal que los grupos (antes Surface sólida).
+        // En popup (ventana aparte) selecciona el fondo ambiental, válido.
+        val titleGlass = LocalLiquidGlass.current
+        val titleHaze = LocalContentHaze.current ?: LocalGlassHaze.current
+        val useTitleGlass = titleGlass && titleHaze != null
+        val titleShape = AppShapes.large as? androidx.compose.foundation.shape.RoundedCornerShape
+            ?: androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        val titleStyle = if (useTitleGlass) {
+            rememberLiquidGlassStyle(
+                shape = titleShape,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            )
+        } else null
+
+        val titleText: @Composable () -> Unit = {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmallEmphasized,
                 maxLines = 1,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
+        }
+        if (useTitleGlass) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier.hazeGlass(
+                    input = HazeInput.Sources(titleHaze),
+                    style = titleStyle!!,
+                ),
+                contentAlignment = androidx.compose.ui.Alignment.CenterStart,
+                content = { titleText() },
+            )
+        } else {
+            Surface(
+                shape = AppShapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 0.dp,
+                content = titleText,
             )
         }
 

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.*
 import example.nucleus.ui.components.glass.GlassFilterChip
+import example.nucleus.ui.components.glass.GlassDialogSurface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,13 +73,13 @@ fun EqualizerDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
+        GlassDialogSurface(
             modifier = Modifier
                 .fillMaxWidth(0.70f)
                 .padding(vertical = 24.dp),
             shape = AppShapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
         ) {
             Column(
                 modifier = Modifier

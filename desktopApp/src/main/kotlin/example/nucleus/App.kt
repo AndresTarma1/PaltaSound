@@ -14,6 +14,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.AlertDialog
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -442,7 +443,7 @@ fun NucleusApplicationScope.App(
                         val mpvError by playerViewModel.mpvError.collectAsState()
                         if (mpvError != null) {
                             val scheme = MaterialTheme.colorScheme
-                            AlertDialog(
+                            GlassAlertDialog(
                                 onDismissRequest = { playerViewModel.clearMpvError() },
                                 containerColor = scheme.surfaceContainerHigh,
                                 titleContentColor = scheme.onSurface,
@@ -602,7 +603,7 @@ private fun UpdateReadyDialog(
         // no dentro del content del diálogo, que se compone en su propia ventana y puede
         // caer al tema por defecto (claro) dejando texto negro sobre fondo oscuro.
         val scheme = MaterialTheme.colorScheme
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = onPostpone,
             containerColor = scheme.surfaceContainerHigh,
             titleContentColor = scheme.onSurface,
@@ -629,7 +630,7 @@ private fun YtmSyncWarningDialog(
 ) {
     if (show) {
         val scheme = MaterialTheme.colorScheme
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = onDismiss,
             containerColor = scheme.surfaceContainerHigh,
             titleContentColor = scheme.onSurface,

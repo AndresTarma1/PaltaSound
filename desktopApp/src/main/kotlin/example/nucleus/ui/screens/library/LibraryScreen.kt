@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -235,7 +236,7 @@ fun LibraryScreenRoute(
 
     var openExtractPage by remember { mutableStateOf(true) }
     if (showCsvTutorial) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showCsvTutorial = false },
             icon = { CsvImportTutorialIcon() },
             title = { Text(stringResource(Res.string.csv_tutorial_title)) },
@@ -280,7 +281,7 @@ fun LibraryScreenRoute(
         if (importNameField.isBlank()) {
             importNameField = csvState.suggestedName
         }
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { playlistsViewModel.cancelCsvImport() },
             title = { Text(stringResource(Res.string.csv_import_title)) },
             text = {
@@ -311,7 +312,7 @@ fun LibraryScreenRoute(
     }
 
     if (showDeletePlaylistDialog && playlistToDelete != null) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = {
                 showDeletePlaylistDialog = false
                 playlistToDelete = null
@@ -553,7 +554,7 @@ fun LibraryScreen(
     }
 
     if (showCreatePlaylistDialog) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showCreatePlaylistDialog = false },
             title = { Text(stringResource(Res.string.create_playlist_dialog)) },
             text = {
