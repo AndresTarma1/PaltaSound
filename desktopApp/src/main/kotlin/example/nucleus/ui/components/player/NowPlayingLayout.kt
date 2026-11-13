@@ -53,12 +53,19 @@ fun NowPlayingLayout(
     var showEqualizer by remember { mutableStateOf(false) }
     val preferencesRepo = LocalUserPreferences.current
     val equalizerBands by preferencesRepo.equalizerBands.collectAsState(initial = List(5) { 0f })
-    val bottomInset = LocalMiniPlayerInset.current
+    // Congelados al entrar: durante la salida (volver al mini player) estos
+    // insets cambian en el mismo frame — el título deja de estar superpuesto y
+    // vuelve el mini player — y reacomodaban la pantalla que sale mientras el
+    // shared element leía sus bounds, haciendo que la portada se fuese "abajo"
+    // antes de aterrizar. Congelados, la fuente del morph queda quieta.
+    val initialBottomInset = LocalMiniPlayerInset.current
+    val initialTopInset = LocalTitleBarOverlayInset.current
+    val bottomInset = remember { initialBottomInset }
     // La barra de titulo va superpuesta en Now Playing (App.kt), asi que el contenido
     // arranca 36dp mas abajo. El padding va en la columna de contenido, NO en el
     // BoxWithConstraints: el fondo ambiental vive ahi dentro y tiene que seguir
     // pintando hasta el borde superior.
-    val topInset = LocalTitleBarOverlayInset.current
+    val topInset = remember { initialTopInset }
     val queueCount = state.queue.size
 
     // Auto-hide del cromo (barra, progreso, transporte, volumen, colapso)

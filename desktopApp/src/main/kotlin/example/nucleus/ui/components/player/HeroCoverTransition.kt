@@ -12,16 +12,25 @@ import example.nucleus.ui.themes.expressiveLayoutDuration
 import example.nucleus.utils.LocalAnimationsEnabled
 
 /**
+ * Duración del morph de la carátula. Más larga que el layout normal a
+ * propósito: el salto miniPlayer ⇄ Now Playing es el gesto más visible de la
+ * app y con 320 ms no se apreciaba.
+ */
+private const val HeroCoverMorphDuration = 560
+
+/**
  * Hero cover element para la transición de la carátula entre el MiniPlayer y NowPlaying.
  *
- * Usa `sharedBounds`: el overlay interpola posición/tamaño y el contenido se
- * re-mide en destino (sin distorsión de aspecto, aunque la portada del mini
- * player sea 16:9). Solo se aplica con animaciones activadas; con reduce-motion
- * la carátula aparece sin morph.
+ * `sharedElement` (no `sharedBounds`): el contenido se ESCALA entre ambos bounds
+ * en vez de re-medirse, que para una imagen es lo que da el "encogerse hacia el
+ * thumbnail" al volver, sin saltos de re-layout a mitad de vuelo.
+ *
+ * Solo se aplica con animaciones activadas; con reduce-motion la carátula
+ * aparece sin morph.
  *
  * Nota Tao: los bounds del elemento que sale deben quedarse quietos durante la
- * transición — por eso el cover del MiniPlayer entra/sale solo con fade (sin
- * expand/shrink, que pelearían con el overlay y producían el tembleque).
+ * transición — por eso el cover del MiniPlayer entra/sale solo con fade y
+ * NowPlaying congela sus insets mientras está compuesto.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -33,12 +42,11 @@ fun Modifier.heroCoverElement(
     if (sharedTransitionScope == null || animatedVisibilityScope == null) return this
     if (!LocalAnimationsEnabled.current) return this
     return with(sharedTransitionScope) {
-        sharedBounds(
+        sharedElement(
             sharedContentState = rememberSharedContentState(key = "now_playing_cover_$songId"),
             animatedVisibilityScope = animatedVisibilityScope,
-            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
             boundsTransform = { _, _ ->
-                tween<Rect>(durationMillis = expressiveLayoutDuration, easing = expressiveEasing)
+                tween<Rect>(durationMillis = HeroCoverMorphDuration, easing = expressiveEasing)
             },
         )
     }
