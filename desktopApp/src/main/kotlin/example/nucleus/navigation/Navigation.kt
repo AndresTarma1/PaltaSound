@@ -194,6 +194,10 @@ fun NavigationDesktop(
         dockedMiniPlayer -> dimens.miniPlayerHeight
         else -> 0.dp
     }
+    // El FAB flota encima del contenido (y sobre el player): reservamos su alto
+    // en el inset global para que ningún listado quede debajo de él.
+    val fabBottomInset = if (fabMenuVisible) 72.dp else 0.dp
+    val contentBottomInset = baseBottomInset + fabBottomInset
 
     // Nos permite entender o mostrar los errores de reproducción en un Snackbar, sin bloquear la UI principal.
     LaunchedEffect(playerViewModel) {
@@ -208,7 +212,7 @@ fun NavigationDesktop(
     CompositionLocalProvider(
         LocalLiquidGlass provides effectiveLiquidGlass,
     ) {
-        CompositionLocalProvider(LocalMiniPlayerInset provides baseBottomInset) {
+        CompositionLocalProvider(LocalMiniPlayerInset provides contentBottomInset) {
             SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
                 val sharedTransitionScope = this
                 val miniPlayerSlot: @Composable (Modifier, AnimatedVisibilityScope?) -> Unit = { m, visibilityScope ->

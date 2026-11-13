@@ -81,6 +81,7 @@ import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.glass.LocalGlassHaze
 import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.components.player.heroCoverElement
+import example.nucleus.ui.helpers.blockPointerEventsBehind
 import example.nucleus.ui.components.player.HeroCoverMorphMs
 import example.nucleus.ui.components.player.PlayerIconToggle
 import example.nucleus.ui.components.player.PlayerProgressRow
@@ -196,6 +197,9 @@ fun MiniPlayer(
                 .padding(horizontal = 16.dp)
                 .padding(bottom = dimens.miniPlayerFloatingMargin)
                 .height(dimens.miniPlayerHeight)
+                // Los huecos entre controles no deben dejar pasar clics ni
+                // scroll a la lista de detrás.
+                .blockPointerEventsBehind()
                 .clip(floatingShape)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -295,6 +299,7 @@ fun MiniPlayer(
             modifier = modifier
                 .fillMaxWidth()
                 .height(dimens.miniPlayerHeight)
+                .blockPointerEventsBehind()
                 .then(
                     if (isOnNowPlaying || bgTransparent) {
                         Modifier.background(Color.Transparent)

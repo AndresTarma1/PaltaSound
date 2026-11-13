@@ -51,6 +51,7 @@ import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.glass.rememberLiquidGlassControlStyle
 import example.nucleus.ui.components.player.GlassIconButton
 import example.nucleus.utils.LocalAnimationsEnabled
+import example.nucleus.ui.helpers.blockPointerEventsBehind
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -77,7 +78,7 @@ internal fun NavigationFabMenu(
     var expanded by remember { mutableStateOf(false) }
 
     Column(
-        modifier = modifier,
+        modifier = modifier.blockPointerEventsBehind(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         horizontalAlignment = Alignment.Start,
     ) {

@@ -291,6 +291,7 @@ private fun LobbyContent(
             Text(
                 stringResource(Res.string.lt_create_title),
                 style = MaterialTheme.typography.titleLargeEmphasized,
+
             )
             Text(
                 stringResource(Res.string.lt_create_desc),
@@ -304,8 +305,8 @@ private fun LobbyContent(
                 loading = busy,
                 selected = true,
                 contentTint = MaterialTheme.colorScheme.primary,
-                fallbackContainer = MaterialTheme.colorScheme.primary,
-                fallbackContent = MaterialTheme.colorScheme.onPrimary,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
