@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import example.nucleus.ui.components.glass.GlassAlertDialog
+import example.nucleus.ui.components.glass.GlassShaderWarmup
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +31,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -515,6 +518,15 @@ fun NucleusApplicationScope.App(
                                         .fillMaxSize()
                                         .background(LocalChromeSurface.current)
                                 ) {
+                                    // Warm-up de shaders de Haze mientras el cristal está
+                                    // apagado: evita el tirón al activarlo por primera vez.
+                                    if (!effectiveLiquidGlass) {
+                                        GlassShaderWarmup(
+                                            Modifier
+                                                .align(Alignment.TopStart)
+                                                .alpha(0.01f)
+                                        )
+                                    }
                                     Column {
 
                                         // Fuera de Now Playing la barra va APILADA arriba, dentro de la
