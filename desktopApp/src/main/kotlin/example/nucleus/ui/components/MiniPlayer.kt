@@ -8,10 +8,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -93,7 +91,6 @@ import example.nucleus.ui.themes.LocalChromeSurface
 import example.nucleus.ui.themes.LocalDimens
 import example.nucleus.ui.themes.LocalLayoutMode
 import example.nucleus.ui.themes.expressiveFadeTween
-import example.nucleus.ui.themes.expressiveLayoutTween
 import example.nucleus.ui.themes.expressiveTween
 import example.nucleus.ui.themes.rememberUiTween
 import example.nucleus.ui.themes.songTitle
@@ -724,15 +721,15 @@ private fun MiniPlayerWideRow(
                 val animationsEnabled = LocalAnimationsEnabled.current
                 AnimatedVisibility(
                     visible = !isOnNowPlaying,
+                    // Solo fade, sin expand/shrink: los bounds deben quedarse quietos
+                    // para que el overlay del shared element no pelee con el layout.
                     enter = if (animationsEnabled) {
-                        fadeIn(expressiveFadeTween()) +
-                            expandHorizontally(animationSpec = expressiveLayoutTween())
+                        fadeIn(expressiveFadeTween())
                     } else {
                         EnterTransition.None
                     },
                     exit = if (animationsEnabled) {
-                        fadeOut(expressiveTween(180)) +
-                            shrinkHorizontally(animationSpec = expressiveLayoutTween())
+                        fadeOut(expressiveTween(180))
                     } else {
                         ExitTransition.None
                     },

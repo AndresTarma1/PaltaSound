@@ -2,9 +2,18 @@
 
 package example.nucleus.ui.components.player
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -22,6 +31,10 @@ import example.nucleus.generated.resources.*
 import example.nucleus.generated.resources.Res
 import example.nucleus.models.MediaMetadata
 import example.nucleus.navigation.ScreenConfig
+import example.nucleus.ui.themes.expressiveFadeTween
+import example.nucleus.ui.themes.expressiveLayoutTween
+import example.nucleus.ui.themes.expressiveTween
+import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.viewmodels.PlayerUiState
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.onHover
@@ -42,6 +55,7 @@ internal fun NowPlayingCompactBody(
     autoHide: NowPlayingAutoHide,
 ) {
     val hasPanel = selectedTab.hasPanel
+    val animationsEnabled = LocalAnimationsEnabled.current
 
     // Layout vertical tipo móvil: el contenido scrolleable (letra, cola) manda y ocupa
     // todo el espacio; el chrome se ancla abajo.
@@ -55,19 +69,50 @@ internal fun NowPlayingCompactBody(
                 .weight(1f)
                 .fillMaxWidth(),
         ) {
-            if (hasPanel) {
-                NowPlayingTabContent(
-                    tab = selectedTab,
-                    song = song,
-                    state = state,
-                    lyrics = lyrics,
-                    mediaInfo = mediaInfo,
-                    lyricsTextStyle = MaterialTheme.typography.bodyLarge,
-                    onNavigate = onNavigate,
-                )
-            } else {
-                // Vista de portada en vertical: carátula grande arriba, metadatos debajo.
-                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            // Al cambiar de pestaña la portada se va hacia la izquierda con fade
+            // y el panel entra desde la derecha (y viceversa al volver): la
+            // dirección de la transición depende del destino.
+            // El morph de la carátula grande a la pequeña del chrome lo pone el
+            // overlay compartido (misma clave en ambas).
+            AnimatedContent(
+                targetState = hasPanel,
+                transitionSpec = {
+                    if (!animationsEnabled) {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    } else if (targetState) {
+                        // → panel (letras/cola): contenido entra de la derecha,
+                        // la portada sale hacia la izquierda.
+                        (fadeIn(expressiveFadeTween()) +
+                            slideInHorizontally(animationSpec = expressiveLayoutTween()) { it / 4 })
+                            .togetherWith(
+                                fadeOut(expressiveTween(200)) +
+                                    slideOutHorizontally(animationSpec = expressiveLayoutTween()) { -it / 3 },
+                            )
+                    } else {
+                        // → portada: vuelve desde la izquierda, el panel sale a la derecha.
+                        (fadeIn(expressiveFadeTween()) +
+                            slideInHorizontally(animationSpec = expressiveLayoutTween()) { -it / 4 })
+                            .togetherWith(
+                                fadeOut(expressiveTween(200)) +
+                                    slideOutHorizontally(animationSpec = expressiveLayoutTween()) { it / 4 },
+                            )
+                    }
+                },
+                label = "nowPlayingCompactPane",
+            ) { showPanel ->
+                if (showPanel) {
+                    NowPlayingTabContent(
+                        tab = selectedTab,
+                        song = song,
+                        state = state,
+                        lyrics = lyrics,
+                        mediaInfo = mediaInfo,
+                        lyricsTextStyle = MaterialTheme.typography.bodyLarge,
+                        onNavigate = onNavigate,
+                    )
+                } else {
+                    // Vista de portada en vertical: carátula grande arriba, metadatos debajo.
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val coverSize = minOf(maxWidth * 0.86f, maxHeight - 132.dp, 320.dp)
                         .coerceAtLeast(96.dp)
                     Column(
@@ -97,6 +142,7 @@ internal fun NowPlayingCompactBody(
                 }
             }
         }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -112,7 +158,24 @@ internal fun NowPlayingCompactBody(
                 .onHover { autoHide.chromeHover = it },
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (hasPanel) {
+            // Mini carátula + metadatos cuando hay panel: entra desde la izquierda
+            // acompañando al morph compartido de la portada grande.
+            AnimatedVisibility(
+                visible = hasPanel,
+                enter = if (animationsEnabled) {
+                    fadeIn(expressiveFadeTween()) +
+                        slideInHorizontally(animationSpec = expressiveLayoutTween()) { -it / 2 }
+                } else {
+                    EnterTransition.None
+                },
+                exit = if (animationsEnabled) {
+                    fadeOut(expressiveTween(180)) +
+                        slideOutHorizontally(animationSpec = expressiveLayoutTween()) { -it / 2 }
+                } else {
+                    ExitTransition.None
+                },
+                label = "nowPlayingChromeRow",
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -122,7 +185,9 @@ internal fun NowPlayingCompactBody(
                         title = song.title,
                         modifier = Modifier
                             .size(48.dp)
-                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
+                            // Sin clave compartida: la portada grande ya la tiene y
+                            // dos nodos con la misma clave harían saltar el overlay.
+                            // Aquí basta la entrada por slide/fade.
                             .coverEnter(coverScale, coverAlpha),
                     )
                     Spacer(modifier = Modifier.width(12.dp))
