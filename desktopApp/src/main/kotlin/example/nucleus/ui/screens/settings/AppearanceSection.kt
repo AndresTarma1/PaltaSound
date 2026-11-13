@@ -11,7 +11,9 @@ import androidx.compose.runtime.*
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.ui.screens.shared.displayName
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalLiquidGlassCanToggleLive
 import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.data.repository.*
 import example.nucleus.viewmodels.AppearanceSettingsViewModel
@@ -34,6 +36,7 @@ fun AppearanceSettingsGroup() {
     val navigationRailStyle by viewModel.navigationRailStyle.collectAsState()
     val appBackgroundStyle by viewModel.appBackgroundStyle.collectAsState()
     val liquidGlassEnabled by viewModel.liquidGlassEnabled.collectAsState()
+    val canToggleLiquidGlassLive = LocalLiquidGlassCanToggleLive.current
 
     var showThemeDropdown by remember { mutableStateOf(false) }
     var showDarkLevelDropdown by remember { mutableStateOf(false) }
@@ -42,6 +45,7 @@ fun AppearanceSettingsGroup() {
     var showPaletteDropdown by remember { mutableStateOf(false) }
     var showNavigationRailStyle by remember { mutableStateOf(false) }
     var showAppBackgroundDropdown by remember { mutableStateOf(false) }
+    var showGlassRestartNotice by remember { mutableStateOf(false) }
 
     // Presets
     val presetsGlass = LocalLiquidGlass.current
@@ -214,15 +218,29 @@ fun AppearanceSettingsGroup() {
         SettingsSwitch(
             icon = { Icon(Icons.Rounded.BlurOn, null) },
             title = { Text(stringResource(Res.string.liquid_glass_beta)) },
-            subtitle = { Text(stringResource(Res.string.liquid_glass_beta_subtitle)) },
+            subtitle = {
+                Text(
+                    if (liquidGlassEnabled && !canToggleLiquidGlassLive) {
+                        stringResource(Res.string.liquid_glass_restart_required)
+                    } else {
+                        stringResource(Res.string.liquid_glass_beta_subtitle)
+                    }
+                )
+            },
             shapes = ListItemDefaults.segmentedShapes(index = 4, count = 5),
             colors = colors,
             state = liquidGlassEnabled,
-            onCheckedChange = {
+            onCheckedChange = { enabled ->
                 // El cristal solo rinde sobre fondo sólido: al activarlo se fija
                 // y el selector de fondo queda bloqueado (ver DropdownSelector).
-                if (it) viewModel.setAppBackgroundStyle(BackgroundStyle.SOLID_COLOR)
-                viewModel.setLiquidGlassEnabled(it)
+                if (enabled) viewModel.setAppBackgroundStyle(BackgroundStyle.SOLID_COLOR)
+                viewModel.setLiquidGlassEnabled(enabled)
+                // Haze Glass compila sus shaders en el primer frame que dibuja
+                // cristal. Si este proceso arrancó en material, activarlo en
+                // caliente congelaría la ventana: se aplica al reiniciar.
+                if (enabled && !canToggleLiquidGlassLive) {
+                    showGlassRestartNotice = true
+                }
             }
         )
 
@@ -231,6 +249,19 @@ fun AppearanceSettingsGroup() {
         ){
             LiquidGlassSettings()
         }
+    }
+
+    if (showGlassRestartNotice) {
+        GlassAlertDialog(
+            onDismissRequest = { showGlassRestartNotice = false },
+            title = { Text(stringResource(Res.string.liquid_glass_restart_title)) },
+            text = { Text(stringResource(Res.string.liquid_glass_restart_message)) },
+            confirmButton = {
+                TextButton(onClick = { showGlassRestartNotice = false }) {
+                    Text(stringResource(Res.string.liquid_glass_restart_confirm))
+                }
+            },
+        )
     }
 }
 

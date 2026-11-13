@@ -116,6 +116,8 @@ val musicBottomTabs = listOf(
 fun NavigationDesktop(
     rootComponent: RootComponent,
     userPreferences: UserPreferencesRepository,
+    /** Si el proceso arrancó en cristal, el toggle puede alternar en caliente. */
+    canToggleLiquidGlassLive: Boolean,
     appMode: AppMode,
 ) {
     val childStack by rootComponent.childStack.subscribeAsState()
@@ -148,10 +150,15 @@ fun NavigationDesktop(
     val miniPlayerBackgroundStyle by userPreferences.miniPlayerBackgroundStyle.collectAsState(
         MiniPlayerBackgroundStyle.TRANSLUCENT
     )
-    val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(false)
-    // Mismo gate que en App: el cristal solo rinde sobre fondo sólido.
+    val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(
+        initial = canToggleLiquidGlassLive
+    )
+    // Mismo gate que en App: el cristal solo rinde sobre fondo sólido y, si el
+    // proceso arrancó en material, no se activa hasta reiniciar (el primer
+    // frame compila los shaders de Haze y bloquea la UI varios segundos).
     val appBgStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
-    val effectiveLiquidGlass = liquidGlassEnabled && appBgStyle == BackgroundStyle.SOLID_COLOR
+    val effectiveLiquidGlass = canToggleLiquidGlassLive &&
+        liquidGlassEnabled && appBgStyle == BackgroundStyle.SOLID_COLOR
 
     val playerState by playerViewModel.uiState.collectAsState()
     var isQueueVisible by remember { mutableStateOf(false) }
@@ -179,7 +186,7 @@ fun NavigationDesktop(
         miniPlayerStyle == MiniPlayerStyle.BAR && currentSong != null && musicChrome
 
     val dimens = LocalDimens.current
-    val glassNavVisible = liquidGlassEnabled && appMode == AppMode.MUSIC && !isOnNowPlaying
+    val glassNavVisible = effectiveLiquidGlass && appMode == AppMode.MUSIC && !isOnNowPlaying
     // En modo cristal no hay rail: la navegación ES el FAB apilado sobre el
     // player (nada al lado, para no descuadrar el layout). Sin inset lateral:
     // la rail que lo pedía ya no existe.

@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.hazeBlur
@@ -31,16 +30,22 @@ val LocalProgressiveTopInset = compositionLocalOf { 0.dp }
  * Blur progresivo para barras fijas: máxima difusión arriba y se disuelve
  * hacia abajo. `noiseFactor(0f)` evita el grano que Haze añade por defecto y
  * que en escritorio se ve como "grumoso".
+ *
+ * La transición se hace con `mask` (gradiente alfa) en vez de
+ * `HazeProgressive`: este último usa un RuntimeEffect que en Windows puede
+ * bloquear el primer render 30 s o más (haze#1260 / SKIKO-1179). El mask es
+ * un gradiente normal de Skia y no compila shaders.
  */
 @Composable
 fun rememberProgressiveBlurBarStyle(radius: Dp = 22.dp): HazeBlurStyle = remember(radius) {
     HazeBlurStyle {
         blurRadius(radius)
         noiseFactor(0f)
-        progressive(
-            HazeProgressive.verticalGradient(
-                startIntensity = 1f,
-                endIntensity = 0f,
+        mask(
+            Brush.verticalGradient(
+                0f to Color.White,
+                0.65f to Color.White.copy(alpha = 0.7f),
+                1f to Color.Transparent,
             ),
         )
     }

@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import example.nucleus.ui.components.glass.GlassAlertDialog
-import example.nucleus.ui.components.glass.GlassShaderWarmup
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +32,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -158,6 +156,8 @@ fun NucleusApplicationScope.App(
     playerViewModel: PlayerViewModel,
     downloadViewModel: DownloadViewModel,
     userPreferences: UserPreferencesRepository,
+    /** El proceso arrancó con cristal ya activo: sus shaders están compilados. */
+    startedWithLiquidGlass: Boolean,
     onExit: () -> Unit,
     windowState: WindowState,
     /** Arrancar con la ventana oculta (lanzamiento al iniciar sesión → directo a la bandeja). */
@@ -296,11 +296,24 @@ fun NucleusApplicationScope.App(
 
     val uiScaleFactor by userPreferences.uiScale.collectAsState(1f)
     val backgroundAppStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
-    val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(false)
+    // Si el proceso arrancó en cristal, el primer frame ya debe ser cristal: de
+    // lo contrario se compondría material y el cristal entraría en caliente,
+    // pagando igualmente la compilación de shaders pero con la ventana visible.
+    val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(
+        initial = startedWithLiquidGlass
+    )
     // El cristal solo rinde sobre fondo SÓLIDO: con superficies transparentes
     // (degradado/desenfocado) la fuente queda con huecos y el blur no cubre.
     // Se fija al activar el interruptor y el selector de fondo se bloquea.
-    val effectiveLiquidGlass = liquidGlassEnabled && backgroundAppStyle == BackgroundStyle.SOLID_COLOR
+    //
+    // Haze Glass compila su shader en el primer frame que dibuja cristal; en
+    // algunos equipos eso bloquea la UI 7-11 s. Por eso el modo efectivo NO
+    // sigue al interruptor si el proceso arrancó en material: se aplica al
+    // reiniciar. Si arrancó en cristal, los shaders ya están compilados y el
+    // interruptor puede alternar en caliente sin coste.
+    val glassCanToggleLive = startedWithLiquidGlass
+    val effectiveLiquidGlass = startedWithLiquidGlass &&
+        liquidGlassEnabled && backgroundAppStyle == BackgroundStyle.SOLID_COLOR
     // Ajustes del material (sliders de Ajustes → preview en vivo).
     val glassBlur by userPreferences.liquidGlassBlur.collectAsState(28f)
     val glassBaseAlpha by userPreferences.liquidGlassBaseAlpha.collectAsState(0.9f)
@@ -337,6 +350,7 @@ fun NucleusApplicationScope.App(
                 LocalUserPreferences provides userPreferences,
                 LocalAnimationsEnabled provides animationsEnabled,
                 example.nucleus.ui.components.glass.LocalLiquidGlass provides effectiveLiquidGlass,
+                example.nucleus.ui.components.glass.LocalLiquidGlassCanToggleLive provides glassCanToggleLive,
                 example.nucleus.ui.components.glass.LocalLiquidGlassTuning provides glassTuning,
                 example.nucleus.ui.components.glass.LocalGlassHaze provides appContentHazeState,
                 example.nucleus.ui.components.glass.LocalContentHaze provides contentHazeState,
@@ -518,15 +532,6 @@ fun NucleusApplicationScope.App(
                                         .fillMaxSize()
                                         .background(LocalChromeSurface.current)
                                 ) {
-                                    // Warm-up de shaders de Haze mientras el cristal está
-                                    // apagado: evita el tirón al activarlo por primera vez.
-                                    if (!effectiveLiquidGlass) {
-                                        GlassShaderWarmup(
-                                            Modifier
-                                                .align(Alignment.TopStart)
-                                                .alpha(0.01f)
-                                        )
-                                    }
                                     Column {
 
                                         // Fuera de Now Playing la barra va APILADA arriba, dentro de la
@@ -566,6 +571,7 @@ fun NucleusApplicationScope.App(
                                             NavigationDesktop(
                                                 rootComponent = rootComponent,
                                                 userPreferences = userPreferences,
+                                                canToggleLiquidGlassLive = glassCanToggleLive,
                                                 appMode = appMode,
                                             )
                                         }

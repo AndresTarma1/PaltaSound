@@ -22,6 +22,7 @@ import example.nucleus.bootstrap.AppStartup
 import example.nucleus.bootstrap.JvmConfigLauncher
 import example.nucleus.bootstrap.PlatformCrashHandler
 import example.nucleus.data.account.AccountManager
+import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.UserPreferencesRepository
 import example.nucleus.di.appModule
 import example.nucleus.di.dataStoreModule
@@ -123,6 +124,16 @@ fun main(args: Array<String>) {
         )
     }
 
+    // Modo de cristal con el que arranca ESTE proceso. Haze Glass compila su
+    // shader en el primer frame (7-11 s en algunos equipos), así que si la app
+    // empieza en material no se activa en caliente: queda pendiente hasta
+    // reiniciar. Si ya arranca en cristal, los shaders están compilados y el
+    // interruptor puede alternar sin coste.
+    val startedWithLiquidGlass = runBlocking {
+        userPreferencesRepository.liquidGlassEnabled.first() &&
+            userPreferencesRepository.appBackgroundStyle.first() == BackgroundStyle.SOLID_COLOR
+    }
+
     // ─────────── Fase 2: composicion. Solo remember y UI. ───────────
     nucleusApplication {
 
@@ -149,6 +160,7 @@ fun main(args: Array<String>) {
             playerViewModel = playerViewModel,
             downloadViewModel = downloadViewModel,
             userPreferences = userPreferencesRepository,
+            startedWithLiquidGlass = startedWithLiquidGlass,
             windowState = windowState,
             onExit = { lifecycleManager.cleanUpAndExit() },
             startHidden = startedAtLogin,

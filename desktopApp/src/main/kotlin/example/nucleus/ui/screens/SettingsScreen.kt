@@ -27,7 +27,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.glass.hazeGlassContainer
@@ -184,10 +183,13 @@ private fun rememberProgressiveBarStyle(): HazeBlurStyle = remember {
     HazeBlurStyle {
         blurRadius(22.dp)
         noiseFactor(0f)
-        progressive(
-            HazeProgressive.verticalGradient(
-                startIntensity = 1f,
-                endIntensity = 0f,
+        // Mask en vez de HazeProgressive: evita el RuntimeEffect que congela
+        // el primer render en Windows (haze#1260 / SKIKO-1179).
+        mask(
+            Brush.verticalGradient(
+                0f to Color.White,
+                0.65f to Color.White.copy(alpha = 0.7f),
+                1f to Color.Transparent,
             ),
         )
     }

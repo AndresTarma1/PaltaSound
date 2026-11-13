@@ -79,6 +79,10 @@
     <string name="dynamic_colors">Dynamic colors from artwork</string>
     <string name="liquid_glass_beta">Liquid Glass (Beta)</string>
     <string name="liquid_glass_beta_subtitle">Glass on mini player, rail and buttons</string>
+    <string name="liquid_glass_restart_required">Restart PaltaSound to apply glass</string>
+    <string name="liquid_glass_restart_title">Restart to apply Liquid Glass</string>
+    <string name="liquid_glass_restart_message">Glass compiles its shaders at startup. Close and reopen PaltaSound to enable it.</string>
+    <string name="liquid_glass_restart_confirm">Got it</string>
     <string name="liquid_glass_blur">Frost</string>
     <string name="liquid_glass_opacity">Base opacity</string>
     <string name="liquid_glass_specular">Edge shine</string>

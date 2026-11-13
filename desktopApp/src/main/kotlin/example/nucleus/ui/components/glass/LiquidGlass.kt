@@ -22,6 +22,13 @@ import dev.chrisbanes.haze.glass.material3.material3
 val LocalLiquidGlass = compositionLocalOf { false }
 
 /**
+ * Indica si este proceso arrancó en cristal. En ese caso el interruptor puede
+ * alternar en caliente; si no, activar cristal requiere reiniciar porque el
+ * primer frame compila los shaders de Haze y bloquea la UI varios segundos.
+ */
+val LocalLiquidGlassCanToggleLive = compositionLocalOf { false }
+
+/**
  * Ajustes del material Liquid Glass configurables desde Ajustes. Se provee en
  * App desde las preferencias; los estilos lo leen, así que mover un slider
  * actualiza cristal, lentes y menús en vivo. La refracción se aplica a ambos
