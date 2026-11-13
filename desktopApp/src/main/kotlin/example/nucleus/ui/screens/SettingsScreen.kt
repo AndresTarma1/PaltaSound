@@ -8,6 +8,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +20,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -146,7 +149,8 @@ private fun WideSettingsLayout(
                 .hazeBlur(
                     input = HazeInput.Sources(contentHaze),
                     style = rememberProgressiveBarStyle(),
-                ),
+                )
+                .background(rememberBarScrim()),
         )
 
         Box(
@@ -166,21 +170,42 @@ private fun WideSettingsLayout(
 }
 
 /** Altura de la franja difuminada que queda fija sobre los ajustes. */
-private val SettingsTabsBarHeight = 64.dp
+private val SettingsTabsBarHeight = 56.dp
 
 /**
  * Blur progresivo para barras fijas: máxima intensidad arriba y se disuelve
  * hacia abajo, para que el contenido que pasa por debajo no se vea nítido.
+ *
+ * `noiseFactor(0f)`: el ruido por defecto de Haze se ve como grano/"grumoso"
+ * sobre superficies planas de escritorio.
  */
 @Composable
 private fun rememberProgressiveBarStyle(): HazeBlurStyle = remember {
     HazeBlurStyle {
-        blurRadius(26.dp)
+        blurRadius(22.dp)
+        noiseFactor(0f)
         progressive(
             HazeProgressive.verticalGradient(
                 startIntensity = 1f,
                 endIntensity = 0f,
             ),
+        )
+    }
+}
+
+/**
+ * Velo sutil sobre el difuminado: sin él, los tabs quedan medio invisibles
+ * porque detrás solo hay contenido borroso. Se funde a transparente hacia
+ * abajo para no tapar el efecto progresivo.
+ */
+@Composable
+private fun rememberBarScrim(): Brush {
+    val surface = MaterialTheme.colorScheme.surface
+    return remember(surface) {
+        Brush.verticalGradient(
+            0.0f to surface.copy(alpha = 0.55f),
+            0.65f to surface.copy(alpha = 0.22f),
+            1.0f to Color.Transparent,
         )
     }
 }
@@ -316,7 +341,8 @@ private fun NarrowSettingsLayout(
                 .hazeBlur(
                     input = HazeInput.Sources(contentHaze),
                     style = rememberProgressiveBarStyle(),
-                ),
+                )
+                .background(rememberBarScrim()),
         )
 
         if (glassTabs) {
