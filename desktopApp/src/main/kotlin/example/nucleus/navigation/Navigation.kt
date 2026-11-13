@@ -8,13 +8,11 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -430,7 +428,10 @@ fun NavigationDesktop(
                                         }
                                         AnimatedVisibility(
                                             visible = (dockedMiniPlayer || floatingMiniPlayer) && !isOnNowPlaying,
-                                            enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + slideInVertically(animationSpec = expressiveLayoutTween(), initialOffsetY = { it / 4 }) else EnterTransition.None,
+                                            // Fade-only al aparecer: sus bounds son el destino del
+                                            // shared element al volver de Now Playing; un slide los
+                                            // movería durante el morph y la portada aterrizaría mal.
+                                            enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) else EnterTransition.None,
                                             exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + slideOutVertically(animationSpec = expressiveLayoutTween(), targetOffsetY = { it / 4 }) else ExitTransition.None,
                                         ) {
                                             miniPlayerSlot(Modifier.fillMaxWidth())
@@ -521,9 +522,10 @@ fun NavigationDesktop(
 
                     AnimatedVisibility(
                         visible = barMiniPlayer && !isOnNowPlaying,
+                        // Fade-only al aparecer por el mismo motivo: expandVertically
+                        // movería los bounds destino del shared element al volver.
                         enter = if (animationsEnabled) {
-                            fadeIn(expressiveFadeTween()) +
-                                    expandVertically(expressiveLayoutTween(), expandFrom = Alignment.Top)
+                            fadeIn(expressiveFadeTween())
                         } else EnterTransition.None,
                         exit = if (animationsEnabled) {
                             fadeOut(expressiveFadeTween()) +
