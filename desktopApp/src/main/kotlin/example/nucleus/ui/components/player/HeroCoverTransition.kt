@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.RectangleShape
 import example.nucleus.ui.themes.expressiveEasing
 import example.nucleus.utils.LocalAnimationsEnabled
 
@@ -59,14 +60,14 @@ fun Modifier.heroCoverElement(
         sharedBounds(
             sharedContentState = contentState,
             animatedVisibilityScope = animatedVisibilityScope,
-            // El contenido no hace fade dentro del morph: la portada debe verse
-            // siempre mientras los bounds viajan (si no, "aparece de la nada").
-            enter = EnterTransition.None,
-            exit = ExitTransition.None,
             resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
             boundsTransform = { _, _ ->
                 tween<Rect>(durationMillis = HeroCoverMorphMs, easing = expressiveEasing)
             },
+            // Sin el clip del padre (la Surface redondeada del contenido): si
+            // hereda ese clip, el overlay se corta al cruzar del MiniPlayer al
+            // contenido y el vuelo "desaparece" a mitad de camino.
+            clipInOverlayDuringTransition = OverlayClip(RectangleShape),
         )
     }
 }
