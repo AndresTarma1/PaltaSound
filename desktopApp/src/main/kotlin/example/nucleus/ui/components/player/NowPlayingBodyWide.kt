@@ -118,7 +118,7 @@ internal fun NowPlayingWideBody(
                         modifier = Modifier
                             // Shared ANTES del tamaño (guía oficial), para que los
                             // bounds del morph sean los reales del elemento.
-                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
+                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope, debugTag = "np-wide")
                             .size(coverDimension)
                             .autoHideCoverGrow(autoHide, coverRestScale),
                     )

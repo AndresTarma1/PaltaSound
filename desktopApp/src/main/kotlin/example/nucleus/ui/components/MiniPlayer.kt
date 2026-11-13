@@ -746,7 +746,7 @@ private fun MiniPlayerWideRow(
                             // element modifiers"). Con el orden inverso, los bounds se
                             // derivaban de las constraints del padre y la portada
                             // "aparecía de cualquier lado" al viajar.
-                            .heroCoverElement(song.id, sharedTransitionScope, this)
+                            .heroCoverElement(song.id, sharedTransitionScope, this, debugTag = "mini")
                             .sizeIn(maxWidth = thumbSize * ratio, maxHeight = thumbSize)
                             .aspectRatio(ratio)
                             .clip(coverShape)

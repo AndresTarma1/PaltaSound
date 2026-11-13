@@ -1,8 +1,6 @@
 package example.nucleus.ui.components.player
 
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
@@ -42,20 +40,30 @@ fun Modifier.heroCoverElement(
     songId: String,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
+    debugTag: String = "",
 ): Modifier {
     if (sharedTransitionScope == null || animatedVisibilityScope == null) {
-        println("[HeroCover] NO-SCOPE key=now_playing_cover_$songId")
+        println("[HeroCover] $debugTag NO-SCOPE key=now_playing_cover_$songId")
         return this
     }
     if (!LocalAnimationsEnabled.current) {
-        println("[HeroCover] NO-ANIM key=now_playing_cover_$songId")
+        println("[HeroCover] $debugTag NO-ANIM key=now_playing_cover_$songId")
         return this
     }
     return with(sharedTransitionScope) {
         val contentState = rememberSharedContentState(key = "now_playing_cover_$songId")
         // Diagnóstico temporal: sin match no hay animación compartida.
-        androidx.compose.runtime.SideEffect {
-            println("[HeroCover] key=now_playing_cover_$songId match=${contentState.isMatchFound}")
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            println("[HeroCover] $debugTag COMPOSED key=now_playing_cover_$songId")
+            onDispose {
+                println("[HeroCover] $debugTag DISPOSED key=now_playing_cover_$songId")
+            }
+        }
+        androidx.compose.runtime.LaunchedEffect(contentState) {
+            androidx.compose.runtime.snapshotFlow { contentState.isMatchFound }
+                .collect { match: Boolean ->
+                    println("[HeroCover] $debugTag MATCH=$match key=now_playing_cover_$songId")
+                }
         }
         sharedBounds(
             sharedContentState = contentState,

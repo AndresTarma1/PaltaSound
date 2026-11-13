@@ -123,7 +123,7 @@ internal fun NowPlayingCompactBody(
                             modifier = Modifier
                                 // Shared ANTES del tamaño (guía oficial), para que
                                 // los bounds del morph sean los reales del elemento.
-                                .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
+                                .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope, debugTag = "np-compact")
                                 .size(coverSize)
                                 .autoHideCoverGrow(autoHide, restScale = 1.1f),
                         )
