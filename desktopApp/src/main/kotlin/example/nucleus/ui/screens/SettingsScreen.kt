@@ -21,8 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.glass.hazeGlassContainer
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppScrollbarGutter
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
@@ -107,21 +114,16 @@ private fun WideSettingsLayout(
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    Column(modifier = Modifier.fillMaxSize()) {
+    // El contenido es la fuente; la barra de tabs flota encima con blur
+    // progresivo (fuerte arriba, desaparece hacia abajo) mientras se scrollea
+    // por debajo.
+    val contentHaze = rememberHazeState()
+    Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 4.dp),
-            contentAlignment = Alignment.Center,
+                .fillMaxSize()
+                .hazeSource(contentHaze),
         ) {
-            SettingsCategoryTabs(
-                selected = selected,
-                onSelect = onSelect,
-            )
-        }
-
-        // Detail — solo la categoría seleccionada, desacoplado
-        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             AnimatedContent(
                 targetState = selected,
                 transitionSpec = { settingsCategoryTransition(animationsEnabled) },
@@ -130,9 +132,56 @@ private fun WideSettingsLayout(
                 SettingsCategoryDetail(
                     category = cat,
                     onDialog = onDialog,
+                    contentTopPadding = SettingsTabsBarHeight,
                 )
             }
         }
+
+        // Difuminado progresivo detrás de los tabs.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(SettingsTabsBarHeight)
+                .hazeBlur(
+                    input = HazeInput.Sources(contentHaze),
+                    style = rememberProgressiveBarStyle(),
+                ),
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            SettingsCategoryTabs(
+                selected = selected,
+                onSelect = onSelect,
+                hazeState = contentHaze,
+            )
+        }
+    }
+}
+
+/** Altura de la franja difuminada que queda fija sobre los ajustes. */
+private val SettingsTabsBarHeight = 64.dp
+
+/**
+ * Blur progresivo para barras fijas: máxima intensidad arriba y se disuelve
+ * hacia abajo, para que el contenido que pasa por debajo no se vea nítido.
+ */
+@Composable
+private fun rememberProgressiveBarStyle(): HazeBlurStyle = remember {
+    HazeBlurStyle {
+        blurRadius(26.dp)
+        progressive(
+            HazeProgressive.verticalGradient(
+                startIntensity = 1f,
+                endIntensity = 0f,
+            ),
+        )
     }
 }
 
@@ -141,9 +190,10 @@ private fun SettingsCategoryTabs(
     selected: SettingsCategory,
     onSelect: (SettingsCategory) -> Unit,
     modifier: Modifier = Modifier,
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val segHaze = LocalRailHaze.current ?: LocalContentHaze.current
+    val segHaze = hazeState ?: LocalRailHaze.current ?: LocalContentHaze.current
     val segGlass = LocalLiquidGlass.current && segHaze != null
     if (segGlass) {
         GlassSegmentTrack(hazeState = segHaze, modifier = modifier) {
@@ -233,19 +283,53 @@ private fun NarrowSettingsLayout(
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    Column(modifier = Modifier.fillMaxSize()) {
-        val selectedTabIndex = SettingsCategory.entries.indexOf(selected)
-        val narrowHaze = LocalRailHaze.current ?: LocalContentHaze.current
-        val narrowGlass = LocalLiquidGlass.current && narrowHaze != null
-        if (narrowGlass) {
-            // Pista fija esmerilada con las píldoras deslizables dentro (mismo
-            // lenguaje que la variante ancha y que Now Playing).
+    val selectedTabIndex = SettingsCategory.entries.indexOf(selected)
+    val contentHaze = rememberHazeState()
+    val glassTabs = LocalLiquidGlass.current
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(contentHaze),
+        ) {
+            AnimatedContent(
+                targetState = selected,
+                transitionSpec = { settingsCategoryTransition(animationsEnabled) },
+                label = "settings_category_narrow",
+            ) { cat ->
+                SettingsCategoryDetail(
+                    category = cat,
+                    onDialog = onDialog,
+                    contentTopPadding = SettingsTabsBarHeight,
+                )
+            }
+        }
+
+        // Difuminado progresivo detrás de los tabs: el contenido se ve pasar
+        // por debajo, difuminado fuerte arriba y disuelto hacia abajo.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(SettingsTabsBarHeight)
+                .hazeBlur(
+                    input = HazeInput.Sources(contentHaze),
+                    style = rememberProgressiveBarStyle(),
+                ),
+        )
+
+        if (glassTabs) {
+            // Pista esmerilada con las píldoras deslizables dentro.
             Box(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 GlassSegmentTrack(
-                    hazeState = narrowHaze,
+                    hazeState = contentHaze,
                     modifier = Modifier.padding(horizontal = 12.dp),
                 ) {
                     Row(
@@ -261,7 +345,7 @@ private fun NarrowSettingsLayout(
                             GlassSegmentPill(
                                 selected = isSelected,
                                 onClick = { onSelect(cat) },
-                                hazeState = narrowHaze,
+                                hazeState = contentHaze,
                             ) {
                                 Icon(cat.icon, null, modifier = Modifier.size(18.dp))
                                 Text(
@@ -281,10 +365,11 @@ private fun NarrowSettingsLayout(
                 }
             }
         } else {
-            // Top tabs para narrow
+            // Tabs clásicos, con contenedor transparente para que se vea el
+            // difuminado progresivo de detrás.
             SecondaryTabRow(
                 selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                containerColor = androidx.compose.ui.graphics.Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 divider = {},
                 indicator = {
@@ -292,6 +377,9 @@ private fun NarrowSettingsLayout(
                         Modifier.tabIndicatorOffset(selectedTabIndex, matchContentSize = false),
                     )
                 },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth(),
             ) {
                 SettingsCategory.entries.forEach { cat ->
                     Tab(
@@ -310,16 +398,6 @@ private fun NarrowSettingsLayout(
                 }
             }
         }
-
-        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-            AnimatedContent(
-                targetState = selected,
-                transitionSpec = { settingsCategoryTransition(animationsEnabled) },
-                label = "settings_category_narrow",
-            ) { cat ->
-                SettingsCategoryDetail(category = cat, onDialog = onDialog)
-            }
-        }
     }
 }
 
@@ -327,6 +405,7 @@ private fun NarrowSettingsLayout(
 private fun SettingsCategoryDetail(
     category: SettingsCategory,
     onDialog: (SettingsDialog?) -> Unit,
+    contentTopPadding: Dp = 20.dp,
 ) {
     val listState = rememberLazyListState()
 
@@ -337,7 +416,7 @@ private fun SettingsCategoryDetail(
             contentPadding = appScrollContentPadding(
                 start = AppScreenContentHorizontal + 4.dp,
                 end = AppScrollbarGutter + AppScreenContentHorizontal,
-                top = 20.dp,
+                top = contentTopPadding,
                 bottom = 24.dp + LocalMiniPlayerInset.current,
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
