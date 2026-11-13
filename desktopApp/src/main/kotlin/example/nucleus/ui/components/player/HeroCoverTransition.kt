@@ -9,7 +9,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.expressiveEasing
 import example.nucleus.utils.LocalAnimationsEnabled
 
@@ -43,12 +42,22 @@ fun Modifier.heroCoverElement(
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
 ): Modifier {
-    if (sharedTransitionScope == null || animatedVisibilityScope == null) return this
-    if (!LocalAnimationsEnabled.current) return this
-    val clipShape = AppShapes.small
+    if (sharedTransitionScope == null || animatedVisibilityScope == null) {
+        println("[HeroCover] NO-SCOPE key=now_playing_cover_$songId")
+        return this
+    }
+    if (!LocalAnimationsEnabled.current) {
+        println("[HeroCover] NO-ANIM key=now_playing_cover_$songId")
+        return this
+    }
     return with(sharedTransitionScope) {
+        val contentState = rememberSharedContentState(key = "now_playing_cover_$songId")
+        // Diagnóstico temporal: sin match no hay animación compartida.
+        androidx.compose.runtime.SideEffect {
+            println("[HeroCover] key=now_playing_cover_$songId match=${contentState.isMatchFound}")
+        }
         sharedBounds(
-            sharedContentState = rememberSharedContentState(key = "now_playing_cover_$songId"),
+            sharedContentState = contentState,
             animatedVisibilityScope = animatedVisibilityScope,
             // El contenido no hace fade dentro del morph: la portada debe verse
             // siempre mientras los bounds viajan (si no, "aparece de la nada").
@@ -58,8 +67,6 @@ fun Modifier.heroCoverElement(
             boundsTransform = { _, _ ->
                 tween<Rect>(durationMillis = HeroCoverMorphMs, easing = expressiveEasing)
             },
-            // Recorta el overlay a la forma de la portada durante el viaje.
-            clipInOverlayDuringTransition = OverlayClip(clipShape),
         )
     }
 }
