@@ -31,7 +31,7 @@
 ## ✨ Qué hace
 
 - 🎧 **Streaming de YouTube Music** — canciones, álbumes y playlists, con audio nativo vía MPV (calidad máxima configurable, sin depender del reproductor embebido del navegador).
-- 🎤 **Letras sincronizadas** — estilo karaoke, con resaltado palabra por palabra que sigue la canción en tiempo real (LrcLib · KuGou · BetterLyrics).
+- 🎤 **Letras sincronizadas** — estilo karaoke, con resaltado palabra por palabra que sigue la canción en tiempo real (LrcLib · KuGou · Unison · BetterLyrics · Portato).
 - 👥 **Escuchar juntos** — crea una sala y reproduce en sincronía con tus amigos en tiempo real, sin importar dónde estén.
 - 🎨 **Tema dinámico** — los colores de la interfaz se extraen de la carátula de cada canción; con modo AMOLED, tema oscuro atenuado (DIM) y diseño en islas o compacto.
 - 🔎 **Búsqueda e historial** — con biblioteca local persistente (playlists, "Me gusta", suscripciones a artistas) sincronizada de forma bidireccional con tu cuenta de YouTube Music.
