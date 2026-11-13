@@ -16,44 +16,62 @@ data class TTMLResponse(val ttml: String? = null)
 /**
  * BetterLyrics API client (word-synced TTML lyrics) — port of Metrolist's `betterlyrics/BetterLyrics`.
  * Fetches TTML from lyrics-api.boidu.dev and converts it to enriched LRC via [TTMLParser].
+ *
+ * Dos backends del mismo host:
+ *  - `/getLyrics`     — Apple Music (TTML por sílabas)
+ *  - `/qq/getLyrics`  — Portato / QQ Music (karaoke con tiempos por palabra)
  */
 object BetterLyrics {
     private const val BASE_URL = "https://lyrics-api.boidu.dev"
+    private const val APPLE_PATH = "/getLyrics"
+    private const val PORTATO_PATH = "/qq/getLyrics"
     private val client = AppHttpClient.client
 
-    private suspend fun fetchTTML(artist: String, title: String, duration: Int, album: String?): String? =
-        runCatching {
-            val response = client.get("$BASE_URL/getLyrics") {
-                header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                header("Accept", "application/json")
-                parameter("s", title)
-                parameter("a", artist)
-                if (duration > 0) parameter("d", duration)
-                if (!album.isNullOrBlank()) parameter("al", album)
+    private suspend fun fetchTTML(
+        path: String,
+        artist: String,
+        title: String,
+        duration: Int,
+        album: String?,
+    ): String? = runCatching {
+        val response = client.get("$BASE_URL$path") {
+            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            header("Accept", "application/json")
+            parameter("s", title)
+            parameter("a", artist)
+            if (duration > 0) parameter("d", duration)
+            if (!album.isNullOrBlank()) parameter("al", album)
+        }
+        if (response.status.isSuccess() || response.status == HttpStatusCode.OK) {
+            response.body<TTMLResponse>().ttml?.trim()?.takeIf { it.isNotEmpty() }
+        } else {
+            when (response.status) {
+                // La API publica ahora exige X-API-Key para las consultas que no esten en
+                // su cache; la key es privada de la extension Better Lyrics. No es un fallo
+                // del cliente: esa letra simplemente no esta disponible por esta via.
+                HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden ->
+                    Napier.w("[BetterLyrics] ${response.status} (uncached queries require an X-API-Key) — skipping")
+                else -> Napier.w("[BetterLyrics] API status ${response.status}")
             }
-            if (response.status.isSuccess() || response.status == HttpStatusCode.OK) {
-                response.body<TTMLResponse>().ttml?.trim()?.takeIf { it.isNotEmpty() }
-            } else {
-                when (response.status) {
-                    // La API publica ahora exige X-API-Key para las consultas que no esten en
-                    // su cache; la key es privada de la extension Better Lyrics. No es un fallo
-                    // del cliente: esa letra simplemente no esta disponible por esta via.
-                    HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden ->
-                        Napier.w("[BetterLyrics] ${response.status} (uncached queries require an X-API-Key) — skipping")
-                    else -> Napier.w("[BetterLyrics] API status ${response.status}")
-                }
-                null
-            }
-        }.getOrElse {
-            Napier.e("[BetterLyrics] fetchTTML failed", it)
             null
         }
+    }.getOrElse {
+        Napier.e("[BetterLyrics] fetchTTML failed", it)
+        null
+    }
 
-    /** Returns enriched LRC (line + optional word timings), or null if unavailable. */
-    suspend fun getLyrics(title: String, artist: String, duration: Int, album: String? = null): String? {
-        val ttml = fetchTTML(artist, title, duration, album) ?: return null
+    private fun toLRC(ttml: String?): String? {
+        if (ttml == null) return null
         val parsed = TTMLParser.parseTTML(ttml)
         if (parsed.isEmpty()) return null
         return TTMLParser.toLRC(parsed)
     }
+
+    /** Returns enriched LRC (line + optional word timings), or null if unavailable. */
+    suspend fun getLyrics(title: String, artist: String, duration: Int, album: String? = null): String? =
+        toLRC(fetchTTML(APPLE_PATH, artist, title, duration, album))
+
+    /** QQ Music karaoke timings through BetterLyrics' Portato endpoint. */
+    suspend fun getPortatoLyrics(title: String, artist: String, duration: Int, album: String? = null): String? =
+        toLRC(fetchTTML(PORTATO_PATH, artist, title, duration, album))
 }

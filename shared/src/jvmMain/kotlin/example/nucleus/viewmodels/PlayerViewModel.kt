@@ -10,6 +10,7 @@ import example.nucleus.db.DatabaseDao
 import example.nucleus.db.entities.ArtistEntity
 import example.nucleus.download.DownloadService
 import example.nucleus.lyrics.BetterLyrics
+import example.nucleus.lyrics.Unison
 import example.nucleus.lyrics.LyricLine
 import example.nucleus.lyrics.SyncedLyrics
 import com.metrolist.lrclib.LrcLib
@@ -1666,9 +1667,11 @@ class PlayerViewModel(
         // Intentar proveedores sincronizados en orden de fiabilidad. El primer LRC utilizable gana.
         //   1) LrcLib  — gratuito, confiable, sincronizado por líneas
         //   2) KuGou   — sincronizado por líneas
-        //   3) BetterLyrics — sincronizado por palabras; su API publica ya solo sirve consultas
-        //      que esten en su cache (el resto exige una key privada), asi que suele caer
-        //   4) YouTube lyrics endpoint
+        //   3) Unison  — base comunitaria de Better Lyrics; por videoId exacto y con sync rico
+        //   4) BetterLyrics — sincronizado por palabras (Apple Music); su API publica ya solo
+        //      sirve consultas que esten en su cache (el resto exige una key privada)
+        //   5) BetterLyrics Portato — karaoke de QQ Music por el mismo host, sin key
+        //   6) YouTube lyrics endpoint
         suspend fun <T> attempt(block: suspend () -> T): T? = try {
             block()
         } catch (e: CancellationException) {
@@ -1681,8 +1684,12 @@ class PlayerViewModel(
             ?.let { return RemoteLyrics(it, "LrcLib") }
         attempt { KuGou.getLyrics(song.title, artist, song.duration, album).getOrNull() }
             ?.let { return RemoteLyrics(it, "KuGou") }
+        attempt { Unison.getLyrics(song.id) }
+            ?.let { return RemoteLyrics(it, "Unison") }
         attempt { BetterLyrics.getLyrics(song.title, artist, song.duration, album) }
             ?.let { return RemoteLyrics(it, "BetterLyrics") }
+        attempt { BetterLyrics.getPortatoLyrics(song.title, artist, song.duration, album) }
+            ?.let { return RemoteLyrics(it, "BetterLyrics Portato") }
 
         val nextResult = attempt { YouTube.next(WatchEndpoint(videoId = song.id)).getOrNull() }
             ?: return null
