@@ -14,11 +14,11 @@ import example.nucleus.ui.themes.expressiveEasing
 import example.nucleus.utils.LocalAnimationsEnabled
 
 /**
- * Duración del morph de la carátula. Más larga que el layout normal a
- * propósito: el salto miniPlayer ⇄ Now Playing es el gesto más visible de la
- * app y con 320 ms no se apreciaba.
+ * Duración del morph de la carátula y del fade del MiniPlayer/stack. Deben
+ * coincidir: si el MiniPlayer desaparece antes, la fuente del shared element
+ * muere a mitad de vuelo y el morph se corta.
  */
-private const val HeroCoverMorphDuration = 560
+internal const val HeroCoverMorphMs = 420
 
 /**
  * Hero cover element para la transición de la carátula entre el MiniPlayer y NowPlaying.
@@ -56,7 +56,7 @@ fun Modifier.heroCoverElement(
             exit = ExitTransition.None,
             resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
             boundsTransform = { _, _ ->
-                tween<Rect>(durationMillis = HeroCoverMorphDuration, easing = expressiveEasing)
+                tween<Rect>(durationMillis = HeroCoverMorphMs, easing = expressiveEasing)
             },
             // Recorta el overlay a la forma de la portada durante el viaje.
             clipInOverlayDuringTransition = OverlayClip(clipShape),

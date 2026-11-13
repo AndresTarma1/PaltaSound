@@ -80,6 +80,7 @@ import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.glass.LocalGlassHaze
 import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.components.player.heroCoverElement
+import example.nucleus.ui.components.player.HeroCoverMorphMs
 import example.nucleus.ui.components.player.PlayerIconToggle
 import example.nucleus.ui.components.player.PlayerProgressRow
 import example.nucleus.ui.components.player.PlayerTransportRow
@@ -717,15 +718,16 @@ private fun MiniPlayerWideRow(
                 val animationsEnabled = LocalAnimationsEnabled.current
                 AnimatedVisibility(
                     visible = !isOnNowPlaying,
-                    // Solo fade, sin expand/shrink: los bounds deben quedarse quietos
-                    // para que el overlay del shared element no pelee con el layout.
+                    // Misma duración que el morph: este AnimatedVisibility es el
+                    // scope del shared element y la fuente debe seguir compuesta
+                    // hasta que la portada aterrice en Now Playing.
                     enter = if (animationsEnabled) {
-                        fadeIn(expressiveFadeTween())
+                        fadeIn(expressiveTween(HeroCoverMorphMs))
                     } else {
                         EnterTransition.None
                     },
                     exit = if (animationsEnabled) {
-                        fadeOut(expressiveTween(180))
+                        fadeOut(expressiveTween(HeroCoverMorphMs))
                     } else {
                         ExitTransition.None
                     },

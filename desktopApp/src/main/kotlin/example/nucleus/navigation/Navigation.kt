@@ -64,6 +64,7 @@ import example.nucleus.ui.components.MiniPlayer
 import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.dialogs.SnackBar
 import example.nucleus.ui.components.player.PlaybackQueuePanel
+import example.nucleus.ui.components.player.HeroCoverMorphMs
 import example.nucleus.ui.screens.library.CsvImportProgressOverlay
 import example.nucleus.ui.screens.library.StatsScreen
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
@@ -82,6 +83,7 @@ import example.nucleus.ui.themes.LocalDimens
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.expressiveFadeTween
 import example.nucleus.ui.themes.expressiveLayoutTween
+import example.nucleus.ui.themes.expressiveTween
 import example.nucleus.ui.themes.LocalChromeSurface
 import example.nucleus.ui.themes.LocalIsSolidBackground
 import example.nucleus.ui.themes.LocalLayoutMode
@@ -139,9 +141,13 @@ fun NavigationDesktop(
     val youtubeMiniVideo by youtubePlayerService.currentVideo.collectAsState()
     val youtubeFullscreen by youtubePlayerService.fullscreen.collectAsState()
 
-    val navigationRailStyle by userPreferences.navigationRailStyle.collectAsState(NavigationRailStyle.DEFAULT)
+    val navigationRailStyle by userPreferences.navigationRailStyle.collectAsState(
+        NavigationRailStyle.DEFAULT
+    )
     val miniPlayerStyle by userPreferences.miniPlayerStyle.collectAsState(MiniPlayerStyle.BAR)
-    val miniPlayerBackgroundStyle by userPreferences.miniPlayerBackgroundStyle.collectAsState(MiniPlayerBackgroundStyle.TRANSLUCENT)
+    val miniPlayerBackgroundStyle by userPreferences.miniPlayerBackgroundStyle.collectAsState(
+        MiniPlayerBackgroundStyle.TRANSLUCENT
+    )
     val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(false)
     // Mismo gate que en App: el cristal solo rinde sobre fondo sólido.
     val appBgStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
@@ -179,7 +185,7 @@ fun NavigationDesktop(
     // la rail que lo pedía ya no existe.
     val fabMenuVisible =
         appMode == AppMode.MUSIC && !isOnNowPlaying &&
-            (effectiveLiquidGlass || navigationRailStyle == NavigationRailStyle.FAB)
+                (effectiveLiquidGlass || navigationRailStyle == NavigationRailStyle.FAB)
     // En Now Playing el mini player está oculto (pantalla completa): no hay inset que reservar.
     val baseBottomInset = if (isOnNowPlaying) {
         0.dp
@@ -202,305 +208,181 @@ fun NavigationDesktop(
     CompositionLocalProvider(
         LocalLiquidGlass provides effectiveLiquidGlass,
     ) {
-    CompositionLocalProvider(LocalMiniPlayerInset provides baseBottomInset) {
-        SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
-            val sharedTransitionScope = this
-            val miniPlayerSlot: @Composable (Modifier) -> Unit = { m ->
-                MiniPlayer(
-                    isOnNowPlaying = isOnNowPlaying,
-                    onNowPlaying = {
-                        if (isOnNowPlaying) {
-                            rootComponent.onBack()
-                        } else {
-                            isQueueVisible = false
-                            rootComponent.navigateTo(ScreenConfig.NowPlaying)
-                        }
-                    },
-                    onToggleQueue = {
-                        isQueueVisible = !isQueueVisible
-                    },
-                    isQueueVisible = isQueueVisible && !isOnNowPlaying,
-                    modifier = m,
-                    sharedTransitionScope = sharedTransitionScope,
-                    floating = floatingMiniPlayer,
-                    isDocked = dockedMiniPlayer,
-                    backgroundStyle = miniPlayerBackgroundStyle,
-                    liquidGlass = effectiveLiquidGlass,
-                    hazeState = miniPlayerHazeState,
-                )
-            }
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .onPreviewKeyEvent { event ->
-                    event.type == KeyEventType.KeyDown && (event.key == Key.Escape || event.key == Key.Back) && when {
-                        youtubeFullscreen -> {
-                            youtubePlayerService.setFullscreen(false)
-                            true
-                        }
-
-                        rootComponent.canGoBack() -> {
-                            rootComponent.onBack()
-                            true
-                        }
-
-                        else -> false
-                    }
+        CompositionLocalProvider(LocalMiniPlayerInset provides baseBottomInset) {
+            SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+                val sharedTransitionScope = this
+                val miniPlayerSlot: @Composable (Modifier) -> Unit = { m ->
+                    MiniPlayer(
+                        isOnNowPlaying = isOnNowPlaying,
+                        onNowPlaying = {
+                            if (isOnNowPlaying) {
+                                rootComponent.onBack()
+                            } else {
+                                isQueueVisible = false
+                                rootComponent.navigateTo(ScreenConfig.NowPlaying)
+                            }
+                        },
+                        onToggleQueue = {
+                            isQueueVisible = !isQueueVisible
+                        },
+                        isQueueVisible = isQueueVisible && !isOnNowPlaying,
+                        modifier = m,
+                        sharedTransitionScope = sharedTransitionScope,
+                        floating = floatingMiniPlayer,
+                        isDocked = dockedMiniPlayer,
+                        backgroundStyle = miniPlayerBackgroundStyle,
+                        liquidGlass = effectiveLiquidGlass,
+                        hazeState = miniPlayerHazeState,
+                    )
                 }
-                .pointerInput(youtubeFullscreen) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press && event.buttons == PointerButtons(8)) {
-                                if (youtubeFullscreen) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onPreviewKeyEvent { event ->
+                            event.type == KeyEventType.KeyDown && (event.key == Key.Escape || event.key == Key.Back) && when {
+                                youtubeFullscreen -> {
                                     youtubePlayerService.setFullscreen(false)
-                                } else if (rootComponent.canGoBack()) {
-                                    rootComponent.onBack()
+                                    true
                                 }
+
+                                rootComponent.canGoBack() -> {
+                                    rootComponent.onBack()
+                                    true
+                                }
+
+                                else -> false
                             }
                         }
-                    }
-                },
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-        ) {
-            BoxWithConstraints(Modifier.fillMaxSize()) {
-
-                // Ancho real de la ventana: la cola superpuesta nunca debe excederlo.
-                val windowWidth = maxWidth
-                // La cola solo se acopla al lado si al contenido le queda sitio legible
-                // después de ceder los 420dp del panel. Con el rail al lado y una ventana
-                // estrecha, compartir la fila dejaba ambas mitades inservibles.
-                val queueDocked = maxWidth - queueWidth >= 320.dp
-
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-
-                        // Now Playing siempre es pantalla completa: el rail se oculta solo.
-                        // La ventana principal no cambia de layout al entrar en
-                        // fullscreen: el vídeo se muestra en una ventana aparte.
-                        AnimatedVisibility(
-                            visible = !isOnNowPlaying && !glassNavVisible,
-                            enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
-                            exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
-                        ) {
-                            if (appMode == AppMode.YOUTUBE) {
-                                YouTubeSidebar(
-                                    activeConfig = activeConfig,
-                                    rootComponent = rootComponent,
-                                )
-                            } else {
-                                if (glassNavVisible) {
-
-                                } else {
-                                    when (navigationRailStyle) {
-                                        NavigationRailStyle.DEFAULT -> {
-                                            NavigationRailDefault(
-                                                activeConfig = activeConfig,
-                                                changeQueueVisible = { isQueueVisible = it },
-                                                rootComponent = rootComponent,
-                                                mainTabs = musicMainTabs,
-                                                bottomTabs = musicBottomTabs,
-                                            )
+                        .pointerInput(youtubeFullscreen) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    if (event.type == PointerEventType.Press && event.buttons == PointerButtons(
+                                            8
+                                        )
+                                    ) {
+                                        if (youtubeFullscreen) {
+                                            youtubePlayerService.setFullscreen(false)
+                                        } else if (rootComponent.canGoBack()) {
+                                            rootComponent.onBack()
                                         }
-
-                                        NavigationRailStyle.WIDE -> {
-                                            WideNavigationRail(
-                                                activeConfig = activeConfig,
-                                                changeQueueVisible = { isQueueVisible = it },
-                                                rootComponent = rootComponent,
-                                                mainTabs = musicMainTabs,
-                                                bottomTabs = musicBottomTabs,
-                                            )
-                                        }
-
-                                        NavigationRailStyle.FAB -> {}
                                     }
                                 }
                             }
-                        }
+                        },
+                    color = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onBackground,
+                ) {
+                    BoxWithConstraints(Modifier.fillMaxSize()) {
 
+                        // Ancho real de la ventana: la cola superpuesta nunca debe excederlo.
+                        val windowWidth = maxWidth
+                        // La cola solo se acopla al lado si al contenido le queda sitio legible
+                        // después de ceder los 420dp del panel. Con el rail al lado y una ventana
+                        // estrecha, compartir la fila dejaba ambas mitades inservibles.
+                        val queueDocked = maxWidth - queueWidth >= 320.dp
 
-                        val islands = LocalLayoutMode.current == LayoutMode.ISLANDS
-                        val square = LocalLayoutMode.current == LayoutMode.SQUARE
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
 
-                        val contentShape: Shape =
-                            if (dimens.surfaceCorner > 0.dp) {
-                                val roundedFullContent = if (isQueueVisible) dimens.surfaceCorner else 0.dp
-                                RoundedCornerShape(
-                                    topStart = dimens.surfaceCorner,
-                                    bottomStart = dimens.surfaceCorner,
-                                    topEnd = roundedFullContent,
-                                    bottomEnd = roundedFullContent
-                                )
-                            } else {
-                                RectangleShape
-                            }
-                        val bottomPadding = if (currentSong != null) 0.dp else dimens.windowPadding
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(
-                                    end = dimens.windowPadding,
-                                    bottom = bottomPadding,
-                                ),
-                        ) {
-
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1F)
-                                        .fillMaxHeight()
+                                // Now Playing siempre es pantalla completa: el rail se oculta solo.
+                                // La ventana principal no cambia de layout al entrar en
+                                // fullscreen: el vídeo se muestra en una ventana aparte.
+                                AnimatedVisibility(
+                                    visible = !isOnNowPlaying && !glassNavVisible,
+                                    enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(
+                                        expressiveLayoutTween()
+                                    ) else EnterTransition.None,
+                                    exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(
+                                        expressiveLayoutTween()
+                                    ) else ExitTransition.None,
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(LocalChromeSurface.current, contentShape)
-                                            .clip(contentShape)
-                                            .then(
-                                                if (islands) Modifier.border(
-                                                    0.5.dp,
-                                                    MaterialTheme.colorScheme.outlineVariant,
-                                                    contentShape
-                                                )
-                                                else Modifier
-                                            )
-                                            // Fuente del cristal del MiniPlayer: el contenido
-                                            // (hermano-anterior de sus overlays). Ver el comentario
-                                            // de miniPlayerHazeState arriba.
-                                            .then(
-                                                if (miniPlayerHazeState != null) {
-                                                    Modifier.hazeSource(miniPlayerHazeState)
-                                                } else {
-                                                    Modifier
-                                                },
-                                            ),
-                                    ) {
-                                        Surface(
-                                            modifier = Modifier.fillMaxSize(),
-                                            shape = contentShape,
-                                            color = if (LocalIsSolidBackground.current) {
-                                                MaterialTheme.colorScheme.background
-                                            } else {
-                                                Color.Transparent
-                                            },
-                                            contentColor = MaterialTheme.colorScheme.onBackground,
-                                        ) {
-                                            ChildStack(
-                                                stack = rootComponent.childStack,
-                                                animation = if (animationsEnabled) stackAnimation(fade()) else stackAnimation { _, _, _, _ -> null },
-                                            ) { child ->
+                                    if (appMode == AppMode.YOUTUBE) {
+                                        YouTubeSidebar(
+                                            activeConfig = activeConfig,
+                                            rootComponent = rootComponent,
+                                        )
+                                    } else {
+                                        if (glassNavVisible) {
 
-                                                ScreenRouter(
-                                                    instance = child.instance,
-                                                    rootComponent = rootComponent,
-                                                    sharedAnimatedTransitionScope = this@SharedTransitionLayout,
-                                                    animatedVisibilityScope = this,
-                                                )
+                                        } else {
+                                            when (navigationRailStyle) {
+                                                NavigationRailStyle.DEFAULT -> {
+                                                    NavigationRailDefault(
+                                                        activeConfig = activeConfig,
+                                                        changeQueueVisible = {
+                                                            isQueueVisible = it
+                                                        },
+                                                        rootComponent = rootComponent,
+                                                        mainTabs = musicMainTabs,
+                                                        bottomTabs = musicBottomTabs,
+                                                    )
+                                                }
 
+                                                NavigationRailStyle.WIDE -> {
+                                                    WideNavigationRail(
+                                                        activeConfig = activeConfig,
+                                                        changeQueueVisible = {
+                                                            isQueueVisible = it
+                                                        },
+                                                        rootComponent = rootComponent,
+                                                        mainTabs = musicMainTabs,
+                                                        bottomTabs = musicBottomTabs,
+                                                    )
+                                                }
+
+                                                NavigationRailStyle.FAB -> {}
                                             }
                                         }
                                     }
-
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .align(Alignment.BottomCenter),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        // FAB apilado ENCIMA del player, a la izquierda: no
-                                        // toca el layout, solo flota sobre el contenido.
-                                        if (fabMenuVisible) {
-                                            NavigationFabMenu(
-                                                mainTabs = musicMainTabs,
-                                                bottomTabs = musicBottomTabs,
-                                                activeConfig = activeConfig,
-                                                onTabClick = { rootComponent.switchTab(it) },
-                                                modifier = Modifier
-                                                    .align(Alignment.Start)
-                                                    .padding(start = 16.dp, bottom = 10.dp),
-                                            )
-                                        }
-                                        AnimatedVisibility(
-                                            visible = (dockedMiniPlayer || floatingMiniPlayer) && !isOnNowPlaying,
-                                            // Fade-only al aparecer: sus bounds son el destino del
-                                            // shared element al volver de Now Playing; un slide los
-                                            // movería durante el morph y la portada aterrizaría mal.
-                                            enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) else EnterTransition.None,
-                                            exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + slideOutVertically(animationSpec = expressiveLayoutTween(), targetOffsetY = { it / 4 }) else ExitTransition.None,
-                                        ) {
-                                            miniPlayerSlot(Modifier.fillMaxWidth())
-                                        }
-                                    }
                                 }
 
-                                AnimatedVisibility(
-                                    visible = isQueueVisible && !isOnNowPlaying,
-                                    enter = if (animationsEnabled) fadeIn(expressiveFadeTween()) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
-                                    exit = if (animationsEnabled) fadeOut(expressiveFadeTween()) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
-                                ) {
-                                    if (queueDocked) {
-                                    Row(modifier = Modifier.fillMaxHeight()) {
-                                        if (square) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(dimens.chromeBorderWidth)
-                                                    .fillMaxHeight()
-                                                    .background(MaterialTheme.colorScheme.outlineVariant)
-                                            )
-                                        } else {
-                                            Spacer(Modifier.width(dimens.surfaceGap))
-                                        }
 
-                                        PlaybackQueuePanel(
-                                            state = playerState,
-                                            onDismiss = { isQueueVisible = false },
-                                            modifier = Modifier
-                                                .fillMaxHeight()
-                                                .width(queueWidth)
-                                                .clip(contentShape)
-                                                .then(
-                                                    if (islands) Modifier.border(
-                                                        0.5.dp,
-                                                        MaterialTheme.colorScheme.outlineVariant,
-                                                        contentShape
-                                                    )
-                                                    else Modifier
-                                                ),
-                                            containerColor = Color.Transparent,
-                                            bottomInset = LocalMiniPlayerInset.current,
+                                val islands = LocalLayoutMode.current == LayoutMode.ISLANDS
+                                val square = LocalLayoutMode.current == LayoutMode.SQUARE
+
+                                val contentShape: Shape =
+                                    if (dimens.surfaceCorner > 0.dp) {
+                                        val roundedFullContent =
+                                            if (isQueueVisible) dimens.surfaceCorner else 0.dp
+                                        RoundedCornerShape(
+                                            topStart = dimens.surfaceCorner,
+                                            bottomStart = dimens.surfaceCorner,
+                                            topEnd = roundedFullContent,
+                                            bottomEnd = roundedFullContent
                                         )
-                                    }
                                     } else {
-                                        // Sin sitio para la cola acoplada: se superpone al
-                                        // contenido como un panel, en vez de compartir la fila
-                                        // y dejar ambas mitades ilegibles. El ancho nunca
-                                        // excede el de la ventana.
-                                        Box(modifier = Modifier.fillMaxSize()) {
+                                        RectangleShape
+                                    }
+                                val bottomPadding =
+                                    if (currentSong != null) 0.dp else dimens.windowPadding
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(
+                                            end = dimens.windowPadding,
+                                            bottom = bottomPadding,
+                                        ),
+                                ) {
+
+                                    Row(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxWidth()
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1F)
+                                                .fillMaxHeight()
+                                        ) {
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxSize()
-                                                    .background(Color.Black.copy(alpha = 0.45f))
-                                                    .clickable(
-                                                        interactionSource = remember {
-                                                            MutableInteractionSource()
-                                                        },
-                                                        indication = null,
-                                                        onClick = { isQueueVisible = false },
-                                                    ),
-                                            )
-                                            PlaybackQueuePanel(
-                                                state = playerState,
-                                                onDismiss = { isQueueVisible = false },
-                                                modifier = Modifier
-                                                    .align(Alignment.CenterEnd)
-                                                    .fillMaxHeight()
-                                                    .width(windowWidth.coerceAtMost(queueWidth))
+                                                    .background(
+                                                        LocalChromeSurface.current,
+                                                        contentShape
+                                                    )
                                                     .clip(contentShape)
                                                     .then(
                                                         if (islands) Modifier.border(
@@ -509,72 +391,224 @@ fun NavigationDesktop(
                                                             contentShape
                                                         )
                                                         else Modifier
+                                                    )
+                                                    // Fuente del cristal del MiniPlayer: el contenido
+                                                    // (hermano-anterior de sus overlays). Ver el comentario
+                                                    // de miniPlayerHazeState arriba.
+                                                    .then(
+                                                        if (miniPlayerHazeState != null) {
+                                                            Modifier.hazeSource(miniPlayerHazeState)
+                                                        } else {
+                                                            Modifier
+                                                        },
                                                     ),
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                                bottomInset = LocalMiniPlayerInset.current,
-                                            )
+                                            ) {
+                                                Surface(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    shape = contentShape,
+                                                    color = if (LocalIsSolidBackground.current) {
+                                                        MaterialTheme.colorScheme.background
+                                                    } else {
+                                                        Color.Transparent
+                                                    },
+                                                    contentColor = MaterialTheme.colorScheme.onBackground,
+                                                ) {
+                                                    ChildStack(
+                                                        stack = rootComponent.childStack,
+                                                        animation = if (animationsEnabled) stackAnimation(
+                                                            fade(expressiveLayoutTween(HeroCoverMorphMs))
+                                                        ) else stackAnimation { _, _, _, _ -> null },
+                                                    ) { child ->
+
+                                                        ScreenRouter(
+                                                            instance = child.instance,
+                                                            rootComponent = rootComponent,
+                                                            sharedAnimatedTransitionScope = this@SharedTransitionLayout,
+                                                            animatedVisibilityScope = this,
+                                                        )
+
+                                                    }
+                                                }
+                                            }
+
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .align(Alignment.BottomCenter),
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                            ) {
+                                                // FAB apilado ENCIMA del player, a la izquierda: no
+                                                // toca el layout, solo flota sobre el contenido.
+                                                if (fabMenuVisible) {
+                                                    NavigationFabMenu(
+                                                        mainTabs = musicMainTabs,
+                                                        bottomTabs = musicBottomTabs,
+                                                        activeConfig = activeConfig,
+                                                        onTabClick = { rootComponent.switchTab(it) },
+                                                        modifier = Modifier
+                                                            .align(Alignment.Start)
+                                                            .padding(start = 16.dp, bottom = 10.dp),
+                                                    )
+                                                }
+                                                AnimatedVisibility(
+                                                    visible = (dockedMiniPlayer || floatingMiniPlayer) && !isOnNowPlaying,
+                                                    // Fade con la MISMA duración que el morph: el
+                                                    // MiniPlayer debe seguir compuesto (y sus
+                                                    // bounds quietos) mientras la portada viaja.
+                                                    enter = if (animationsEnabled) {
+                                                        fadeIn(expressiveTween(HeroCoverMorphMs))
+                                                    } else EnterTransition.None,
+                                                    exit = if (animationsEnabled) {
+                                                        fadeOut(expressiveTween(HeroCoverMorphMs))
+                                                    } else ExitTransition.None,
+                                                ) {
+                                                    miniPlayerSlot(Modifier.fillMaxWidth())
+                                                }
+                                            }
+                                        }
+
+                                        AnimatedVisibility(
+                                            visible = isQueueVisible && !isOnNowPlaying,
+                                            enter = if (animationsEnabled) fadeIn(
+                                                expressiveFadeTween()
+                                            ) + expandHorizontally(expressiveLayoutTween()) else EnterTransition.None,
+                                            exit = if (animationsEnabled) fadeOut(
+                                                expressiveFadeTween()
+                                            ) + shrinkHorizontally(expressiveLayoutTween()) else ExitTransition.None,
+                                        ) {
+                                            if (queueDocked) {
+                                                Row(modifier = Modifier.fillMaxHeight()) {
+                                                    if (square) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .width(dimens.chromeBorderWidth)
+                                                                .fillMaxHeight()
+                                                                .background(MaterialTheme.colorScheme.outlineVariant)
+                                                        )
+                                                    } else {
+                                                        Spacer(Modifier.width(dimens.surfaceGap))
+                                                    }
+
+                                                    PlaybackQueuePanel(
+                                                        state = playerState,
+                                                        onDismiss = { isQueueVisible = false },
+                                                        modifier = Modifier
+                                                            .fillMaxHeight()
+                                                            .width(queueWidth)
+                                                            .clip(contentShape)
+                                                            .then(
+                                                                if (islands) Modifier.border(
+                                                                    0.5.dp,
+                                                                    MaterialTheme.colorScheme.outlineVariant,
+                                                                    contentShape
+                                                                )
+                                                                else Modifier
+                                                            ),
+                                                        containerColor = Color.Transparent,
+                                                        bottomInset = LocalMiniPlayerInset.current,
+                                                    )
+                                                }
+                                            } else {
+                                                // Sin sitio para la cola acoplada: se superpone al
+                                                // contenido como un panel, en vez de compartir la fila
+                                                // y dejar ambas mitades ilegibles. El ancho nunca
+                                                // excede el de la ventana.
+                                                Box(modifier = Modifier.fillMaxSize()) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .background(Color.Black.copy(alpha = 0.45f))
+                                                            .clickable(
+                                                                interactionSource = remember {
+                                                                    MutableInteractionSource()
+                                                                },
+                                                                indication = null,
+                                                                onClick = {
+                                                                    isQueueVisible = false
+                                                                },
+                                                            ),
+                                                    )
+                                                    PlaybackQueuePanel(
+                                                        state = playerState,
+                                                        onDismiss = { isQueueVisible = false },
+                                                        modifier = Modifier
+                                                            .align(Alignment.CenterEnd)
+                                                            .fillMaxHeight()
+                                                            .width(
+                                                                windowWidth.coerceAtMost(
+                                                                    queueWidth
+                                                                )
+                                                            )
+                                                            .clip(contentShape)
+                                                            .then(
+                                                                if (islands) Modifier.border(
+                                                                    0.5.dp,
+                                                                    MaterialTheme.colorScheme.outlineVariant,
+                                                                    contentShape
+                                                                )
+                                                                else Modifier
+                                                            ),
+                                                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                                        bottomInset = LocalMiniPlayerInset.current,
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
+
+                            AnimatedVisibility(
+                                visible = barMiniPlayer && !isOnNowPlaying,
+                                // Misma duración que el morph: mantiene la fuente compuesta
+                                // y con bounds quietos mientras la portada viaja.
+                                enter = if (animationsEnabled) {
+                                    fadeIn(expressiveTween(HeroCoverMorphMs))
+                                } else EnterTransition.None,
+                                exit = if (animationsEnabled) {
+                                    fadeOut(expressiveTween(HeroCoverMorphMs))
+                                } else ExitTransition.None,
+                            ) {
+                                miniPlayerSlot(Modifier.fillMaxWidth())
+                            }
+
+                        }
+
+                        SnackBar(
+                            currentSong = currentSong,
+                            floatingMiniPlayer = floatingMiniPlayer,
+                            snackbarHostState = snackbarHostState,
+                        )
+
+                        CsvImportProgressOverlay(
+                            state = csvImportState,
+                            onCancel = { playlistsViewModel.cancelCsvImport() },
+                            onDismiss = { playlistsViewModel.dismissCsvImportResult() },
+                        )
+
+                        val miniVideo = youtubeMiniVideo
+                        if (youtubeMiniVisible && miniVideo != null) {
+                            YouTubeFloatingMiniPlayer(
+                                playerService = youtubePlayerService,
+                                video = miniVideo,
+                                onRestore = {
+                                    youtubeWatchViewModel.restoreFromMini()
+                                    rootComponent.navigateTo(
+                                        ScreenConfig.YouTubeWatch(miniVideo.id),
+                                    )
+                                },
+                                onClose = { youtubeWatchViewModel.closeMini() },
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(24.dp),
+                            )
                         }
                     }
-
-                    AnimatedVisibility(
-                        visible = barMiniPlayer && !isOnNowPlaying,
-                        // Fade-only al aparecer por el mismo motivo: expandVertically
-                        // movería los bounds destino del shared element al volver.
-                        enter = if (animationsEnabled) {
-                            fadeIn(expressiveFadeTween())
-                        } else EnterTransition.None,
-                        exit = if (animationsEnabled) {
-                            fadeOut(expressiveFadeTween()) +
-                                    shrinkVertically(expressiveLayoutTween(), shrinkTowards = Alignment.Top)
-                        } else ExitTransition.None,
-                    ) {
-                        miniPlayerSlot(Modifier.fillMaxWidth())
-                    }
-
-                }
-
-                SnackBar(
-                    currentSong = currentSong,
-                    floatingMiniPlayer = floatingMiniPlayer,
-                    snackbarHostState = snackbarHostState,
-                )
-
-                CsvImportProgressOverlay(
-                    state = csvImportState,
-                    onCancel = { playlistsViewModel.cancelCsvImport() },
-                    onDismiss = { playlistsViewModel.dismissCsvImportResult() },
-                )
-
-                val miniVideo = youtubeMiniVideo
-                if (youtubeMiniVisible && miniVideo != null) {
-                    YouTubeFloatingMiniPlayer(
-                        playerService = youtubePlayerService,
-                        video = miniVideo,
-                        onRestore = {
-                            youtubeWatchViewModel.restoreFromMini()
-                            rootComponent.navigateTo(
-                                ScreenConfig.YouTubeWatch(miniVideo.id),
-                            )
-                        },
-                        onClose = { youtubeWatchViewModel.closeMini() },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(24.dp),
-                    )
                 }
             }
-    }
+        }
     }
 }
-    }
-    }
-
-
-
 
 
 @Composable
