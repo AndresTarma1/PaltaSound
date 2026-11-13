@@ -73,11 +73,17 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+import example.nucleus.ui.components.glass.ProgressiveBlurBackdrop
 import example.nucleus.db.entities.SearchHistoryEntry
 import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.ExpressiveEmptyState
@@ -192,15 +198,47 @@ fun SearchScreen(
 ) {
     var active by remember { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize(),
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-        Column(
-            Modifier
+    // El contenido es la fuente del difuminado; buscador y filtros flotan
+    // encima con blur progresivo mientras los resultados scrollean debajo.
+    val contentHaze = rememberHazeState()
+    val density = LocalDensity.current
+    var topBarHeight by remember { mutableStateOf(0.dp) }
+    val showFilters = state.uiState !is SearchState.Idle
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .hazeSource(contentHaze),
+        ) {
+            ResultsList(
+                uiState = state.uiState,
+                charts = state.charts,
+                explore = state.explore,
+                moodAndGenres = state.moodAndGenres,
+                filter = state.filter,
+                playerViewModel = playerViewModel,
+                onItemClick = { item -> onYTItemClick(item, actions.onNavigate, playerViewModel) },
+                onMoodClick = { browseId, params -> actions.onNavigate(ScreenConfig.YouTubeBrowse(browseId, params)) },
+                onFilterChange = actions.onFilterChange,
+                onLoadMore = actions.onLoadMore,
+                topInset = topBarHeight,
+            )
+        }
+
+        // Difuminado progresivo detrás de la barra (solo con el buscador
+        // colapsado; expandido tapa la pantalla y no aporta).
+        ProgressiveBlurBackdrop(
+            hazeState = contentHaze,
+            height = if (active) 0.dp else topBarHeight,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .onSizeChanged { topBarHeight = with(density) { it.height.toDp() } },
         ) {
             SearchSection(
                 query = state.query,
@@ -217,20 +255,9 @@ fun SearchScreen(
                 onClearHistory = actions.onClearHistory,
             )
 
-
-            ResultsList(
-                uiState = state.uiState,
-                charts = state.charts,
-                explore = state.explore,
-                moodAndGenres = state.moodAndGenres,
-                showFilterRow = true,
-                filter = state.filter,
-                playerViewModel = playerViewModel,
-                onItemClick = { item -> onYTItemClick(item, actions.onNavigate, playerViewModel) },
-                onMoodClick = { browseId, params -> actions.onNavigate(ScreenConfig.YouTubeBrowse(browseId, params)) },
-                onFilterChange = actions.onFilterChange,
-                onLoadMore = actions.onLoadMore,
-            )
+            if (showFilters) {
+                FilterRow(selectedFilter = state.filter, onFilterSelected = actions.onFilterChange)
+            }
         }
     }
 }
@@ -526,10 +553,10 @@ fun ResultsList(
     playerViewModel: PlayerViewModel,
     onItemClick: (YTItem) -> Unit,
     onMoodClick: (String, String?) -> Unit = { _, _ -> },
-    showFilterRow: Boolean = true,
     filter: YouTube.SearchFilter?,
     onFilterChange: (YouTube.SearchFilter?) -> Unit,
     onLoadMore: () -> Unit,
+    topInset: Dp = 0.dp,
 ) {
     val listState = rememberLazyListState()
 
@@ -571,12 +598,6 @@ fun ResultsList(
 
     // ---- UI ----
     Column(Modifier.fillMaxSize()) {
-        // La fila de filtros queda fija: siempre se puede cambiar de filtro,
-        // incluso con "sin resultados" o con error.
-        if (showFilterRow && uiState !is SearchState.Idle) {
-            FilterRow(selectedFilter = filter, onFilterSelected = onFilterChange)
-        }
-
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 uiState is SearchState.Idle -> {
@@ -587,6 +608,7 @@ fun ResultsList(
                         playerViewModel = playerViewModel,
                         onItemClick = onItemClick,
                         onMoodClick = onMoodClick,
+                        topInset = topInset,
                     )
                 }
 
@@ -615,6 +637,7 @@ fun ResultsList(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         contentPadding = appScrollContentPadding(
                             end = AppScrollbarGutter + 4.dp,
+                            top = topInset,
                             bottom = LocalMiniPlayerInset.current,
                         ),
                     ) {
@@ -690,6 +713,7 @@ private fun SearchChartsContent(
     playerViewModel: PlayerViewModel,
     onItemClick: (YTItem) -> Unit,
     onMoodClick: (String, String?) -> Unit = { _, _ -> },
+    topInset: Dp = 0.dp,
 ) {
     if (charts == null && explore == null && moodAndGenres.isEmpty()) {
         EmptyStateView(Icons.AutoMirrored.Filled.TrendingUp, stringResource(Res.string.explore_trends))
@@ -704,7 +728,7 @@ private fun SearchChartsContent(
         contentPadding = appScrollContentPadding(
             start = AppScreenContentHorizontal,
             end = AppScrollbarGutter + AppScreenContentHorizontal,
-            top = 16.dp,
+            top = 16.dp + topInset,
             bottom = LocalMiniPlayerInset.current + 16.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),

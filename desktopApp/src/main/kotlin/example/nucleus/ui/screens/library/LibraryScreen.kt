@@ -34,6 +34,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import example.nucleus.ui.components.glass.GlassFilterChip
 import example.nucleus.ui.components.glass.GlassDropdownMenu
+import example.nucleus.ui.components.glass.LocalProgressiveTopInset
+import example.nucleus.ui.components.glass.ProgressiveBlurBackdrop
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,6 +58,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -353,9 +360,82 @@ fun LibraryScreen(
     var newPlaylistName by remember { mutableStateOf("") }
     var showFilterMenu by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
+    // El contenido es la fuente del difuminado; el título y los tabs flotan
+    // encima con blur progresivo mientras las grids scrollean por debajo.
+    val contentHaze = rememberHazeState()
+    val density = LocalDensity.current
+    var libraryTopBarHeight by remember { mutableStateOf(0.dp) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(contentHaze),
+        ) {
+            CompositionLocalProvider(LocalProgressiveTopInset provides libraryTopBarHeight) {
+            when (state.selectedTab ?: LibraryTab.LIBRARY) {
+                LibraryTab.ALBUMS -> AlbumsTab(
+                    albums = state.albums,
+                    ytmAlbums = (state.ytmState as? YtmLibraryState.Success)?.albums.orEmpty(),
+                    isLoadingYtm = state.ytmState is YtmLibraryState.Loading,
+                    onNavigate = actions.onNavigate,
+                    onRemove = actions.onRemoveAlbum,
+                    onQuickPlayAlbum = actions.onQuickPlayAlbum,
+                    onQuickShuffleAlbum = actions.onQuickShuffleAlbum,
+                )
+
+                LibraryTab.ARTISTS -> ArtistsTab(
+                    artists = state.artists,
+                    ytmArtists = (state.ytmState as? YtmLibraryState.Success)?.artists.orEmpty(),
+                    isLoadingYtm = state.ytmState is YtmLibraryState.Loading,
+                    onNavigate = actions.onNavigate,
+                    onRemove = actions.onRemoveArtist,
+                )
+
+                LibraryTab.PLAYLISTS -> PlaylistsTab(
+                    playlists = state.playlists,
+                    ytmPlaylists = (state.ytmState as? YtmLibraryState.Success)?.playlists.orEmpty(),
+                    isLoadingYtm = state.ytmState is YtmLibraryState.Loading,
+                    onNavigate = actions.onNavigate,
+                    onRemove = actions.onRemovePlaylist,
+                    playerViewModel = playerViewModel,
+                    onQuickPlayPlaylist = actions.onQuickPlayPlaylist,
+                    onQuickShufflePlaylist = actions.onQuickShufflePlaylist,
+                )
+
+                LibraryTab.PODCASTS -> PodcastsTab(
+                    podcasts = state.podcasts,
+                    isLoading = state.ytmState is YtmLibraryState.Loading,
+                    onNavigate = actions.onNavigate,
+                )
+
+                LibraryTab.LIBRARY -> LibraryMixedTab(
+                    state = state,
+                    onNavigate = actions.onNavigate,
+                    playerViewModel = playerViewModel,
+                    onRemovePlaylist = actions.onRemovePlaylist,
+                    onQuickPlayAlbum = actions.onQuickPlayAlbum,
+                    onQuickShuffleAlbum = actions.onQuickShuffleAlbum,
+                    onQuickPlayPlaylist = actions.onQuickPlayPlaylist,
+                    onQuickShufflePlaylist = actions.onQuickShufflePlaylist,
+                )
+            }
+            }
+        }
+
+        ProgressiveBlurBackdrop(
+            hazeState = contentHaze,
+            height = libraryTopBarHeight,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .onSizeChanged { libraryTopBarHeight = with(density) { it.height.toDp() } },
+        ) {
+TopAppBar(
                 title = {
                     Text(
                         stringResource(Res.string.library_title),
@@ -417,14 +497,6 @@ fun LibraryScreen(
                 ),
 
             )
-        },
-        containerColor = Color.Transparent
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -502,54 +574,6 @@ fun LibraryScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
-
-            when (state.selectedTab ?: LibraryTab.LIBRARY) {
-                LibraryTab.ALBUMS -> AlbumsTab(
-                    albums = state.albums,
-                    ytmAlbums = (state.ytmState as? YtmLibraryState.Success)?.albums.orEmpty(),
-                    isLoadingYtm = state.ytmState is YtmLibraryState.Loading,
-                    onNavigate = actions.onNavigate,
-                    onRemove = actions.onRemoveAlbum,
-                    onQuickPlayAlbum = actions.onQuickPlayAlbum,
-                    onQuickShuffleAlbum = actions.onQuickShuffleAlbum,
-                )
-
-                LibraryTab.ARTISTS -> ArtistsTab(
-                    artists = state.artists,
-                    ytmArtists = (state.ytmState as? YtmLibraryState.Success)?.artists.orEmpty(),
-                    isLoadingYtm = state.ytmState is YtmLibraryState.Loading,
-                    onNavigate = actions.onNavigate,
-                    onRemove = actions.onRemoveArtist,
-                )
-
-                LibraryTab.PLAYLISTS -> PlaylistsTab(
-                    playlists = state.playlists,
-                    ytmPlaylists = (state.ytmState as? YtmLibraryState.Success)?.playlists.orEmpty(),
-                    isLoadingYtm = state.ytmState is YtmLibraryState.Loading,
-                    onNavigate = actions.onNavigate,
-                    onRemove = actions.onRemovePlaylist,
-                    playerViewModel = playerViewModel,
-                    onQuickPlayPlaylist = actions.onQuickPlayPlaylist,
-                    onQuickShufflePlaylist = actions.onQuickShufflePlaylist,
-                )
-
-                LibraryTab.PODCASTS -> PodcastsTab(
-                    podcasts = state.podcasts,
-                    isLoading = state.ytmState is YtmLibraryState.Loading,
-                    onNavigate = actions.onNavigate,
-                )
-
-                LibraryTab.LIBRARY -> LibraryMixedTab(
-                    state = state,
-                    onNavigate = actions.onNavigate,
-                    playerViewModel = playerViewModel,
-                    onRemovePlaylist = actions.onRemovePlaylist,
-                    onQuickPlayAlbum = actions.onQuickPlayAlbum,
-                    onQuickShuffleAlbum = actions.onQuickShuffleAlbum,
-                    onQuickPlayPlaylist = actions.onQuickPlayPlaylist,
-                    onQuickShufflePlaylist = actions.onQuickShufflePlaylist,
-                )
-            }
         }
     }
 

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.SectionHeaderRow
+import example.nucleus.ui.components.glass.LocalProgressiveTopInset
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.utils.circleAwareShape
@@ -48,7 +49,10 @@ internal val LibraryGridSpacing = 12.dp
 internal fun libraryGridContentPadding(): PaddingValues = PaddingValues(
     start = 20.dp,
     end = 20.dp,
-    top = 8.dp,
+    // Las barras fijas (título + tabs) flotan sobre el contenido: el top inset
+    // hace que la primera fila arranque debajo y que al scrollear el contenido
+    // pase por detrás del difuminado.
+    top = 8.dp + LocalProgressiveTopInset.current,
     bottom = maxOf(80.dp, LocalMiniPlayerInset.current),
 )
 
