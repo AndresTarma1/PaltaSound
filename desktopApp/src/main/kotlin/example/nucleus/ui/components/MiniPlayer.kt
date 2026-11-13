@@ -3,6 +3,7 @@
 package example.nucleus.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -123,6 +124,10 @@ fun MiniPlayer(
     liquidGlass: Boolean = false,
     modifier: Modifier = Modifier,
     sharedTransitionScope: SharedTransitionScope? = null,
+    // Scope del AnimatedVisibility externo (el que muestra/oculta el
+    // MiniPlayer). Es el que tiene transición activa en AMBAS direcciones; el
+    // AV interno del cover nace ya visible al volver y no anima.
+    sharedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
     val state by playerViewModel.uiState.collectAsState()
@@ -172,6 +177,7 @@ fun MiniPlayer(
                     onToggleQueue = onToggleQueue,
                     ratio = ratio,
                     sharedTransitionScope = sharedTransitionScope,
+                    sharedVisibilityScope = sharedVisibilityScope,
                     playerViewModel = playerViewModel,
                     colorScheme = colorScheme,
                     liquidGlass = liquidGlass,
@@ -691,6 +697,7 @@ private fun MiniPlayerWideRow(
     onToggleQueue: () -> Unit,
     ratio: Float,
     sharedTransitionScope: SharedTransitionScope?,
+    sharedVisibilityScope: AnimatedVisibilityScope?,
     playerViewModel: PlayerViewModel,
     colorScheme: ColorScheme,
     liquidGlass: Boolean,
@@ -715,38 +722,26 @@ private fun MiniPlayerWideRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                val animationsEnabled = LocalAnimationsEnabled.current
-                AnimatedVisibility(
-                    visible = !isOnNowPlaying,
-                    // Misma duración que el morph: este AnimatedVisibility es el
-                    // scope del shared element y la fuente debe seguir compuesta
-                    // hasta que la portada aterrice en Now Playing.
-                    enter = if (animationsEnabled) {
-                        fadeIn(expressiveTween(HeroCoverMorphMs))
-                    } else {
-                        EnterTransition.None
-                    },
-                    exit = if (animationsEnabled) {
-                        fadeOut(expressiveTween(HeroCoverMorphMs))
-                    } else {
-                        ExitTransition.None
-                    },
-                ) {
-                    var isHovered by remember { mutableStateOf(false) }
-                    val overlayAlpha by animateFloatAsState(
-                        targetValue = if (isHovered) 0.42f else 0f,
-                        animationSpec = rememberUiTween(durationMillis = 160),
-                        label = "coverHover",
-                    )
+                var isHovered by remember { mutableStateOf(false) }
+                val overlayAlpha by animateFloatAsState(
+                    targetValue = if (isHovered) 0.42f else 0f,
+                    animationSpec = rememberUiTween(durationMillis = 160),
+                    label = "coverHover",
+                )
 
-                    Box(
-                        modifier = Modifier
+                Box(
+                    modifier = Modifier
                             // El shared modifier va ANTES de los modificadores de tamaño
                             // (guía oficial: "place size modifiers after the shared
                             // element modifiers"). Con el orden inverso, los bounds se
                             // derivaban de las constraints del padre y la portada
                             // "aparecía de cualquier lado" al viajar.
-                            .heroCoverElement(song.id, sharedTransitionScope, this, debugTag = "mini")
+                            .heroCoverElement(
+                                songId = song.id,
+                                sharedTransitionScope = sharedTransitionScope,
+                                animatedVisibilityScope = sharedVisibilityScope,
+                                debugTag = "mini",
+                            )
                             .sizeIn(maxWidth = thumbSize * ratio, maxHeight = thumbSize)
                             .aspectRatio(ratio)
                             .clip(coverShape)
@@ -791,7 +786,6 @@ private fun MiniPlayerWideRow(
                             )
                         }
                     }
-                }
 
                 Column(
                     modifier = Modifier

@@ -211,7 +211,7 @@ fun NavigationDesktop(
         CompositionLocalProvider(LocalMiniPlayerInset provides baseBottomInset) {
             SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
                 val sharedTransitionScope = this
-                val miniPlayerSlot: @Composable (Modifier) -> Unit = { m ->
+                val miniPlayerSlot: @Composable (Modifier, AnimatedVisibilityScope?) -> Unit = { m, visibilityScope ->
                     MiniPlayer(
                         isOnNowPlaying = isOnNowPlaying,
                         onNowPlaying = {
@@ -228,6 +228,7 @@ fun NavigationDesktop(
                         isQueueVisible = isQueueVisible && !isOnNowPlaying,
                         modifier = m,
                         sharedTransitionScope = sharedTransitionScope,
+                        sharedVisibilityScope = visibilityScope,
                         floating = floatingMiniPlayer,
                         isDocked = dockedMiniPlayer,
                         backgroundStyle = miniPlayerBackgroundStyle,
@@ -462,7 +463,7 @@ fun NavigationDesktop(
                                                         fadeOut(expressiveTween(HeroCoverMorphMs))
                                                     } else ExitTransition.None,
                                                 ) {
-                                                    miniPlayerSlot(Modifier.fillMaxWidth())
+                                                    miniPlayerSlot(Modifier.fillMaxWidth(), this)
                                                 }
                                             }
                                         }
@@ -569,7 +570,7 @@ fun NavigationDesktop(
                                     fadeOut(expressiveTween(HeroCoverMorphMs))
                                 } else ExitTransition.None,
                             ) {
-                                miniPlayerSlot(Modifier.fillMaxWidth())
+                                miniPlayerSlot(Modifier.fillMaxWidth(), this)
                             }
 
                         }
