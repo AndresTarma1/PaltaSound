@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import example.nucleus.ui.themes.expressiveEasing
-import example.nucleus.ui.themes.expressiveLayoutDuration
 import example.nucleus.utils.LocalAnimationsEnabled
 
 /**
@@ -21,9 +20,11 @@ private const val HeroCoverMorphDuration = 560
 /**
  * Hero cover element para la transición de la carátula entre el MiniPlayer y NowPlaying.
  *
- * `sharedElement` (no `sharedBounds`): el contenido se ESCALA entre ambos bounds
- * en vez de re-medirse, que para una imagen es lo que da el "encogerse hacia el
- * thumbnail" al volver, sin saltos de re-layout a mitad de vuelo.
+ * `sharedBounds` + `ScaleToBounds`: el overlay interpola los bounds y ESCALA el
+ * contenido (en vez de re-medirlo). `sharedElement` puro no engancha al volver
+ * (la salida se quedaba sin morph); `sharedBounds` sí anima en ambas
+ * direcciones, y con ScaleToBounds la portada se encoge hacia el thumbnail en
+ * lugar de saltar por un re-layout.
  *
  * Solo se aplica con animaciones activadas; con reduce-motion la carátula
  * aparece sin morph.
@@ -42,9 +43,10 @@ fun Modifier.heroCoverElement(
     if (sharedTransitionScope == null || animatedVisibilityScope == null) return this
     if (!LocalAnimationsEnabled.current) return this
     return with(sharedTransitionScope) {
-        sharedElement(
+        sharedBounds(
             sharedContentState = rememberSharedContentState(key = "now_playing_cover_$songId"),
             animatedVisibilityScope = animatedVisibilityScope,
+            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
             boundsTransform = { _, _ ->
                 tween<Rect>(durationMillis = HeroCoverMorphDuration, easing = expressiveEasing)
             },
