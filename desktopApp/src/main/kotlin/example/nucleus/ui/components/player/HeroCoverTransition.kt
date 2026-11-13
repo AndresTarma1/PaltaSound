@@ -1,12 +1,15 @@
 package example.nucleus.ui.components.player
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.expressiveEasing
 import example.nucleus.utils.LocalAnimationsEnabled
 
@@ -42,14 +45,21 @@ fun Modifier.heroCoverElement(
 ): Modifier {
     if (sharedTransitionScope == null || animatedVisibilityScope == null) return this
     if (!LocalAnimationsEnabled.current) return this
+    val clipShape = AppShapes.small
     return with(sharedTransitionScope) {
         sharedBounds(
             sharedContentState = rememberSharedContentState(key = "now_playing_cover_$songId"),
             animatedVisibilityScope = animatedVisibilityScope,
+            // El contenido no hace fade dentro del morph: la portada debe verse
+            // siempre mientras los bounds viajan (si no, "aparece de la nada").
+            enter = EnterTransition.None,
+            exit = ExitTransition.None,
             resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
             boundsTransform = { _, _ ->
                 tween<Rect>(durationMillis = HeroCoverMorphDuration, easing = expressiveEasing)
             },
+            // Recorta el overlay a la forma de la portada durante el viaje.
+            clipInOverlayDuringTransition = OverlayClip(clipShape),
         )
     }
 }

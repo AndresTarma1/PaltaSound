@@ -4,7 +4,6 @@ package example.nucleus.ui.components.player
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -36,8 +35,6 @@ internal fun NowPlayingWideBody(
     selectedTab: NowPlayingTab,
     onNavigate: ((ScreenConfig) -> Unit)?,
     onCollapse: () -> Unit,
-    coverScale: Animatable<Float, *>,
-    coverAlpha: Animatable<Float, *>,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     autoHide: NowPlayingAutoHide,
@@ -119,9 +116,10 @@ internal fun NowPlayingWideBody(
                         url = song.thumbnailUrl,
                         title = song.title,
                         modifier = Modifier
-                            .size(coverDimension)
+                            // Shared ANTES del tamaño (guía oficial), para que los
+                            // bounds del morph sean los reales del elemento.
                             .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                            .coverEnter(coverScale, coverAlpha)
+                            .size(coverDimension)
                             .autoHideCoverGrow(autoHide, coverRestScale),
                     )
 

@@ -276,8 +276,6 @@ private fun SpaciousNowPlayingBody(
     animatedVisibilityScope: AnimatedVisibilityScope?,
     autoHide: NowPlayingAutoHide,
 ) {
-    val (coverScale, coverAlpha) = rememberCoverEnter()
-
     if (compact) {
         NowPlayingCompactBody(
             state = state,
@@ -287,8 +285,6 @@ private fun SpaciousNowPlayingBody(
             selectedTab = selectedTab,
             onNavigate = onNavigate,
             onCollapse = onCollapse,
-            coverScale = coverScale,
-            coverAlpha = coverAlpha,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
             autoHide = autoHide,
@@ -302,8 +298,6 @@ private fun SpaciousNowPlayingBody(
             selectedTab = selectedTab,
             onNavigate = onNavigate,
             onCollapse = onCollapse,
-            coverScale = coverScale,
-            coverAlpha = coverAlpha,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
             autoHide = autoHide,

@@ -139,11 +139,8 @@ fun MiniPlayer(
     val islands = LocalLayoutMode.current == LayoutMode.ISLANDS
     val square = LocalLayoutMode.current == LayoutMode.SQUARE
     val surfaceShape = if (islands) RoundedCornerShape(dimens.surfaceCorner) else RectangleShape
-    // GlassStyle.shape solo acepta RoundedCornerShape; el docked rectangular usa radio 0.
     val dockedGlassShape = if (islands) RoundedCornerShape(dimens.surfaceCorner) else RoundedCornerShape(0.dp)
     val colorScheme = MaterialTheme.colorScheme
-    // Glass solo si el interruptor BETA está activo y hay fuente Haze.
-    val useGlass: Boolean = liquidGlass && hazeState != null
 
     val playerContent: @Composable () -> Unit = {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -469,7 +466,6 @@ private val MiniPlayerWideMinWidth = 800.dp
  * pasa al anillo de la portada y desaparecen la barra de búsqueda, el volumen y los
  * controles de transporte, que es donde estaba el problema.
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MiniPlayerCompactRow(
     song: MediaMetadata,
@@ -743,9 +739,14 @@ private fun MiniPlayerWideRow(
 
                     Box(
                         modifier = Modifier
+                            // El shared modifier va ANTES de los modificadores de tamaño
+                            // (guía oficial: "place size modifiers after the shared
+                            // element modifiers"). Con el orden inverso, los bounds se
+                            // derivaban de las constraints del padre y la portada
+                            // "aparecía de cualquier lado" al viajar.
+                            .heroCoverElement(song.id, sharedTransitionScope, this)
                             .sizeIn(maxWidth = thumbSize * ratio, maxHeight = thumbSize)
                             .aspectRatio(ratio)
-                            .heroCoverElement(song.id, sharedTransitionScope, this)
                             .clip(coverShape)
                             .onHover { isHovered = it }
                             .clickable(onClick = onNowPlaying, role = Role.Button)

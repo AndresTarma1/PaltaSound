@@ -8,7 +8,6 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -48,8 +47,6 @@ internal fun NowPlayingCompactBody(
     selectedTab: NowPlayingTab,
     onNavigate: ((ScreenConfig) -> Unit)?,
     onCollapse: () -> Unit,
-    coverScale: Animatable<Float, *>,
-    coverAlpha: Animatable<Float, *>,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     autoHide: NowPlayingAutoHide,
@@ -124,9 +121,10 @@ internal fun NowPlayingCompactBody(
                             url = song.thumbnailUrl,
                             title = song.title,
                             modifier = Modifier
-                                .size(coverSize)
+                                // Shared ANTES del tamaño (guía oficial), para que
+                                // los bounds del morph sean los reales del elemento.
                                 .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                                .coverEnter(coverScale, coverAlpha)
+                                .size(coverSize)
                                 .autoHideCoverGrow(autoHide, restScale = 1.1f),
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -188,7 +186,6 @@ internal fun NowPlayingCompactBody(
                             // Sin clave compartida: la portada grande ya la tiene y
                             // dos nodos con la misma clave harían saltar el overlay.
                             // Aquí basta la entrada por slide/fade.
-                            .coverEnter(coverScale, coverAlpha),
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     NowPlayingSongDetails(
