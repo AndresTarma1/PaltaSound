@@ -16,12 +16,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,8 +41,14 @@ import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.components.glass.LocalProgressiveTopInset
+import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
+import example.nucleus.navigation.ScreenConfig
+import example.nucleus.ui.components.ItemContentSource
+import example.nucleus.ui.screens.shared.SectionListItem
+import example.nucleus.viewmodels.PlayerViewModel
+import com.metrolist.innertube.models.YTItem
 import example.nucleus.ui.utils.circleAwareShape
 import example.nucleus.utils.LocalAnimationsEnabled
 
@@ -130,4 +140,42 @@ internal fun LibraryEmptyState(
         title = title,
         subtitle = subtitle,
     )
+}
+
+/**
+ * Filas de lista para las pestañas de biblioteca (modo LISTA). Reutiliza las
+ * filas de sección con navegación, reproducir, aleatorio y eliminar.
+ */
+@Composable
+internal fun LibraryListRows(
+    items: List<YTItem>,
+    onNavigate: (ScreenConfig) -> Unit,
+    playerViewModel: PlayerViewModel,
+    sourceFor: ((YTItem) -> ItemContentSource)? = null,
+    onRemoveCollection: ((YTItem) -> Unit)? = null,
+    header: @Composable () -> Unit = {},
+) {
+    val listState = rememberLazyListState()
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            contentPadding = libraryGridContentPadding(),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            item(key = "library_header") { header() }
+            items(items = items, key = { it.id }) { item ->
+                SectionListItem(
+                    item = item,
+                    onNavigate = onNavigate,
+                    playerViewModel = playerViewModel,
+                    source = sourceFor?.invoke(item) ?: ItemContentSource.YOUTUBE,
+                    onRemoveCollection = onRemoveCollection,
+                )
+            }
+        }
+        AppVerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+        )
+    }
 }

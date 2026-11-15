@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.LoadingMoreSongsItem
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
@@ -303,6 +304,8 @@ internal fun PlaylistCompactLayout(
             ) { index, song ->
                 SongListItem(
                     song = song,
+                    onGoToArtist = { actions.onNavigate(ScreenConfig.Artist(it)) },
+                    onGoToAlbum = { actions.onNavigate(ScreenConfig.collection(it)) },
                     onPlay = {
                         if (selectedSongIds.isNotEmpty()) {
                             onSelectionChange(song.id, song.id !in selectedSongIds)
@@ -378,6 +381,8 @@ private fun PlaylistSongList(
             ) { index, song ->
                 SongListItem(
                     song = song,
+                    onGoToArtist = { actions.onNavigate(ScreenConfig.Artist(it)) },
+                    onGoToAlbum = { actions.onNavigate(ScreenConfig.collection(it)) },
                     onPlay = {
                         if (selectedSongIds.isNotEmpty()) {
                             onSelectionChange(song.id, song.id !in selectedSongIds)

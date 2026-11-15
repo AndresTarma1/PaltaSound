@@ -212,6 +212,7 @@ fun SearchScreen(
                 .hazeSource(contentHaze),
         ) {
             ResultsList(
+                onNavigate = actions.onNavigate,
                 uiState = state.uiState,
                 charts = state.charts,
                 explore = state.explore,
@@ -552,6 +553,7 @@ fun ResultsList(
     moodAndGenres: List<MoodAndGenres> = emptyList(),
     playerViewModel: PlayerViewModel,
     onItemClick: (YTItem) -> Unit,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
     onMoodClick: (String, String?) -> Unit = { _, _ -> },
     filter: YouTube.SearchFilter?,
     onFilterChange: (YouTube.SearchFilter?) -> Unit,
@@ -654,12 +656,12 @@ fun ResultsList(
                                     // por eso la key incluye la sección.
                                     key = { "${index}_${it.id}" },
                                 ) { item ->
-                                    ResultRow(item, playerViewModel, onItemClick)
+                                    ResultRow(item, playerViewModel, onItemClick, onNavigate)
                                 }
                             }
 
                             items(items = items, key = { it.id }) { item ->
-                                ResultRow(item, playerViewModel, onItemClick)
+                                ResultRow(item, playerViewModel, onItemClick, onNavigate)
                             }
 
                             if (uiState is SearchState.Success && uiState.isLoadingMore) {
@@ -695,10 +697,11 @@ private fun ResultRow(
     item: YTItem,
     playerViewModel: PlayerViewModel,
     onItemClick: (YTItem) -> Unit,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
 ) {
     SectionListItem(
         item = item,
-        onNavigate = { onItemClick(item) },
+        onNavigate = onNavigate,
         playerViewModel = playerViewModel,
         modifier = Modifier.padding(horizontal = AppScreenContentHorizontal - 8.dp),
         dividerBelow = true,

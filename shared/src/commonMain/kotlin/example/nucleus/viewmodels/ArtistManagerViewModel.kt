@@ -27,7 +27,7 @@ import java.util.logging.Logger
 sealed class ArtistState {
     object Loading : ArtistState()
     data class Success(val artistPage: ArtistPage) : ArtistState()
-    data class Error(val message: String) : ArtistState()
+    data class Error(val message: String, val isNotFound: Boolean = false) : ArtistState()
 }
 @OptIn(ExperimentalCoroutinesApi::class)
 class ArtistManagerViewModel(
@@ -44,6 +44,7 @@ class ArtistManagerViewModel(
     val uiState = _uiState.asStateFlow()
 
     private val _currentBrowseId = MutableStateFlow<String?>(null)
+    val currentBrowseId = _currentBrowseId.asStateFlow()
     val isSaved: StateFlow<Boolean> = _currentBrowseId
         .flatMapLatest{ id ->
             if (id == null) flowOf(false)
@@ -55,6 +56,13 @@ class ArtistManagerViewModel(
         _currentBrowseId.value = browseId
         loadJob?.cancel()
 
+        // Los ids sinteticos "local:..." no existen en YouTube: no hay nada que pedir.
+        if (browseId.startsWith("local:")) {
+            Napier.d("Artist browse skipped for synthetic id=$browseId")
+            _uiState.value = ArtistState.Error("", isNotFound = true)
+            return
+        }
+
         loadJob = viewModelScope.launch {
             _uiState.value = ArtistState.Loading
             val result = YouTube.artist(browseId)
@@ -64,9 +72,24 @@ class ArtistManagerViewModel(
                     _uiState.value = ArtistState.Success(it)
                 }
                 .onFailure {
-                    _uiState.value = ArtistState.Error(it.message ?: "Error desconocido")
+                    Napier.w("Artist browse failed for id=$browseId: ${it.message}")
+                    _uiState.value = ArtistState.Error(
+                        it.message ?: "Error desconocido",
+                        isNotFound = isInvalidArtistPage(it),
+                    )
                 }
         }
+    }
+
+    /**
+     * YouTube responde 400/INVALID_ARGUMENT al pedir el browse de un canal que no
+     * tiene página de artista (perfiles de usuario, uploaders sueltos): no es un
+     * fallo de red, es que no hay nada que mostrar.
+     */
+    private fun isInvalidArtistPage(t: Throwable): Boolean {
+        val message = t.message ?: return false
+        return message.contains("INVALID_ARGUMENT") ||
+            (message.contains("400") && message.contains("/browse"))
     }
 
     fun toggleSave() {

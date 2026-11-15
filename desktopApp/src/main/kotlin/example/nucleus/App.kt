@@ -315,7 +315,7 @@ fun NucleusApplicationScope.App(
     val effectiveLiquidGlass = startedWithLiquidGlass &&
         liquidGlassEnabled && backgroundAppStyle == BackgroundStyle.SOLID_COLOR
     // Ajustes del material (sliders de Ajustes → preview en vivo).
-    val glassBlur by userPreferences.liquidGlassBlur.collectAsState(28f)
+    val glassBlur by userPreferences.liquidGlassBlur.collectAsState(16f)
     val glassBaseAlpha by userPreferences.liquidGlassBaseAlpha.collectAsState(0.9f)
     val glassSpecular by userPreferences.liquidGlassSpecular.collectAsState(0.55f)
     val glassRefraction by userPreferences.liquidGlassRefraction.collectAsState(0.8f)
@@ -383,7 +383,12 @@ fun NucleusApplicationScope.App(
                 val isSquareLayout = LocalLayoutMode.current == LayoutMode.SQUARE
                 val navStack by rootComponent.childStack.subscribeAsState()
                 val canGoBack = navStack.items.size > 1
-                val isOnNowPlaying = navStack.active.configuration is ScreenConfig.NowPlaying
+                // Overlay de Now Playing: la pantalla vive sobre el contenido sin
+                // reemplazar la pila (el fondo queda compuesto, solo viaja la
+                // portada). El flag efectivo cubre la ruta legacy en la pila.
+                var nowPlayingOverlay by remember { mutableStateOf(false) }
+                val isOnNowPlaying =
+                    navStack.active.configuration is ScreenConfig.NowPlaying || nowPlayingOverlay
 
                 val titleBarHeight = 36.dp
 
@@ -513,8 +518,15 @@ fun NucleusApplicationScope.App(
                                             ytmSyncEnabled = ytmSyncEnabled,
                                             isSyncing = syncState.overallStatus is example.nucleus.utils.SyncStatus.Syncing,
                                             isOfflineMode = offlineMode,
-                                            canGoBack = canGoBack,
-                                            onBack = { if (canGoBack) rootComponent.onBack() },
+                                            canGoBack = canGoBack || nowPlayingOverlay,
+                                            onBack = {
+                                                if (nowPlayingOverlay) {
+                                                    nowPlayingOverlay = false
+                                                    if (navStack.active.configuration is ScreenConfig.NowPlaying) {
+                                                        rootComponent.onBack()
+                                                    }
+                                                } else if (canGoBack) rootComponent.onBack()
+                                            },
                                             onRefresh = { rootComponent.refresh() },
                                             onToggleOfflineMode = { enabled ->
                                                 scope.launch { userPreferences.setOfflineModeEnabled(enabled) }
@@ -573,6 +585,8 @@ fun NucleusApplicationScope.App(
                                                 userPreferences = userPreferences,
                                                 canToggleLiquidGlassLive = glassCanToggleLive,
                                                 appMode = appMode,
+                                                nowPlayingOverlay = nowPlayingOverlay,
+                                                onNowPlayingOverlayChange = { nowPlayingOverlay = it },
                                             )
                                         }
                                     }

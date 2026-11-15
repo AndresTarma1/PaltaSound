@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
@@ -33,6 +34,9 @@ fun PodcastsTab(
     podcasts: List<PodcastItem>,
     isLoading: Boolean = false,
     onNavigate: (ScreenConfig) -> Unit,
+    viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
+    playerViewModel: example.nucleus.viewmodels.PlayerViewModel? = null,
+    header: @Composable () -> Unit = {},
 ) {
     if (podcasts.isEmpty() && !isLoading) {
         LibraryEmptyState(
@@ -47,6 +51,16 @@ fun PodcastsTab(
         return
     }
 
+    if (viewMode == example.nucleus.data.repository.LibraryViewMode.LIST && playerViewModel != null) {
+        LibraryListRows(
+            header = header,
+            items = podcasts,
+            onNavigate = onNavigate,
+            playerViewModel = playerViewModel,
+        )
+        return
+    }
+
     val gridState = rememberLazyGridState()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -57,6 +71,7 @@ fun PodcastsTab(
             horizontalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
             verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
         ) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "library_header") { header() }
             items(items = podcasts, key = { it.id }) { podcast ->
                 PodcastGridItem(
                     item = podcast,

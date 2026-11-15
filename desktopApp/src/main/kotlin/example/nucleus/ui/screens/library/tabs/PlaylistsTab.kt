@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,8 +44,10 @@ fun PlaylistsTab(
     onNavigate: (ScreenConfig) -> Unit,
     onRemove: (String) -> Unit,
     playerViewModel: PlayerViewModel? = null,
+    header: @Composable () -> Unit = {},
     onQuickPlayPlaylist: (playlistId: String, endpoint: WatchEndpoint?, title: String, onFallback: () -> Unit) -> Unit,
     onQuickShufflePlaylist: (playlistId: String, endpoint: WatchEndpoint?, title: String, onFallback: () -> Unit) -> Unit,
+    viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
 ) {
     val downloadViewModel = LocalDownloadViewModel.current
     val playlistsViewModel = org.koin.compose.koinInject<example.nucleus.viewmodels.LibraryPlaylistsViewModel>()
@@ -245,6 +248,35 @@ fun PlaylistsTab(
         }
     }
 
+    if (viewMode == example.nucleus.data.repository.LibraryViewMode.LIST && playerViewModel != null) {
+        val listRows = remember(mergedPlaylists, downloadedSongs) {
+            mergedPlaylists.map { entry ->
+                (entry.item ?: PlaylistItem(
+                    id = "LOCAL_DOWNLOADS",
+                    title = entry.title,
+                    author = null,
+                    songCountText = entry.subtitle,
+                    thumbnail = entry.thumbnailUrl,
+                    playEndpoint = null,
+                    shuffleEndpoint = null,
+                    radioEndpoint = null,
+                )) to entry.source
+            }
+        }
+        val sourcesById = remember(listRows) { listRows.associate { (item, source) -> item.id to source } }
+        LibraryListRows(
+            header = header,
+            items = listRows.map { it.first },
+            onNavigate = onNavigate,
+            playerViewModel = playerViewModel,
+            sourceFor = { sourcesById[it.id] ?: ItemContentSource.YOUTUBE },
+            onRemoveCollection = { item ->
+                if (item is PlaylistItem && playlists.any { it.id == item.id }) onRemove(item.id)
+            },
+        )
+        return
+    }
+
     val hasNonDownloadItems = mergedPlaylists.any {
         !it.key.startsWith("downloads_") && !it.key.startsWith("dlpl_") && !it.key.startsWith("dlal_")
     }
@@ -260,6 +292,7 @@ fun PlaylistsTab(
                 horizontalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
                 verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing)
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "library_header") { header() }
                 items(items = mergedPlaylists, key = { it.key }) { entry ->
                     if (entry.item != null) {
                         MediaGridItem(

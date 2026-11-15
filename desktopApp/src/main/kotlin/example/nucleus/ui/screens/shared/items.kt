@@ -52,7 +52,8 @@ fun onYTItemClick(
         is SongItem -> playerViewModel?.playSingle(item)
         is AlbumItem -> onNavigate(ScreenConfig.collection(item.browseId))
         is PlaylistItem -> onNavigate(ScreenConfig.Playlist(item.id))
-        is ArtistItem -> onNavigate(ScreenConfig.Artist(item.id))
+        // Los perfiles de usuario no tienen página de artista (browse 400).
+        is ArtistItem -> if (!item.isProfile) onNavigate(ScreenConfig.Artist(item.id))
         is PodcastItem -> onNavigate(ScreenConfig.Playlist(item.id))
         is EpisodeItem -> playerViewModel?.playSingle(item.asSongItem())
     }
@@ -80,7 +81,7 @@ private fun playYTItem(
             onEmpty = { onClick(item) }
         )
         is PodcastItem -> onNavigate(ScreenConfig.Playlist(item.id))
-        is ArtistItem -> onNavigate(ScreenConfig.Artist(item.id))
+        is ArtistItem -> if (!item.isProfile) onNavigate(ScreenConfig.Artist(item.id))
     }
 }
 
@@ -116,6 +117,7 @@ fun SongGridItem(
     modifier: Modifier = Modifier,
     onClick: (YTItem) -> Unit,
     onClickSubtitle: (String) -> Unit,
+    onGoToAlbum: ((String) -> Unit)? = null,
 ) {
     val downloadViewModel = LocalDownloadViewModel.current
     val downloadState by rememberSongDownloadState(item.id, downloadViewModel)
@@ -152,7 +154,9 @@ fun SongGridItem(
             SongContextMenuPopup(
                 expanded = showMenu,
                 onDismiss = { showMenu = false },
-                song = item
+                song = item,
+                onGoToArtist = onClickSubtitle,
+                onGoToAlbum = onGoToAlbum,
             )
         }
     )
@@ -339,21 +343,26 @@ fun EpisodeGridItem(
 @Composable
 fun SectionListItem(
     item: YTItem,
-    onNavigate: (ScreenConfig) -> Unit = {},
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
     modifier: Modifier = Modifier,
     dividerBelow: Boolean = false,
-    playerViewModel: PlayerViewModel
+    playerViewModel: PlayerViewModel,
+    source: ItemContentSource = ItemContentSource.YOUTUBE,
+    onRemoveCollection: ((YTItem) -> Unit)? = null,
 ) {
-    val onClick = { it: YTItem -> onYTItemClick(it, onNavigate, playerViewModel) }
+    val nav = onNavigate ?: {}
+    val onClick = { it: YTItem -> onYTItemClick(it, nav, playerViewModel) }
 
     YoutubeListItem(
         item = item,
         onClick = onClick,
-        onPlay = { playYTItem(it, onNavigate, playerViewModel, onClick) },
+        onPlay = { playYTItem(it, nav, playerViewModel, onClick) },
         onShuffle = { shuffleYTItem(it, playerViewModel, onClick) },
+        onNavigate = onNavigate,
+        onRemoveCollection = onRemoveCollection,
         modifier = modifier,
         dividerBelow = dividerBelow,
-        source = ItemContentSource.YOUTUBE,
+        source = source,
     )
 }
 
@@ -373,6 +382,7 @@ fun SectionGridItem(
             item = item,
             onClick = onClick,
             onClickSubtitle = { onNavigate(ScreenConfig.Artist(it)) },
+            onGoToAlbum = { onNavigate(ScreenConfig.collection(it)) },
             modifier = modifier,
         )
         is AlbumItem -> AlbumGridItem(item = item, onClick = onClick, modifier = modifier, onPlay = onPlay, onShuffle = onShuffle)

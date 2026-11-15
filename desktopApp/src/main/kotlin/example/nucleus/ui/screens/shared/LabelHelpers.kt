@@ -18,6 +18,7 @@ import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.ThemeMode
 import example.nucleus.data.repository.ThemePalette
+import example.nucleus.data.repository.ThemePaletteStyle
 import example.nucleus.data.repository.RenderApi
 import example.nucleus.data.repository.SeekBarStyle
 import example.nucleus.data.repository.YouTubeRegion
@@ -128,8 +129,19 @@ fun ThemePalette.displayName(): String = when (this) {
 }
 
 @Composable
-fun BackgroundStyle.displayName(): String = when (this) {
-    BackgroundStyle.GRADIENT -> stringResource(Res.string.background_style_gradient)
+fun ThemePaletteStyle.displayName(): String = when (this) {
+    ThemePaletteStyle.TONAL_SPOT -> stringResource(Res.string.palette_style_tonal_spot)
+    ThemePaletteStyle.VIBRANT -> stringResource(Res.string.palette_style_vibrant)
+    ThemePaletteStyle.EXPRESSIVE -> stringResource(Res.string.palette_style_expressive)
+    ThemePaletteStyle.RAINBOW -> stringResource(Res.string.palette_style_rainbow)
+    ThemePaletteStyle.FRUIT_SALAD -> stringResource(Res.string.palette_style_fruit_salad)
+    ThemePaletteStyle.MONOCHROME -> stringResource(Res.string.palette_style_monochrome)
+    ThemePaletteStyle.NEUTRAL -> stringResource(Res.string.palette_style_neutral)
+    ThemePaletteStyle.CONTENT -> stringResource(Res.string.palette_style_content)
+}
+
+@Composable
+fun BackgroundStyle.displayName(): String = when (this) {    BackgroundStyle.GRADIENT -> stringResource(Res.string.background_style_gradient)
     BackgroundStyle.BLURRED_COVER -> stringResource(Res.string.background_style_blur)
     BackgroundStyle.SOLID_COLOR -> stringResource(Res.string.background_style_solid)
 }
@@ -155,6 +167,7 @@ fun LibrarySortOrder.displayName(): String = when (this) {
     LibrarySortOrder.NAME_ASC -> stringResource(Res.string.sort_name_asc_label)
     LibrarySortOrder.NAME_DESC -> stringResource(Res.string.sort_name_desc_label)
     LibrarySortOrder.DATE_ADDED -> stringResource(Res.string.sort_date_added)
+    LibrarySortOrder.DATE_ADDED_DESC -> stringResource(Res.string.sort_date_added_desc)
 }
 
 @Composable

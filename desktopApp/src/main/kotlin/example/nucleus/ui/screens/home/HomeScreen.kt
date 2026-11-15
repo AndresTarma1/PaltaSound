@@ -179,6 +179,7 @@ fun HomeScreenContent(
                     QuickPicksSection(
                         songs = recentSongs,
                         playerViewModel = playerViewModel,
+                        onNavigate = onNavigate,
                     )
                 }
             }
@@ -349,6 +350,7 @@ private fun HomeSectionRow(
 private fun QuickPicksSection(
     songs: List<SongItem>,
     playerViewModel: PlayerViewModel,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
 ) {
     val rowCount = 2
     val itemHeight = 64.dp
@@ -374,6 +376,7 @@ private fun QuickPicksSection(
 
             SectionListItem(
                 item = song,
+                onNavigate = onNavigate,
                 playerViewModel = playerViewModel,
                 modifier = Modifier.fillMaxWidth().height(itemHeight)
             )

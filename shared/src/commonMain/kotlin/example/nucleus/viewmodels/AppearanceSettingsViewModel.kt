@@ -10,6 +10,7 @@ import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.ThemeMode
 import example.nucleus.data.repository.ThemePalette
+import example.nucleus.data.repository.ThemePaletteStyle
 import example.nucleus.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +40,12 @@ class AppearanceSettingsViewModel(
     val themePalette: StateFlow<ThemePalette> = preferencesRepository.themePalette
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemePalette.DEFAULT)
 
+    val themePaletteStyle: StateFlow<ThemePaletteStyle> = preferencesRepository.themePaletteStyle
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemePaletteStyle.CONTENT)
+
+    val customSeedColor: StateFlow<Int> = preferencesRepository.themeCustomSeed
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     val dynamicColorFromArtwork: StateFlow<Boolean> = preferencesRepository.dynamicColorFromArtwork
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
@@ -58,7 +65,7 @@ class AppearanceSettingsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val liquidGlassBlur: StateFlow<Float> = preferencesRepository.liquidGlassBlur
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 28f)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 16f)
 
     val liquidGlassBaseAlpha: StateFlow<Float> = preferencesRepository.liquidGlassBaseAlpha
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.9f)
@@ -98,6 +105,18 @@ fun setIslandStyle(style: IslandStyle) {
 
     fun setThemePalette(palette: ThemePalette) {
         viewModelScope.launch { preferencesRepository.setThemePalette(palette) }
+    }
+
+    fun setThemePaletteStyle(style: ThemePaletteStyle) {
+        viewModelScope.launch { preferencesRepository.setThemePaletteStyle(style) }
+    }
+
+    fun setCustomSeedColor(argb: Int) {
+        viewModelScope.launch { preferencesRepository.setThemeCustomSeed(argb) }
+    }
+
+    fun clearCustomSeedColor() {
+        viewModelScope.launch { preferencesRepository.setThemeCustomSeed(0) }
     }
 
     fun setDynamicColorFromArtwork(enabled: Boolean) {

@@ -28,12 +28,12 @@ fun MiniPlayerSettingsGroup(
     val miniPlayerStyle by viewModel.miniPlayerStyle.collectAsState()
     val miniPlayerBackgroundStyle by viewModel.miniPlayerBackgroundStyle.collectAsState()
     val seekBarStyle by viewModel.seekBarStyle.collectAsState()
-    var showMiniPlayerStyleDropdown by remember { mutableStateOf(false) }
-    var showMiniPlayerBgStyleDropdown by remember { mutableStateOf(false) }
 
     val itemCount = if (miniPlayerStyle == MiniPlayerStyle.FLOATING) 3 else 2
     var idx = 0
 
+    var showMiniPlayerStyleDropdown by remember { mutableStateOf(false) }
+    var showMiniPlayerBgStyleDropdown by remember { mutableStateOf(false) }
     SettingsGroup(
         title = {
             Text(
@@ -48,8 +48,8 @@ fun MiniPlayerSettingsGroup(
             icon = Icons.Rounded.Album,
             currentValue = miniPlayerStyle.displayName(),
             expanded = showMiniPlayerStyleDropdown,
-            segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
             onExpandedChange = { showMiniPlayerStyleDropdown = it },
+            segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
             options = MiniPlayerStyle.entries.map { it to it.displayName() },
             isSelected = { it == miniPlayerStyle },
             onSelect = { viewModel.setMiniPlayerStyle(it); showMiniPlayerStyleDropdown = false },
@@ -60,8 +60,8 @@ fun MiniPlayerSettingsGroup(
                 icon = Icons.Rounded.BlurOn,
                 currentValue = miniPlayerBackgroundStyle.displayName(),
                 expanded = showMiniPlayerBgStyleDropdown,
-                segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
                 onExpandedChange = { showMiniPlayerBgStyleDropdown = it },
+                segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
                 options = MiniPlayerBackgroundStyle.entries.map { it to it.displayName() },
                 isSelected = { it == miniPlayerBackgroundStyle },
                 onSelect = { viewModel.setMiniPlayerBackgroundStyle(it); showMiniPlayerBgStyleDropdown = false },

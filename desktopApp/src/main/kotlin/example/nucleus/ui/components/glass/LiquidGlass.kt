@@ -35,7 +35,7 @@ val LocalLiquidGlassCanToggleLive = compositionLocalOf { false }
  * estilos por igual (barra Regular y lentes Clear).
  */
 data class LiquidGlassTuning(
-    val blurDp: Float = 28f,
+    val blurDp: Float = 16f,
     val baseAlpha: Float = 0.9f,
     val specular: Float = 0.55f,
     val refraction: Float = 0.8f,

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
@@ -34,6 +35,9 @@ fun AlbumsTab(
     onRemove: (String) -> Unit,
     onQuickPlayAlbum: (browseId: String, playlistId: String?, title: String, onFallback: () -> Unit) -> Unit,
     onQuickShuffleAlbum: (browseId: String, playlistId: String?, title: String, onFallback: () -> Unit) -> Unit,
+    viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
+    playerViewModel: example.nucleus.viewmodels.PlayerViewModel? = null,
+    header: @Composable () -> Unit = {},
 ) {
     val isEmpty = albums.isEmpty() && ytmAlbums.isEmpty() && !isLoadingYtm
     if (isEmpty) {
@@ -53,6 +57,21 @@ fun AlbumsTab(
         }.distinctBy { (album, _) -> album.id }
     }
 
+    if (viewMode == example.nucleus.data.repository.LibraryViewMode.LIST && playerViewModel != null) {
+        val sourcesById = remember(mergedAlbums) { mergedAlbums.associate { (a, s) -> a.id to s } }
+        LibraryListRows(
+            header = header,
+            items = mergedAlbums.map { it.first },
+            onNavigate = onNavigate,
+            playerViewModel = playerViewModel,
+            sourceFor = { sourcesById[it.id] ?: ItemContentSource.YOUTUBE },
+            onRemoveCollection = { item ->
+                (item as? com.metrolist.innertube.models.AlbumItem)?.let { onRemove(it.browseId) }
+            },
+        )
+        return
+    }
+
     val gridState = remember { LazyGridState(0, 0) }
     Box(modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(
@@ -62,6 +81,7 @@ fun AlbumsTab(
             horizontalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
             verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing)
         ) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "library_header") { header() }
             items(
                 items = mergedAlbums,
                 key = { (album, source) -> "${source.name.lowercase()}_${album.browseId}" }

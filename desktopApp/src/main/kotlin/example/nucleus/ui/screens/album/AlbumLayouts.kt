@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.dialogs.DownloadConfirmationDialog
 import example.nucleus.navigation.ScreenConfig
+import example.nucleus.ui.components.context.isBrowsableArtistId
 import example.nucleus.ui.components.layout.AppScrollbarGutter
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
@@ -252,6 +253,7 @@ internal fun AlbumWideLayout(
             }
 
             AlbumSongList(
+                onNavigate = onNavigate,
                 modifier = Modifier.weight(1f),
                 listState = listState,
                 songs = songs,
@@ -365,6 +367,8 @@ internal fun AlbumCompactLayout(
                     albumIndex = index + 1,
                     song = song,
                     onPlay = { onSongClick(index) },
+                    onGoToArtist = { onNavigate(ScreenConfig.Artist(it)) },
+                    onGoToAlbum = { onNavigate(ScreenConfig.collection(it)) },
                     isSelected = song.id in selectedSongIds,
                     selectionMode = selectedSongIds.isNotEmpty(),
                     onSelectionChange = { selected ->
@@ -412,6 +416,7 @@ internal fun AlbumCompactLayout(
 
 @Composable
 private fun AlbumSongList(
+    onNavigate: (ScreenConfig) -> Unit,
     modifier: Modifier,
     listState: LazyListState,
     songs: List<SongItem>,
@@ -439,6 +444,8 @@ private fun AlbumSongList(
                     albumIndex = index + 1,
                     song = song,
                     onPlay = { onSongClick(index) },
+                    onGoToArtist = { onNavigate(ScreenConfig.Artist(it)) },
+                    onGoToAlbum = { onNavigate(ScreenConfig.collection(it)) },
                     isSelected = song.id in selectedSongIds,
                     selectionMode = selectedSongIds.isNotEmpty(),
                     onSelectionChange = { selected ->
@@ -500,16 +507,17 @@ internal fun AlbumInfoPanel(
     onNavigate: (ScreenConfig) -> Unit,
 ) {
     val firstArtist = albumPage.album.artists?.firstOrNull()
+    val firstArtistBrowsable = firstArtist?.id.isBrowsableArtistId()
 
     Surface(
         shape = AppShapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .clip(AppShapes.large)
-            .clickable(enabled = firstArtist?.id != null) {
-                firstArtist?.id?.let { onNavigate(ScreenConfig.Artist(it)) }
+            .clickable(enabled = firstArtistBrowsable) {
+                firstArtist?.id?.takeIf { it.isBrowsableArtistId() }?.let { onNavigate(ScreenConfig.Artist(it)) }
             }
-            .pointerHoverIcon(if (firstArtist?.id != null) PointerIcon.Hand else PointerIcon.Default)
+            .pointerHoverIcon(if (firstArtistBrowsable) PointerIcon.Hand else PointerIcon.Default)
     ) {
         Text(
             text = "${stringResource(Res.string.author_label)} • ${firstArtist?.name ?: stringResource(Res.string.item_artist)}",

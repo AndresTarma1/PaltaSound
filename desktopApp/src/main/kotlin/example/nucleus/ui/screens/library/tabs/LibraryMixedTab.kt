@@ -25,6 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import example.nucleus.navigation.ScreenConfig
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import example.nucleus.ui.components.SectionHeaderRow
+import example.nucleus.ui.screens.shared.SectionListItem
+import example.nucleus.utils.LocalPlayerViewModel
+import com.metrolist.innertube.models.PlaylistItem
 import example.nucleus.ui.components.ItemContentSource
 import example.nucleus.ui.components.MediaGridItem
 import example.nucleus.ui.components.exportPlaylistWithFeedback
@@ -53,6 +61,9 @@ fun LibraryMixedTab(
     onQuickShuffleAlbum: (browseId: String, playlistId: String?, title: String, onFallback: () -> Unit) -> Unit,
     onQuickPlayPlaylist: (playlistId: String, endpoint: WatchEndpoint?, title: String, onFallback: () -> Unit) -> Unit,
     onQuickShufflePlaylist: (playlistId: String, endpoint: WatchEndpoint?, title: String, onFallback: () -> Unit) -> Unit,
+    onTabSelected: (example.nucleus.viewmodels.LibraryTab) -> Unit = {},
+    viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
+    header: @Composable () -> Unit = {},
 ) {
     val ytm = state.ytmState as? YtmLibraryState.Success
     val downloadViewModel = LocalDownloadViewModel.current
@@ -150,7 +161,7 @@ fun LibraryMixedTab(
                         placeholderType = PlaceholderType.ARTIST,
                         shape = circleAwareShape(),
                         source = if (ytm?.artists?.any { it.id == artist.id } == true) ItemContentSource.YOUTUBE else ItemContentSource.LOCAL,
-                        onClick = { onNavigate(ScreenConfig.Artist(artist.id)) },
+                        onClick = { if (!artist.isProfile) onNavigate(ScreenConfig.Artist(artist.id)) },
                     )
                 )
             }
@@ -308,54 +319,156 @@ fun LibraryMixedTab(
         !it.key.startsWith("downloads_") && !it.key.startsWith("dlpl_") && !it.key.startsWith("dlal_")
     }
 
-    key(hasNonDownloadItems) {
-        val gridState = remember { LazyGridState(0, 0) }
+    val seeAllLabel = stringResource(Res.string.library_see_all)
+    val albumsTitle = stringResource(Res.string.tab_albums)
+    val artistsTitle = stringResource(Res.string.tab_artists)
+    val playlistsTitle = stringResource(Res.string.tab_playlists)
+    val podcastsTitle = stringResource(Res.string.tab_podcasts)
+    val downloadsTitle = stringResource(Res.string.downloads)
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyVerticalGrid(
-                state = gridState,
-                columns = GridCells.Adaptive(minSize = LibraryGridMinCellWidth),
-                contentPadding = libraryGridContentPadding(),
-                horizontalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
-                verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing)
-            ) {
-                items(items = items, key = { it.key }) { entry ->
-                    if (entry.item != null) {
-                        MediaGridItem(
-                            item = entry.item,
-                            onClick = entry.onClick,
-                            onPlay = entry.onPlay,
-                            onShuffle = entry.onShuffle,
-                            onRemove = entry.onRemove,
-                            isRemovable = entry.isRemovable,
-                            source = entry.source,
-                            onExport = entry.onExport
-                        )
-                    } else {
-                        MediaGridItem(
-                            title = entry.title,
-                            subtitle = entry.subtitle,
-                            thumbnailUrl = entry.thumbnailUrl,
-                            placeholderType = entry.placeholderType,
-                            shape = entry.shape,
-                            onClick = entry.onClick,
-                            onPlay = entry.onPlay,
-                            onShuffle = entry.onShuffle,
-                            onRemove = entry.onRemove,
-                            isRemovable = entry.isRemovable,
-                            source = entry.source,
-                            onExport = entry.onExport
-                        )
+    data class MixedSection(
+        val title: String,
+        val tab: example.nucleus.viewmodels.LibraryTab?,
+        val entries: List<MixedGridEntry>,
+    )
+    val sections = remember(items, albumsTitle, artistsTitle, playlistsTitle, podcastsTitle, downloadsTitle) {
+        buildList {
+            items.filter { it.key.startsWith("alb_") || it.key.startsWith("dlal_") }
+                .takeIf { it.isNotEmpty() }?.let {
+                    add(MixedSection(albumsTitle, example.nucleus.viewmodels.LibraryTab.ALBUMS, it))
+                }
+            items.filter { it.key.startsWith("art_") }
+                .takeIf { it.isNotEmpty() }?.let {
+                    add(MixedSection(artistsTitle, example.nucleus.viewmodels.LibraryTab.ARTISTS, it))
+                }
+            items.filter { it.key.startsWith("pl_") || it.key.startsWith("dlpl_") }
+                .takeIf { it.isNotEmpty() }?.let {
+                    add(MixedSection(playlistsTitle, example.nucleus.viewmodels.LibraryTab.PLAYLISTS, it))
+                }
+            items.filter { it.key.startsWith("pod_") }
+                .takeIf { it.isNotEmpty() }?.let {
+                    add(MixedSection(podcastsTitle, example.nucleus.viewmodels.LibraryTab.PODCASTS, it))
+                }
+            items.filter { it.key.startsWith("downloads_") }
+                .takeIf { it.isNotEmpty() }?.let {
+                    add(MixedSection(downloadsTitle, null, it))
+                }
+        }
+    }
+
+    key(hasNonDownloadItems) {
+        if (viewMode == example.nucleus.data.repository.LibraryViewMode.LIST) {
+            val pvm = playerViewModel ?: LocalPlayerViewModel.current
+            val localPlaylistIds = remember(state.playlists) { state.playlists.map { it.id }.toSet() }
+            val listState = rememberLazyListState()
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    contentPadding = libraryGridContentPadding(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    item(key = "library_header") { header() }
+                    sections.forEach { section ->
+                        item(key = "header_${section.title}") {
+                            SectionHeaderRow(
+                                title = section.title,
+                                actionLabel = section.tab?.let { seeAllLabel },
+                                onAction = section.tab?.let { t -> { onTabSelected(t) } },
+                            )
+                        }
+                        items(items = section.entries, key = { it.key }) { entry ->
+                            val rowItem = entry.item ?: PlaylistItem(
+                                id = "LOCAL_DOWNLOADS",
+                                title = entry.title,
+                                author = null,
+                                songCountText = entry.subtitle,
+                                thumbnail = entry.thumbnailUrl,
+                                playEndpoint = null,
+                                shuffleEndpoint = null,
+                                radioEndpoint = null,
+                            )
+                            SectionListItem(
+                                item = rowItem,
+                                onNavigate = onNavigate,
+                                playerViewModel = pvm,
+                                onRemoveCollection = { item ->
+                                    if (item is PlaylistItem && item.id in localPlaylistIds) {
+                                        onRemovePlaylist(item.id)
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
+                AppVerticalScrollbar(
+                    state = listState,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                )
             }
+        } else {
+            val gridState = remember { LazyGridState(0, 0) }
 
-            AppVerticalScrollbar(
-                state = gridState,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Adaptive(minSize = LibraryGridMinCellWidth),
+                    contentPadding = libraryGridContentPadding(),
+                    horizontalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
+                    verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing)
+                ) {
+                                        item(span = { GridItemSpan(maxLineSpan) }, key = "library_header") { header() }
+sections.forEach { section ->
+                        item(
+                            span = { GridItemSpan(maxLineSpan) },
+                            key = "header_${section.title}",
+                        ) {
+                            SectionHeaderRow(
+                                title = section.title,
+                                actionLabel = section.tab?.let { seeAllLabel },
+                                onAction = section.tab?.let { t -> { onTabSelected(t) } },
+                            )
+                        }
+                        items(items = section.entries, key = { it.key }) { entry ->
+                            if (entry.item != null) {
+                                MediaGridItem(
+                                    item = entry.item,
+                                    onClick = entry.onClick,
+                                    onPlay = entry.onPlay,
+                                    onShuffle = entry.onShuffle,
+                                    onRemove = entry.onRemove,
+                                    isRemovable = entry.isRemovable,
+                                    source = entry.source,
+                                    onExport = entry.onExport
+                                )
+                            } else {
+                                MediaGridItem(
+                                    title = entry.title,
+                                    subtitle = entry.subtitle,
+                                    thumbnailUrl = entry.thumbnailUrl,
+                                    placeholderType = entry.placeholderType,
+                                    shape = entry.shape,
+                                    onClick = entry.onClick,
+                                    onPlay = entry.onPlay,
+                                    onShuffle = entry.onShuffle,
+                                    onRemove = entry.onRemove,
+                                    isRemovable = entry.isRemovable,
+                                    source = entry.source,
+                                    onExport = entry.onExport
+                                )
+                            }
+                        }
+                    }
+                }
+
+                AppVerticalScrollbar(
+                    state = gridState,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                )
+            }
         }
     }
 }

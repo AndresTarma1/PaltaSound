@@ -53,14 +53,11 @@ fun NowPlayingSettingsGroup() {
     val lyricsRomanize by viewModel.lyricsRomanize.collectAsState()
     val lyricsOffsetMs by viewModel.lyricsOffsetMs.collectAsState()
     val queuePersistenceEnabled by viewModel.queuePersistenceEnabled.collectAsState()
-    var showAnimationDropdown by remember { mutableStateOf(false) }
-    var showSizeDropdown by remember { mutableStateOf(false) }
-    var showSpacingDropdown by remember { mutableStateOf(false) }
-    var showOffsetDropdown by remember { mutableStateOf(false) }
 
     val itemCount = 8
     var idx = 0
 
+    var showAnimationDropdown by remember { mutableStateOf(false) }
     SettingsGroup(
         title = {
             Text(
@@ -110,9 +107,9 @@ fun NowPlayingSettingsGroup() {
             label = stringResource(Res.string.lyrics_animation_style),
             icon = Icons.Rounded.AutoAwesome,
             currentValue = lyricsAnimationStyle.displayName(),
-            segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
             expanded = showAnimationDropdown,
             onExpandedChange = { showAnimationDropdown = it },
+            segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
             options = LyricsAnimationStyle.entries.map { it to it.displayName() },
             isSelected = { it == lyricsAnimationStyle },
             onSelect = { viewModel.setLyricsAnimationStyle(it); showAnimationDropdown = false },
@@ -121,27 +118,23 @@ fun NowPlayingSettingsGroup() {
         // de la ventana (`27 * frameScale * multiplicador`), asi que un sp fijo se descuadraba en
         // cuanto cambiabas de ventana. Rango y etiquetas siguen a Sonora (`ui::MIN/MAX_LYRICS_SCALE`
         // = 0.6..2.0, `ui::LEADING` = 1.25).
-        DropdownSelector(
+        SingleChoiceRow(
             label = stringResource(Res.string.lyrics_text_size),
             icon = Icons.Rounded.FormatSize,
             currentValue = formatLyricsScale(lyricsTextSize),
             segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
-            expanded = showSizeDropdown,
-            onExpandedChange = { showSizeDropdown = it },
             options = LYRICS_SCALE_OPTIONS.map { it to formatLyricsScale(it) },
             isSelected = { it == lyricsTextSize },
-            onSelect = { viewModel.setLyricsTextSize(it); showSizeDropdown = false },
+            onSelect = { viewModel.setLyricsTextSize(it) },
         )
-        DropdownSelector(
+        SingleChoiceRow(
             label = stringResource(Res.string.lyrics_line_spacing),
             icon = Icons.Rounded.TextFields,
             currentValue = formatLyricsScale(lyricsLineSpacing),
             segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
-            expanded = showSpacingDropdown,
-            onExpandedChange = { showSpacingDropdown = it },
             options = LYRICS_SPACING_OPTIONS.map { it to formatLyricsScale(it) },
             isSelected = { it == lyricsLineSpacing },
-            onSelect = { viewModel.setLyricsLineSpacing(it); showSpacingDropdown = false },
+            onSelect = { viewModel.setLyricsLineSpacing(it) },
         )
         SettingsSwitch(
             icon = { Icon(Icons.Rounded.Translate, null) },
@@ -155,16 +148,14 @@ fun NowPlayingSettingsGroup() {
         val offsetOptions = listOf(
             -2000, -1500, -1000, -500, -250, 0, 250, 500, 1000, 1500, 2000
         )
-        DropdownSelector(
+        SingleChoiceRow(
             label = stringResource(Res.string.lyrics_offset_settings),
             icon = Icons.Rounded.Timer,
             currentValue = stringResource(Res.string.lyrics_offset_value, lyricsOffsetMs),
             segmentedShape = ListItemDefaults.segmentedShapes(index = idx++, count = itemCount),
-            expanded = showOffsetDropdown,
-            onExpandedChange = { showOffsetDropdown = it },
             options = offsetOptions.map { it to stringResource(Res.string.lyrics_offset_value, it) },
             isSelected = { it == lyricsOffsetMs },
-            onSelect = { viewModel.setLyricsOffsetMs(it); showOffsetDropdown = false },
+            onSelect = { viewModel.setLyricsOffsetMs(it) },
         )
         SettingsSwitch(
             icon = { Icon(Icons.Rounded.Save, null) },

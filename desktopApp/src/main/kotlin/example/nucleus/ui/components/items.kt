@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.context.SongContextMenuPopup
 import example.nucleus.ui.components.context.CollectionContextMenuPopup
 import example.nucleus.ui.components.glass.LocalContentHaze
@@ -564,6 +565,8 @@ fun YoutubeListItem(
     onClick: (YTItem) -> Unit,
     onPlay: (YTItem) -> Unit,
     onShuffle: (YTItem) -> Unit,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
+    onRemoveCollection: ((YTItem) -> Unit)? = null,
     modifier: Modifier = Modifier,
     /**
      * Linea divisoria bajo la fila. Solo tiene sentido en listas de una columna; en el
@@ -763,7 +766,9 @@ fun YoutubeListItem(
             SongContextMenuPopup(
                 expanded = showMenu,
                 onDismiss = { showMenu = false },
-                song = item
+                song = item,
+                onGoToArtist = onNavigate?.let { nav -> { id: String -> nav(ScreenConfig.Artist(id)) } },
+                onGoToAlbum = onNavigate?.let { nav -> { id: String -> nav(ScreenConfig.collection(id)) } },
             )
         } else if (item is EpisodeItem) {
             SongContextMenuPopup(
@@ -787,6 +792,7 @@ fun YoutubeListItem(
                 onShuffle = {
                     onShuffle(item)
                 },
+                onRemoveFromLibrary = onRemoveCollection?.let { rm -> { rm(item) } },
                 onExport = if (item is PlaylistItem) ({
                     exportPlaylistWithFeedback(scope, snackbar) { onResult ->
                         playlistsViewModel.exportPlaylist(item.id, onResult)

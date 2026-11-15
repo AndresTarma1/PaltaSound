@@ -8,12 +8,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import example.nucleus.data.repository.BackgroundStyle
@@ -129,6 +131,11 @@ fun BackgroundWithBlur(
     content: @Composable BoxScope.() -> Unit
 ) {
     val background = MaterialTheme.colorScheme.background
+    // 32.dp -> 18.dp: el costo del blur escala ~r², 18.dp mantiene el ambiente
+    // con ~1/3 del costo GPU. El fondo es estático por canción, así que se aísla
+    // en su propia layer y se clavea por URL para no re-decodificar ni
+    // re-componer en cada tick de progreso/letras.
+    val blurRadius = remember { 18.dp }
 
     Box(modifier = modifier.fillMaxSize()) {
         // Capa de fondo aislada: color base + cover desenfocado. Es la fuente
@@ -140,23 +147,27 @@ fun BackgroundWithBlur(
                 .then(backgroundModifier),
         ) {
             if (!imageUrl.isNullOrBlank()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        // Rectangle acota el layer; 32.dp mantiene el ambiente sin el costo de 99.dp
-                        // (offscreen render-target del tamaño de la ventana por frame).
-                        .blur(radius = 32.dp, edgeTreatment = BlurredEdgeTreatment.Rectangle)
-                        .alpha(0.25f)
-                ) {
-                    MusicPlayerImage(
-                        url = imageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        // El blur de 99dp suaviza todo detalle: decodificar a 192px ahorra memoria
-                        // nativa (192^2x4 = 144 KB) sin pérdida visual apreciable en el fondo.
-                        coilSizeOverride = 192,
-                    )
+                key(imageUrl) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            // Aísla el offscreen del blur: los cambios del contenido
+                            // (progreso, letras) no invalidan esta layer.
+                            .graphicsLayer(clip = true)
+                            .blur(radius = blurRadius, edgeTreatment = BlurredEdgeTreatment.Rectangle)
+                            .alpha(0.25f)
+                    ) {
+                        MusicPlayerImage(
+                            url = imageUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            // 192 -> 128: con blur de 18dp no hay diferencia visible,
+                            // pero el decode es 192^2/128^2 = 2.25x más barato
+                            // (128^2x4 = 64 KB nativos).
+                            coilSizeOverride = 128,
+                        )
+                    }
                 }
             }
         }

@@ -58,8 +58,8 @@ fun LiquidGlassSettings() {
             label = stringResource(Res.string.liquid_glass_blur),
             valueLabel = "${blur.roundToInt()} dp",
             value = blur,
-            range = 0f..48f,
-            steps = 47,
+            range = 0f..32f,
+            steps = 31,
             onChange = { viewModel.setLiquidGlassBlur(it) },
         )
         GlassSliderRow(

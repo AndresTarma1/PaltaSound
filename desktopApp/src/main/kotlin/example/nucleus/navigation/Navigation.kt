@@ -119,6 +119,9 @@ fun NavigationDesktop(
     /** Si el proceso arrancó en cristal, el toggle puede alternar en caliente. */
     canToggleLiquidGlassLive: Boolean,
     appMode: AppMode,
+    /** Overlay de Now Playing: vive sobre la pila sin reemplazarla. */
+    nowPlayingOverlay: Boolean = false,
+    onNowPlayingOverlayChange: (Boolean) -> Unit = {},
 ) {
     val childStack by rootComponent.childStack.subscribeAsState()
 
@@ -163,7 +166,12 @@ fun NavigationDesktop(
     val playerState by playerViewModel.uiState.collectAsState()
     var isQueueVisible by remember { mutableStateOf(false) }
 
-    val isOnNowPlaying = activeConfig is ScreenConfig.NowPlaying
+    val isOnNowPlaying = activeConfig is ScreenConfig.NowPlaying || nowPlayingOverlay
+    // Cerrar el overlay también saca la ruta legacy de la pila si quedó ahí.
+    fun closeNowPlaying() {
+        if (nowPlayingOverlay) onNowPlayingOverlayChange(false)
+        if (activeConfig is ScreenConfig.NowPlaying) rootComponent.onBack()
+    }
     val animationsEnabled = LocalAnimationsEnabled.current
     val musicChrome = appMode == AppMode.MUSIC
     // Fuente del cristal del MiniPlayer: la provee App (contentHazeState) y aquí
@@ -226,11 +234,11 @@ fun NavigationDesktop(
                     MiniPlayer(
                         isOnNowPlaying = isOnNowPlaying,
                         onNowPlaying = {
-                            if (isOnNowPlaying) {
-                                rootComponent.onBack()
-                            } else {
+                            if (nowPlayingOverlay || activeConfig is ScreenConfig.NowPlaying) {
+                                closeNowPlaying()
+                            } else if (currentSong != null) {
                                 isQueueVisible = false
-                                rootComponent.navigateTo(ScreenConfig.NowPlaying)
+                                onNowPlayingOverlayChange(true)
                             }
                         },
                         onToggleQueue = {
@@ -257,6 +265,11 @@ fun NavigationDesktop(
                                     true
                                 }
 
+                                nowPlayingOverlay || activeConfig is ScreenConfig.NowPlaying -> {
+                                    closeNowPlaying()
+                                    true
+                                }
+
                                 rootComponent.canGoBack() -> {
                                     rootComponent.onBack()
                                     true
@@ -265,7 +278,7 @@ fun NavigationDesktop(
                                 else -> false
                             }
                         }
-                        .pointerInput(youtubeFullscreen) {
+                        .pointerInput(youtubeFullscreen, nowPlayingOverlay) {
                             awaitPointerEventScope {
                                 while (true) {
                                     val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -275,6 +288,8 @@ fun NavigationDesktop(
                                     ) {
                                         if (youtubeFullscreen) {
                                             youtubePlayerService.setFullscreen(false)
+                                        } else if (nowPlayingOverlay || activeConfig is ScreenConfig.NowPlaying) {
+                                            closeNowPlaying()
                                         } else if (rootComponent.canGoBack()) {
                                             rootComponent.onBack()
                                         }
@@ -613,6 +628,28 @@ fun NavigationDesktop(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
                                     .padding(24.dp),
+                            )
+                        }
+
+                        // Overlay de Now Playing: la pila queda compuesta debajo,
+                        // solo funde el cromo (200ms) mientras la portada viaja
+                        // por sharedBounds (300ms). Sin reemplazo de pantalla.
+                        AnimatedVisibility(
+                            visible = nowPlayingOverlay,
+                            enter = if (animationsEnabled) {
+                                fadeIn(tween(200))
+                            } else EnterTransition.None,
+                            exit = if (animationsEnabled) {
+                                fadeOut(tween(200))
+                            } else ExitTransition.None,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            NowPlayingScreen(
+                                viewModel = playerViewModel,
+                                onNavigate = { rootComponent.navigateTo(it) },
+                                onBack = { closeNowPlaying() },
+                                sharedTransitionScope = sharedTransitionScope,
+                                animatedVisibilityScope = this,
                             )
                         }
                     }

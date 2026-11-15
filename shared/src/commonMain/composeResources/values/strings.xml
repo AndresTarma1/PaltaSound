@@ -111,6 +111,7 @@
     <string name="section_library_subtitle">Sincronización con YouTube Music</string>
     <string name="section_about">Acerca de</string>
     <string name="section_about_subtitle">Soporte, versión e información</string>
+    <string name="settings_select_section">Selecciona una sección de la lista</string>
     <string name="section_audio_subtitle">Calidad, crossfade y ecualizador</string>
     <string name="section_appearance_subtitle">Tema, colores y tipografía</string>
     <string name="section_system_subtitle">Aplicación y opciones avanzadas</string>
@@ -189,6 +190,7 @@
     <string name="minimize_to_tray">Minimizar a la bandeja del sistema</string>
     <string name="trim_memory_on_tray">Liberar memoria al minimizar a la bandeja</string>
     <string name="trim_memory_on_tray_subtitle">Devuelve al sistema la RAM no usada cuando la app se oculta en la bandeja. Reduce el consumo en segundo plano; las páginas se recargan al volver.</string>
+    <string name="trim_memory_requires_tray">Activa «Minimizar a la bandeja» para usar esta opción.</string>
     <string name="launch_at_startup">Iniciar al encender Windows</string>
     <string name="launch_at_startup_subtitle">Abre MusicApp automáticamente al iniciar sesión en Windows.</string>
     <string name="cache_images">Caché de imágenes en disco</string>
@@ -251,6 +253,13 @@
     <string name="no_recent_searches">No hay búsquedas recientes aún.</string>
     <string name="suggestions_title">Sugerencias</string>
     <string name="filter_all">Todo</string>
+    <string name="tab_songs">Canciones</string>
+    <string name="library_search_hint">Buscar en tu biblioteca</string>
+    <string name="library_clear_search">Limpiar búsqueda</string>
+    <string name="sort_date_added_desc">Fecha: nuevos primero</string>
+    <string name="library_view_grid">Vista de cuadrícula</string>
+    <string name="library_view_list">Vista de lista</string>
+    <string name="library_see_all">Ver todo</string>
     <string name="filter_videos">Videos</string>
     <string name="filter_songs">Canciones</string>
     <string name="filter_albums">Álbumes</string>
@@ -259,6 +268,9 @@
     <string name="filter_podcasts">Pódcasts</string>
     <string name="filter_episodes">Episodios</string>
     <string name="something_went_wrong">Algo salió mal</string>
+    <string name="artist_not_found">Esta página de artista no está disponible</string>
+    <string name="artist_not_found_desc">El canal parece ser un perfil de usuario o contenido sin página de artista en YouTube Music.</string>
+    <string name="open_in_youtube">Abrir en YouTube</string>
     <string name="no_results">No se encontraron resultados</string>
     <string name="explore_trends">Explora tendencias y busca tu música</string>
     <string name="new_releases">Nuevos lanzamientos</string>
@@ -383,6 +395,8 @@
     <string name="context_remove_playlist">Quitar de esta playlist</string>
     <string name="context_like">Me gusta</string>
     <string name="context_unlike">Ya no me gusta</string>
+    <string name="context_go_to_artist">Ir al artista</string>
+    <string name="context_go_to_album">Ir al álbum</string>
 
     <!-- MiniPlayer -->
     <string name="mp_like">Me gusta</string>
@@ -530,6 +544,17 @@
     <string name="palette_amber">Ámbar</string>
     <string name="palette_indigo">Índigo</string>
     <string name="palette_ytmusic">YouTube Music</string>
+    <string name="palette_style">Estilo de paleta</string>
+    <string name="palette_style_tonal_spot">Tonal</string>
+    <string name="palette_style_vibrant">Vibrante</string>
+    <string name="palette_style_expressive">Expresivo</string>
+    <string name="palette_style_rainbow">Arcoíris</string>
+    <string name="palette_style_fruit_salad">Ensalada de fruta</string>
+    <string name="palette_style_monochrome">Monocromo</string>
+    <string name="palette_style_neutral">Neutro</string>
+    <string name="palette_style_content">Contenido</string>
+    <string name="custom_color">Color personalizado</string>
+    <string name="custom_color_hex">Hexadecimal (#RRGGBB)</string>
 
     <!-- Background Styles -->
     <string name="background_style_gradient">Gradiente</string>
@@ -707,6 +732,8 @@
     <string name="save_albums_hint">Guarda álbumes y aparecerán aquí</string>
     <string name="ytm_albums_section">Álbumes en YouTube Music</string>
     <string name="no_saved_artists">No hay artistas guardados</string>
+    <string name="no_saved_songs">No hay canciones guardadas</string>
+    <string name="save_songs_hint">Las canciones que guardes aparecerán aquí</string>
     <string name="save_artists_hint">Sigue artistas y aparecerán aquí</string>
     <string name="empty_library">Biblioteca vacía</string>
     <string name="empty_library_hint">Guarda álbumes, artistas o playlists</string>

@@ -126,7 +126,7 @@ val appModule = module {
     single { YouTubeWatchViewModel(get(), get(), get(), get(), get()) }
     single { HomeViewModel(databaseDao = get(), loginState = AccountManager.loginState, preferencesRepository = get()) }
     single { SearchViewModel(get()) }
-    single { LibraryViewModel(get(), get(), get(), get(), get(), get(), loginState = AccountManager.loginState) }
+    single { LibraryViewModel(get(), get(), get(), get(), get(), get(), get(), loginState = AccountManager.loginState) }
     single { LibrarySongsViewModel(get(), get(), get(), get()) }
     single { LibraryAlbumsViewModel(get()) }
     single { LibraryArtistsViewModel(get()) }

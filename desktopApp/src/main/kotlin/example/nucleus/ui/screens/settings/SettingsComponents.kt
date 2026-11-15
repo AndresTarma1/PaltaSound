@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -86,6 +87,11 @@ fun rememberSettingsListItemColors(): ListItemColors {
     )
 }
 
+/**
+ * Fila de opción única (guía M3 Settings → "Multiple choices"): muestra el
+ * valor actual como estado en el subtítulo y abre un diálogo con radio
+ * buttons, uno por opción. Sustituye a los menús desplegables.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun <T> DropdownSelector(
@@ -157,6 +163,87 @@ internal fun <T> DropdownSelector(
             },
             onClick = { if (enabled) onExpandedChange(!expanded) }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun <T> SingleChoiceRow(
+    label: String,
+    icon: ImageVector,
+    currentValue: String,
+    segmentedShape: ListItemShapes = ListItemDefaults.shapes(),
+    options: List<Pair<T, String>>,
+    isSelected: (T) -> Boolean,
+    onSelect: (T) -> Unit,
+    /** Punto de color junto a la opción (p. ej. paletas). Null = sin punto. */
+    swatchFor: ((T) -> Color?)? = null,
+    enabled: Boolean = true,
+) {
+    val colors = LocalSettingsColors.current
+    var showDialog by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier.then(
+            if (enabled) Modifier else Modifier.alpha(0.55f),
+        ),
+    ) {
+        SettingsMenuLink(
+            icon = { Icon(icon, null) },
+            title = { Text(label) },
+            subtitle = { Text(currentValue) },
+            shapes = segmentedShape,
+            colors = colors,
+            action = {
+                IconButton(
+                    onClick = { if (enabled) showDialog = true },
+                    enabled = enabled,
+                ) {
+                    Icon(Icons.Rounded.ChevronRight, null)
+                }
+            },
+            onClick = { if (enabled) showDialog = true }
+        )
+    }
+    if (showDialog && enabled) {
+        ResponsiveSettingsDialog(
+            onDismiss = { showDialog = false },
+            icon = icon,
+            title = label,
+        ) {
+            options.forEach { (value, displayName) ->
+                val selected = isSelected(value)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(AppShapes.large)
+                        .clickable {
+                            onSelect(value)
+                            showDialog = false
+                        }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    RadioButton(selected = selected, onClick = null)
+                    swatchFor?.invoke(value)?.let { swatch ->
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(swatch)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        )
+                    }
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -53,11 +53,11 @@ import kotlin.uuid.ExperimentalUuidApi
 import java.io.File
 
 enum class LibraryTab {
-    LIBRARY, ALBUMS, ARTISTS, PLAYLISTS, PODCASTS
+    LIBRARY, SONGS, ALBUMS, ARTISTS, PLAYLISTS, PODCASTS
 }
 
 enum class LibrarySortOrder {
-    NAME_ASC, NAME_DESC, DATE_ADDED
+    NAME_ASC, NAME_DESC, DATE_ADDED, DATE_ADDED_DESC
 }
 
 enum class YtmLibraryFilter(val filter: YouTube.LibraryFilter) {
@@ -88,6 +88,7 @@ class LibraryViewModel(
     private val songRepository: SongRepository,
     private val playlistRepository: PlaylistRepository,
     private val podcastRepository: PodcastRepository,
+    private val userPreferences: UserPreferencesRepository,
     private val loginState: StateFlow<Boolean>? = null
 ) : ViewModel() {
 
@@ -105,6 +106,13 @@ class LibraryViewModel(
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
     fun setSortOrder(order: LibrarySortOrder) { _sortOrder.value = order }
+
+    val libraryViewMode: StateFlow<example.nucleus.data.repository.LibraryViewMode> =
+        userPreferences.libraryViewMode.stateIn(viewModelScope, SharingStarted.Lazily, example.nucleus.data.repository.LibraryViewMode.GRID)
+
+    fun setLibraryViewMode(mode: example.nucleus.data.repository.LibraryViewMode) {
+        viewModelScope.launch { userPreferences.setLibraryViewMode(mode) }
+    }
     fun clearSearch() { _searchQuery.value = "" }
     fun setYtmFilter(filter: YtmLibraryFilter?) {
         _selectedYtmFilter.value = filter
@@ -164,6 +172,16 @@ class LibraryViewModel(
         .map { it.map(::savedPodcastToPodcastItem) }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    private val savedSongs = songRepository.getSavedSongs().map { it.map(::savedSongToSongItem) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val sortedFilteredSongs = combine(savedSongs, ytmState, searchQuery, sortOrder) { local, ytm, query, order ->
+        mergedFilteredSorted(
+            local, (ytm as? YtmLibraryState.Success)?.likedSongs.orEmpty(),
+            query, order, { it.id }, { it.title },
+        )
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     val sortedFilteredPodcasts = combine(savedPodcasts, ytmState, searchQuery, sortOrder) { local, ytm, query, order ->
         mergedFilteredSorted(
             local, (ytm as? YtmLibraryState.Success)?.podcasts.orEmpty(),
@@ -185,6 +203,7 @@ class LibraryViewModel(
             LibrarySortOrder.NAME_ASC -> filtered.sortedBy(titleOf)
             LibrarySortOrder.NAME_DESC -> filtered.sortedByDescending(titleOf)
             LibrarySortOrder.DATE_ADDED -> filtered
+            LibrarySortOrder.DATE_ADDED_DESC -> filtered.asReversed()
         }
     }
 

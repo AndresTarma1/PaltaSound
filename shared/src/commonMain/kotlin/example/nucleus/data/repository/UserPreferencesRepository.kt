@@ -203,6 +203,14 @@ enum class ThemePalette(val primary: Long, val secondary: Long) {
     YTMUSIC(0xFFFF0033, 0xFFB00020)
 }
 
+enum class ThemePaletteStyle {
+    TONAL_SPOT, VIBRANT, EXPRESSIVE, RAINBOW, FRUIT_SALAD, MONOCHROME, NEUTRAL, CONTENT
+}
+
+enum class LibraryViewMode {
+    GRID, LIST
+}
+
 enum class BackgroundStyle {
     GRADIENT, BLURRED_COVER, SOLID_COLOR
 }
@@ -235,6 +243,9 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val QUEUE_LOCKED = booleanPreferencesKey("queue_locked")
         val EQUALIZER_BANDS = stringPreferencesKey("equalizer_bands")
         val THEME_PALETTE = stringPreferencesKey("theme_palette")
+        val THEME_PALETTE_STYLE = stringPreferencesKey("theme_palette_style")
+        val THEME_CUSTOM_SEED = intPreferencesKey("theme_custom_seed")
+        val LIBRARY_VIEW_MODE = stringPreferencesKey("library_view_mode")
         val LOCALE = stringPreferencesKey("locale")
         val YOUTUBE_REGION = stringPreferencesKey("youtube_region")
         val DARK_LEVEL = stringPreferencesKey("dark_level")
@@ -676,10 +687,10 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
      * [BackgroundStyle.SOLID_COLOR] (ver gate en App/Navigation): con superficies
      * transparentes la fuente del cristal queda con huecos y el blur no rinde.
      */
-    val liquidGlassBlur: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_BLUR] ?: 28f }
+    val liquidGlassBlur: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_BLUR] ?: 16f }
 
     suspend fun setLiquidGlassBlur(blurDp: Float) {
-        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_BLUR] = blurDp.coerceIn(0f, 48f) }
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_BLUR] = blurDp.coerceIn(0f, 32f) }
     }
 
     val liquidGlassBaseAlpha: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_BASE_ALPHA] ?: 0.9f }
@@ -861,6 +872,33 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setThemePalette(palette: ThemePalette) {
         dataStore.edit { it[PreferencesKeys.THEME_PALETTE] = palette.name }
+    }
+
+    val themePaletteStyle: Flow<ThemePaletteStyle> = dataStore.data.map { pref ->
+        val name = pref[PreferencesKeys.THEME_PALETTE_STYLE] ?: ThemePaletteStyle.CONTENT.name
+        try { ThemePaletteStyle.valueOf(name) } catch (_: Exception) { ThemePaletteStyle.CONTENT }
+    }
+
+    suspend fun setThemePaletteStyle(style: ThemePaletteStyle) {
+        dataStore.edit { it[PreferencesKeys.THEME_PALETTE_STYLE] = style.name }
+    }
+
+    /** Seed ARGB libre del ColorPicker. 0 = sin personalizar (vale la paleta). */
+    val themeCustomSeed: Flow<Int> = dataStore.data.map { pref ->
+        pref[PreferencesKeys.THEME_CUSTOM_SEED] ?: 0
+    }
+
+    val libraryViewMode: Flow<LibraryViewMode> = dataStore.data.map { pref ->
+        val name = pref[PreferencesKeys.LIBRARY_VIEW_MODE] ?: LibraryViewMode.GRID.name
+        try { LibraryViewMode.valueOf(name) } catch (_: Exception) { LibraryViewMode.GRID }
+    }
+
+    suspend fun setLibraryViewMode(mode: LibraryViewMode) {
+        dataStore.edit { it[PreferencesKeys.LIBRARY_VIEW_MODE] = mode.name }
+    }
+
+    suspend fun setThemeCustomSeed(argb: Int) {
+        dataStore.edit { it[PreferencesKeys.THEME_CUSTOM_SEED] = argb }
     }
 
     val locale: Flow<AppLocale> = dataStore.data.map { pref ->

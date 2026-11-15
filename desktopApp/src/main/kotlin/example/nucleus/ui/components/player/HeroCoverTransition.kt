@@ -12,11 +12,11 @@ import example.nucleus.ui.themes.expressiveEasing
 import example.nucleus.utils.LocalAnimationsEnabled
 
 /**
- * Duración del morph de la carátula y del fade del MiniPlayer/stack. Deben
- * coincidir: si el MiniPlayer desaparece antes, la fuente del shared element
- * muere a mitad de vuelo y el morph se corta.
+ * Duración del morph de la carátula entre el MiniPlayer y Now Playing.
+ * Overlay: el fondo ya está compuesto, solo viaja la portada (300ms)
+ * y el cromo funde en 200ms por separado.
  */
-internal const val HeroCoverMorphMs = 420
+internal const val HeroCoverMorphMs = 300
 
 /**
  * Hero cover element para la transición de la carátula entre el MiniPlayer y NowPlaying.
@@ -52,19 +52,6 @@ fun Modifier.heroCoverElement(
     }
     return with(sharedTransitionScope) {
         val contentState = rememberSharedContentState(key = "now_playing_cover_$songId")
-        // Diagnóstico temporal: sin match no hay animación compartida.
-        androidx.compose.runtime.DisposableEffect(Unit) {
-            println("[HeroCover] $debugTag COMPOSED key=now_playing_cover_$songId")
-            onDispose {
-                println("[HeroCover] $debugTag DISPOSED key=now_playing_cover_$songId")
-            }
-        }
-        androidx.compose.runtime.LaunchedEffect(contentState) {
-            androidx.compose.runtime.snapshotFlow { contentState.isMatchFound }
-                .collect { match: Boolean ->
-                    println("[HeroCover] $debugTag MATCH=$match key=now_playing_cover_$songId")
-                }
-        }
         sharedBounds(
             sharedContentState = contentState,
             animatedVisibilityScope = animatedVisibilityScope,

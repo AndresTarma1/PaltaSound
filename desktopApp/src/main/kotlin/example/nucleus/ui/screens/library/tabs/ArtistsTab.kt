@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
@@ -30,6 +31,9 @@ fun ArtistsTab(
     isLoadingYtm: Boolean = false,
     onNavigate: (ScreenConfig) -> Unit,
     onRemove: (String) -> Unit,
+    viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
+    playerViewModel: example.nucleus.viewmodels.PlayerViewModel? = null,
+    header: @Composable () -> Unit = {},
 ) {
     val isEmpty = artists.isEmpty() && ytmArtists.isEmpty() && !isLoadingYtm
     if (isEmpty) {
@@ -48,7 +52,22 @@ fun ArtistsTab(
         }.distinctBy { (artist, _) -> artist.id }
     }
 
-    val gridState = remember { LazyGridState(0, 0) }
+        if (viewMode == example.nucleus.data.repository.LibraryViewMode.LIST && playerViewModel != null) {
+        val sourcesById = remember(mergedArtists) { mergedArtists.associate { (a, s) -> a.id to s } }
+        LibraryListRows(
+            header = header,
+            items = mergedArtists.map { it.first },
+            onNavigate = onNavigate,
+            playerViewModel = playerViewModel,
+            sourceFor = { sourcesById[it.id] ?: ItemContentSource.YOUTUBE },
+            onRemoveCollection = { item ->
+                (item as? com.metrolist.innertube.models.ArtistItem)?.let { onRemove(it.id) }
+            },
+        )
+        return
+    }
+
+val gridState = remember { LazyGridState(0, 0) }
     Box(modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(
             state = gridState,
@@ -57,13 +76,14 @@ fun ArtistsTab(
             horizontalArrangement = Arrangement.spacedBy(LibraryGridSpacing),
             verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing)
         ) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "library_header") { header() }
             items(
                 items = mergedArtists,
                 key = { (artist, source) -> "${source.name.lowercase()}_${artist.id}" }
             ) { (artist, source) ->
                 MediaGridItem(
                     item = artist,
-                    onClick = { onNavigate(ScreenConfig.Artist(artist.id)) },
+                    onClick = { if (!artist.isProfile) onNavigate(ScreenConfig.Artist(artist.id)) },
                     onRemove = { onRemove(artist.id) },
                     isRemovable = source == ItemContentSource.LOCAL,
                     source = source,

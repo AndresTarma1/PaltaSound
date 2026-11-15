@@ -22,6 +22,7 @@ import example.nucleus.generated.resources.*
 import example.nucleus.generated.resources.Res
 import example.nucleus.models.MediaMetadata
 import example.nucleus.navigation.ScreenConfig
+import example.nucleus.ui.components.context.isBrowsableArtistId
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.utils.LocalPlayerViewModel
 import example.nucleus.viewmodels.PlayerUiState
@@ -92,6 +93,8 @@ internal fun NowPlayingSongDetails(
                     .weight(1f, fill = false)
                     .basicMarquee(),
             )
+
+            Spacer(Modifier.width(3.dp))
             LikeToggle(
                 liked = song.liked,
                 onToggle = { playerViewModel.toggleLike() },
@@ -106,7 +109,7 @@ internal fun NowPlayingSongDetails(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             song.artists.forEachIndexed { i, artist ->
-                val hasId = artist.id != null
+                val hasId = artist.id.isBrowsableArtistId()
                 Text(
                     text = artist.name,
                     style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium,

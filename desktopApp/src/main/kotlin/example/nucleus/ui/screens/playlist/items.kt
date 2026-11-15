@@ -360,6 +360,8 @@ internal fun SongListItem(
     albumIndex: Int? = null,
     song: SongItem,
     onPlay: () -> Unit,
+    onGoToArtist: ((String) -> Unit)? = null,
+    onGoToAlbum: ((String) -> Unit)? = null,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
     onSelectionChange: ((Boolean) -> Unit)? = null,
@@ -442,7 +444,6 @@ internal fun SongListItem(
                                 Box(
                                     modifier = Modifier
                                         .size(ListThumbnailSize)
-                                        .onHover{ isHovered = it }
                                 ) {
                                     MusicPlayerImage(
                                         url = song.thumbnail,
@@ -529,6 +530,8 @@ internal fun SongListItem(
             onDismiss = { showContextMenu = false },
             song = song,
             onRemoveFromPlaylist = if (isLocalPlaylist) { { onRemoveFromPlaylist?.invoke(song.id) } } else null,
+            onGoToArtist = onGoToArtist,
+            onGoToAlbum = onGoToAlbum,
         )
     }
 }

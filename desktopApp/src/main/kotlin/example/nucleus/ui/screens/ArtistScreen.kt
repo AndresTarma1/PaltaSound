@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import example.nucleus.navigation.ScreenConfig
+import example.nucleus.platform.NativeDesktop
 import example.nucleus.ui.components.*
 import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.images.MusicPlayerImage
@@ -62,6 +63,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.utils.upscaleThumbnailUrl
+import java.net.URI
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -73,7 +75,11 @@ fun ArtistScreenRoute(
     val playerViewModel = LocalPlayerViewModel.current
     val uiState by viewModel.uiState.collectAsState()
     val isSaved by viewModel.isSaved.collectAsState()
+    val browseId by viewModel.currentBrowseId.collectAsState()
     val success = uiState as? ArtistState.Success
+    // El botón "Abrir en YouTube" solo tiene sentido con un id real de YouTube;
+    // los sinteticos "local:..." no existen fuera de la BD.
+    val browsableId = browseId?.takeIf { !it.startsWith("local:") }
 
     ArtistScreen(
         uiState = uiState,
@@ -81,6 +87,9 @@ fun ArtistScreenRoute(
         onNavigate = onNavigate,
         onBack = onBack,
         isSaved = isSaved,
+        onOpenInBrowser = browsableId?.let { id ->
+            { NativeDesktop.browse(URI("https://www.youtube.com/channel/$id")) }
+        },
         actions = remember(viewModel, playerViewModel, success) {
             ArtistScreenActions(
                 onToggleSave = { viewModel.toggleSave() },
@@ -117,6 +126,7 @@ fun ArtistScreen(
     onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
     isSaved: Boolean = false,
+    onOpenInBrowser: (() -> Unit)? = null,
     actions: ArtistScreenActions,
     playerViewModel: PlayerViewModel
 ) {
@@ -133,11 +143,21 @@ fun ArtistScreen(
         when (uiState) {
             is ArtistState.Loading -> ArtistScreenSkeleton()
             is ArtistState.Success -> ArtistScreenContent(uiState.artistPage, onNavigate, isSaved, actions, playerViewModel)
-            is ArtistState.Error -> ExpressiveEmptyState(
-                icon = Icons.Default.ErrorOutline,
-                title = stringResource(Res.string.something_went_wrong),
-                subtitle = uiState.message,
-            )
+            is ArtistState.Error -> if (uiState.isNotFound) {
+                ExpressiveEmptyState(
+                    icon = Icons.Default.ErrorOutline,
+                    title = stringResource(Res.string.artist_not_found),
+                    subtitle = stringResource(Res.string.artist_not_found_desc),
+                    actionLabel = onOpenInBrowser?.let { stringResource(Res.string.open_in_youtube) },
+                    onAction = onOpenInBrowser,
+                )
+            } else {
+                ExpressiveEmptyState(
+                    icon = Icons.Default.ErrorOutline,
+                    title = stringResource(Res.string.something_went_wrong),
+                    subtitle = uiState.message,
+                )
+            }
         }
     }
 }

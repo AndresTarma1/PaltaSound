@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -267,17 +268,23 @@ fun MiniPlayer(
                 ),
         ) {
             if (backgroundStyle == MiniPlayerBackgroundStyle.COVER && !liquidGlass) {
-                MusicPlayerImage(
-                    url = song.thumbnailUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .blur(42.dp),
-                    shape = RectangleShape,
-                    contentScale = ContentScale.Crop,
-                    placeholderType = PlaceholderType.SONG,
-                    iconSize = 24.dp,
-                )
+                // Cacheado por canción + radio 42.dp -> 20.dp (~4x menos costo)
+                // y decode a 96px: el blur lo tapa todo.
+                key(song.thumbnailUrl) {
+                    MusicPlayerImage(
+                        url = song.thumbnailUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer(clip = true)
+                            .blur(20.dp),
+                        shape = RectangleShape,
+                        contentScale = ContentScale.Crop,
+                        placeholderType = PlaceholderType.SONG,
+                        iconSize = 24.dp,
+                        coilSizeOverride = 96,
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -345,17 +352,22 @@ fun MiniPlayer(
                 ),
         ) {
             if (backgroundStyle == MiniPlayerBackgroundStyle.COVER && !isOnNowPlaying && !bgTransparent && !liquidGlass) {
-                MusicPlayerImage(
-                    url = song.thumbnailUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .blur(32.dp),
-                    shape = RectangleShape,
-                    contentScale = ContentScale.Crop,
-                    placeholderType = PlaceholderType.SONG,
-                    iconSize = 24.dp,
-                )
+                // Cacheado por canción + radio 32.dp -> 18.dp (~3x menos costo).
+                key(song.thumbnailUrl) {
+                    MusicPlayerImage(
+                        url = song.thumbnailUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer(clip = true)
+                            .blur(18.dp),
+                        shape = RectangleShape,
+                        contentScale = ContentScale.Crop,
+                        placeholderType = PlaceholderType.SONG,
+                        iconSize = 24.dp,
+                        coilSizeOverride = 96,
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .matchParentSize()

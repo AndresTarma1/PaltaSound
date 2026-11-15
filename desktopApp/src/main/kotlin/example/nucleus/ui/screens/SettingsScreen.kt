@@ -8,39 +8,26 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.HazeBlurStyle
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.glass.hazeGlassContainer
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppScrollbarGutter
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
-import example.nucleus.ui.components.glass.GlassSegmentPill
-import example.nucleus.ui.components.glass.GlassSegmentTrack
-import example.nucleus.ui.components.glass.LocalContentHaze
-import example.nucleus.ui.components.glass.LocalLiquidGlass
-import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.screens.settings.*
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
@@ -52,30 +39,31 @@ import org.jetbrains.compose.resources.stringResource
 private enum class SettingsCategory(
     val icon: ImageVector,
     val titleRes: org.jetbrains.compose.resources.StringResource,
+    val descRes: org.jetbrains.compose.resources.StringResource,
 ) {
-    APPEARANCE(Icons.Rounded.Palette, Res.string.section_appearance),
-    ACCESSIBILITY(Icons.Rounded.Accessibility, Res.string.section_accessibility),
-    AUDIO(Icons.Rounded.GraphicEq, Res.string.section_audio),
-    PLAYBACK(Icons.Rounded.PlayCircle, Res.string.section_playback),
-    LIBRARY(Icons.Rounded.LibraryMusic, Res.string.section_library),
-    SYSTEM(Icons.Rounded.Settings, Res.string.section_system),
-    ABOUT(Icons.Rounded.Info, Res.string.section_about),
+    APPEARANCE(Icons.Rounded.Palette, Res.string.section_appearance, Res.string.section_appearance_subtitle),
+    ACCESSIBILITY(Icons.Rounded.Accessibility, Res.string.section_accessibility, Res.string.section_accessibility_subtitle),
+    AUDIO(Icons.Rounded.GraphicEq, Res.string.section_audio, Res.string.section_audio_subtitle),
+    PLAYBACK(Icons.Rounded.PlayCircle, Res.string.section_playback, Res.string.section_playback_subtitle),
+    LIBRARY(Icons.Rounded.LibraryMusic, Res.string.section_library, Res.string.section_library_subtitle),
+    SYSTEM(Icons.Rounded.Settings, Res.string.section_system, Res.string.section_system_subtitle),
+    ABOUT(Icons.Rounded.Info, Res.string.section_about, Res.string.section_about_subtitle),
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen() {
     var activeDialog by remember { mutableStateOf<SettingsDialog?>(null) }
-    var selected by remember { mutableStateOf(SettingsCategory.APPEARANCE) }
+    // Sin selección solo se ve la lista; al elegir aparece el detalle.
+    var selected by remember { mutableStateOf<SettingsCategory?>(null) }
 
     CompositionLocalProvider(LocalSettingsColors provides rememberSettingsListItemColors()) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val isNarrow = maxWidth < 900.dp
-
-            if (isNarrow) {
+            if (maxWidth < 900.dp) {
                 NarrowSettingsLayout(
                     selected = selected,
                     onSelect = { selected = it },
+                    onBack = { selected = null },
                     onDialog = { activeDialog = it },
                 )
             } else {
@@ -109,194 +97,38 @@ private fun settingsCategoryTransition(animationsEnabled: Boolean): ContentTrans
         EnterTransition.None togetherWith ExitTransition.None
     }
 
+/** Ancho de la columna de secciones en el layout ancho. */
+private val SettingsListPaneWidth = 320.dp
+
 @Composable
 private fun WideSettingsLayout(
-    selected: SettingsCategory,
-    onSelect: (SettingsCategory) -> Unit,
+    selected: SettingsCategory?,
+    onSelect: (SettingsCategory?) -> Unit,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    // El contenido es la fuente; la barra de tabs flota encima con blur
-    // progresivo (fuerte arriba, desaparece hacia abajo) mientras se scrollea
-    // por debajo.
-    val contentHaze = rememberHazeState()
-    Box(modifier = Modifier.fillMaxSize()) {
+    Row(modifier = Modifier.fillMaxSize()) {
+        SettingsSectionList(
+            selected = selected,
+            onSelect = onSelect,
+            modifier = Modifier
+                .width(SettingsListPaneWidth)
+                .fillMaxHeight(),
+        )
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(contentHaze),
+                .weight(1f)
+                .fillMaxHeight(),
         ) {
             AnimatedContent(
                 targetState = selected,
                 transitionSpec = { settingsCategoryTransition(animationsEnabled) },
-                label = "settings_category",
+                label = "settings_detail",
             ) { cat ->
-                SettingsCategoryDetail(
-                    category = cat,
-                    onDialog = onDialog,
-                    contentTopPadding = SettingsTabsBarHeight,
-                )
-            }
-        }
-
-        // Difuminado progresivo detrás de los tabs.
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(SettingsTabsBarHeight)
-                .hazeBlur(
-                    input = HazeInput.Sources(contentHaze),
-                    style = rememberProgressiveBarStyle(),
-                )
-                .background(rememberBarScrim()),
-        )
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            SettingsCategoryTabs(
-                selected = selected,
-                onSelect = onSelect,
-                hazeState = contentHaze,
-            )
-        }
-    }
-}
-
-/** Altura de la franja difuminada que queda fija sobre los ajustes. */
-private val SettingsTabsBarHeight = 56.dp
-
-/**
- * Blur progresivo para barras fijas: máxima intensidad arriba y se disuelve
- * hacia abajo, para que el contenido que pasa por debajo no se vea nítido.
- *
- * `noiseFactor(0f)`: el ruido por defecto de Haze se ve como grano/"grumoso"
- * sobre superficies planas de escritorio.
- */
-@Composable
-private fun rememberProgressiveBarStyle(): HazeBlurStyle = remember {
-    HazeBlurStyle {
-        blurRadius(22.dp)
-        noiseFactor(0f)
-        // Mask en vez de HazeProgressive: evita el RuntimeEffect que congela
-        // el primer render en Windows (haze#1260 / SKIKO-1179).
-        mask(
-            Brush.verticalGradient(
-                0f to Color.White,
-                0.65f to Color.White.copy(alpha = 0.7f),
-                1f to Color.Transparent,
-            ),
-        )
-    }
-}
-
-/**
- * Velo sutil sobre el difuminado: sin él, los tabs quedan medio invisibles
- * porque detrás solo hay contenido borroso. Se funde a transparente hacia
- * abajo para no tapar el efecto progresivo.
- */
-@Composable
-private fun rememberBarScrim(): Brush {
-    val surface = MaterialTheme.colorScheme.surface
-    return remember(surface) {
-        Brush.verticalGradient(
-            0.0f to surface.copy(alpha = 0.55f),
-            0.65f to surface.copy(alpha = 0.22f),
-            1.0f to Color.Transparent,
-        )
-    }
-}
-
-@Composable
-private fun SettingsCategoryTabs(
-    selected: SettingsCategory,
-    onSelect: (SettingsCategory) -> Unit,
-    modifier: Modifier = Modifier,
-    hazeState: dev.chrisbanes.haze.HazeState? = null,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val segHaze = hazeState ?: LocalRailHaze.current ?: LocalContentHaze.current
-    val segGlass = LocalLiquidGlass.current && segHaze != null
-    if (segGlass) {
-        GlassSegmentTrack(hazeState = segHaze, modifier = modifier) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp, vertical = 4.dp)
-                    .hazeGlassContainer(mergeDistance = 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SettingsCategory.entries.forEach { cat ->
-                    val isSelected = cat == selected
-                    GlassSegmentPill(
-                        selected = isSelected,
-                        onClick = { onSelect(cat) },
-                        hazeState = segHaze,
-                    ) {
-                        Icon(
-                            cat.icon, null,
-                            tint = if (isSelected) {
-                                colorScheme.primary
-                            } else {
-                                colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
-                            },
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text(
-                            stringResource(cat.titleRes),
-                            style = MaterialTheme.typography.labelLargeEmphasized,
-                            color = if (isSelected) {
-                                colorScheme.onSurface
-                            } else {
-                                colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
-                            },
-                        )
-                    }
-                }
-            }
-        }
-        return
-    }
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SettingsCategory.entries.forEach { cat ->
-            val isSelected = cat == selected
-            val containerColor = if (isSelected) colorScheme.secondaryContainer.copy(alpha = 0.85f)
-            else androidx.compose.ui.graphics.Color.Transparent
-            val contentColor = if (isSelected) colorScheme.onSecondaryContainer
-            else colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
-
-            Surface(
-                onClick = { onSelect(cat) },
-                shape = AppShapes.xLarge,
-                color = containerColor,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                modifier = Modifier.height(38.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        cat.icon, null,
-                        tint = contentColor,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        stringResource(cat.titleRes),
-                        style = MaterialTheme.typography.labelLargeEmphasized,
-                        color = contentColor,
-                    )
+                if (cat != null) {
+                    SettingsCategoryDetail(category = cat, onDialog = onDialog)
+                } else {
+                    SettingsEmptyState()
                 }
             }
         }
@@ -305,126 +137,160 @@ private fun SettingsCategoryTabs(
 
 @Composable
 private fun NarrowSettingsLayout(
-    selected: SettingsCategory,
-    onSelect: (SettingsCategory) -> Unit,
+    selected: SettingsCategory?,
+    onSelect: (SettingsCategory?) -> Unit,
+    onBack: () -> Unit,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    val selectedTabIndex = SettingsCategory.entries.indexOf(selected)
-    val contentHaze = rememberHazeState()
-    val glassTabs = LocalLiquidGlass.current
+    AnimatedContent(
+        targetState = selected,
+        transitionSpec = { settingsCategoryTransition(animationsEnabled) },
+        label = "settings_narrow",
+        modifier = Modifier.fillMaxSize(),
+    ) { cat ->
+        if (cat == null) {
+            SettingsSectionList(
+                selected = null,
+                onSelect = onSelect,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(Res.string.back),
+                        )
+                    }
+                    Text(
+                        text = stringResource(cat.titleRes),
+                        style = MaterialTheme.typography.titleLargeEmphasized,
+                    )
+                }
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    SettingsCategoryDetail(category = cat, onDialog = onDialog)
+                }
+            }
+        }
+    }
+}
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(contentHaze),
+/** Lista de secciones con su descripción: primera columna / pantalla inicial. */
+@Composable
+private fun SettingsSectionList(
+    selected: SettingsCategory?,
+    onSelect: (SettingsCategory?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = appScrollContentPadding(
+                start = AppScreenContentHorizontal,
+                end = AppScreenContentHorizontal,
+                top = 20.dp,
+                bottom = 24.dp + LocalMiniPlayerInset.current,
+            ),
+            verticalArrangement = Arrangement.Center,
         ) {
-            AnimatedContent(
-                targetState = selected,
-                transitionSpec = { settingsCategoryTransition(animationsEnabled) },
-                label = "settings_category_narrow",
-            ) { cat ->
-                SettingsCategoryDetail(
-                    category = cat,
-                    onDialog = onDialog,
-                    contentTopPadding = SettingsTabsBarHeight,
+            items(
+                count = SettingsCategory.entries.size,
+                key = { SettingsCategory.entries[it] },
+            ) { index ->
+                val cat = SettingsCategory.entries[index]
+                SettingsSectionRow(
+                    cat = cat,
+                    isSelected = cat == selected,
+                    onClick = { onSelect(cat) },
                 )
             }
         }
-
-        // Difuminado progresivo detrás de los tabs: el contenido se ve pasar
-        // por debajo, difuminado fuerte arriba y disuelto hacia abajo.
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(SettingsTabsBarHeight)
-                .hazeBlur(
-                    input = HazeInput.Sources(contentHaze),
-                    style = rememberProgressiveBarStyle(),
-                )
-                .background(rememberBarScrim()),
+        AppVerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
         )
+    }
+}
 
-        if (glassTabs) {
-            // Pista esmerilada con las píldoras deslizables dentro.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .padding(top = 6.dp, bottom = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                GlassSegmentTrack(
-                    hazeState = contentHaze,
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 4.dp, vertical = 4.dp)
-                            .hazeGlassContainer(mergeDistance = 3.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        SettingsCategory.entries.forEach { cat ->
-                            val isSelected = cat == selected
-                            GlassSegmentPill(
-                                selected = isSelected,
-                                onClick = { onSelect(cat) },
-                                hazeState = contentHaze,
-                            ) {
-                                Icon(cat.icon, null, modifier = Modifier.size(18.dp))
-                                Text(
-                                    stringResource(cat.titleRes),
-                                    style = MaterialTheme.typography.labelLargeEmphasized,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = if (isSelected) {
-                                        MaterialTheme.colorScheme.onSurface
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
+@Composable
+private fun SettingsSectionRow(
+    cat: SettingsCategory,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick,
+        shape = AppShapes.large,
+        color = if (isSelected) colorScheme.secondaryContainer else Color.Transparent,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                cat.icon, null,
+                tint = if (isSelected) colorScheme.onSecondaryContainer
+                else colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(cat.titleRes),
+                    style = MaterialTheme.typography.labelLargeEmphasized,
+                    color = if (isSelected) colorScheme.onSecondaryContainer
+                    else colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    stringResource(cat.descRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    else colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-        } else {
-            // Tabs clásicos, con contenedor transparente para que se vea el
-            // difuminado progresivo de detrás.
-            SecondaryTabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                divider = {},
-                indicator = {
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(selectedTabIndex, matchContentSize = false),
-                    )
-                },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth(),
-            ) {
-                SettingsCategory.entries.forEach { cat ->
-                    Tab(
-                        selected = cat == selected,
-                        onClick = { onSelect(cat) },
-                        text = {
-                            Text(
-                                stringResource(cat.titleRes),
-                                style = MaterialTheme.typography.labelLargeEmphasized,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                        icon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp)) },
-                    )
-                }
-            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsEmptyState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(32.dp),
+        ) {
+            Icon(
+                Icons.Rounded.Settings, null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(48.dp),
+            )
+            Text(
+                stringResource(Res.string.settings_select_section),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -438,9 +304,15 @@ private fun SettingsCategoryDetail(
     val listState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // La guía pide no estirar los ajustes a todo el ancho: columna
+        // centrada de 760dp como máximo (el scrollbar queda al borde).
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxHeight()
+                .fillMaxWidth()
+                .widthIn(max = 760.dp),
             contentPadding = appScrollContentPadding(
                 start = AppScreenContentHorizontal + 4.dp,
                 end = AppScrollbarGutter + AppScreenContentHorizontal,
