@@ -1588,7 +1588,7 @@ class PlayerViewModel(
             }
 
             try {
-                withTimeout(20_000L) {
+                withTimeout(20_000L.milliseconds) {
                     val result = lookupLyricsRemote(song) ?: return@withTimeout
                     if (!stillCurrent()) return@withTimeout
 
@@ -1665,12 +1665,12 @@ class PlayerViewModel(
         val album = song.album?.title
 
         // Intentar proveedores sincronizados en orden de fiabilidad. El primer LRC utilizable gana.
-        //   1) LrcLib  — gratuito, confiable, sincronizado por líneas
-        //   2) KuGou   — sincronizado por líneas
-        //   3) Unison  — base comunitaria de Better Lyrics; por videoId exacto y con sync rico
-        //   4) BetterLyrics — sincronizado por palabras (Apple Music); su API publica ya solo
+        //   1) BetterLyrics — sincronizado por palabras (Apple Music); su API publica ya solo
         //      sirve consultas que esten en su cache (el resto exige una key privada)
-        //   5) BetterLyrics Portato — karaoke de QQ Music por el mismo host, sin key
+        //   2) BetterLyrics Portato — karaoke de QQ Music por el mismo host, sin key
+        //   3) LrcLib  — gratuito, confiable, sincronizado por líneas
+        //   4) KuGou   — sincronizado por líneas
+        //   5) Unison  — base comunitaria de Better Lyrics; por videoId exacto y con sync rico
         //   6) YouTube lyrics endpoint
         suspend fun <T> attempt(block: suspend () -> T): T? = try {
             block()
@@ -1680,16 +1680,16 @@ class PlayerViewModel(
             null
         }
 
+        attempt { BetterLyrics.getLyrics(song.title, artist, song.duration, album) }
+            ?.let { return RemoteLyrics(it, "BetterLyrics") }
+        attempt { BetterLyrics.getPortatoLyrics(song.title, artist, song.duration, album) }
+            ?.let { return RemoteLyrics(it, "BetterLyrics Portato") }
         attempt { LrcLib.getLyrics(song.title, artist, song.duration, album).getOrNull() }
             ?.let { return RemoteLyrics(it, "LrcLib") }
         attempt { KuGou.getLyrics(song.title, artist, song.duration, album).getOrNull() }
             ?.let { return RemoteLyrics(it, "KuGou") }
         attempt { Unison.getLyrics(song.id) }
             ?.let { return RemoteLyrics(it, "Unison") }
-        attempt { BetterLyrics.getLyrics(song.title, artist, song.duration, album) }
-            ?.let { return RemoteLyrics(it, "BetterLyrics") }
-        attempt { BetterLyrics.getPortatoLyrics(song.title, artist, song.duration, album) }
-            ?.let { return RemoteLyrics(it, "BetterLyrics Portato") }
 
         val nextResult = attempt { YouTube.next(WatchEndpoint(videoId = song.id)).getOrNull() }
             ?: return null
@@ -1710,7 +1710,7 @@ class PlayerViewModel(
         lyricsPrefetchJob?.cancel()
         lyricsPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                withTimeout(20_000L) {
+                withTimeout(20_000L.milliseconds) {
                     val result = lookupLyricsRemote(next) ?: run {
                         rememberLyrics(next.id, "", "None", notFound = true)
                         return@withTimeout

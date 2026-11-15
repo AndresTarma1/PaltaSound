@@ -253,18 +253,17 @@ fun TitleBarScope.DesktopTitleBar(
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             }
-            DropdownMenuItem(
-                text = { Text(stringResource(Res.string.mode_music)) },
-                leadingIcon = { Icon(Icons.Filled.MusicNote, contentDescription = null) },
-                trailingIcon = {
-                    if (appMode == AppMode.MUSIC) Icon(Icons.Filled.Check, contentDescription = null)
-                },
-                onClick = {
-                    onModeChange(AppMode.MUSIC)
-                    showMenu = false
-                },
-            )
-            // Sin opción de YouTube: ese modo aún no entra en main.
+//            DropdownMenuItem(
+//                text = { Text(stringResource(Res.string.mode_music)) },
+//                leadingIcon = { Icon(Icons.Filled.MusicNote, contentDescription = null) },
+//                trailingIcon = {
+//                    if (appMode == AppMode.MUSIC) Icon(Icons.Filled.Check, contentDescription = null)
+//                },
+//                onClick = {
+//                    onModeChange(AppMode.MUSIC)
+//                    showMenu = false
+//                },
+//            )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             if (isLoggedIn && appMode == AppMode.MUSIC) {
                 DropdownMenuItem(
@@ -275,7 +274,7 @@ fun TitleBarScope.DesktopTitleBar(
                 DropdownMenuItem(
                     text = { Text(stringResource(if (isSyncing) Res.string.sync_now_syncing else Res.string.sync_now)) },
                     leadingIcon = {
-                        if (isSyncing) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        if (isSyncing) LoadingIndicator(modifier = Modifier.size(18.dp))
                         else Icon(Icons.Rounded.Sync, contentDescription = null)
                     },
                     enabled = !isSyncing,
