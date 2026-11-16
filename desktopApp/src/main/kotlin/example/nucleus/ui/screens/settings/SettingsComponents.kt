@@ -53,8 +53,8 @@ fun rememberSettingsListItemColors(): ListItemColors {
     val selectedAccent = scheme.secondary
 
     return ListItemDefaults.segmentedColors(
-        // Estado base
-        containerColor = scheme.surfaceContainerLow,
+        // Estado base: tarjetas separadas como en la referencia (M3 Settings).
+        containerColor = scheme.surfaceContainerHigh,
         contentColor = scheme.onSurface,
         leadingContentColor = scheme.onSurfaceVariant,
         trailingContentColor = scheme.onSurfaceVariant,

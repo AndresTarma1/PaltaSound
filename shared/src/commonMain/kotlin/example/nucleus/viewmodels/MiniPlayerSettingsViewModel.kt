@@ -3,6 +3,7 @@ package example.nucleus.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
+import example.nucleus.data.repository.MiniPlayerDesign
 import example.nucleus.data.repository.MiniPlayerStyle
 import example.nucleus.data.repository.SeekBarStyle
 import example.nucleus.data.repository.UserPreferencesRepository
@@ -22,11 +23,18 @@ class MiniPlayerSettingsViewModel(
     val miniPlayerBackgroundStyle: StateFlow<MiniPlayerBackgroundStyle> = preferencesRepository.miniPlayerBackgroundStyle
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MiniPlayerBackgroundStyle.TRANSLUCENT)
 
+    val miniPlayerDesign: StateFlow<MiniPlayerDesign> = preferencesRepository.miniPlayerDesign
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MiniPlayerDesign.EXPRESSIVE)
+
     val seekBarStyle: StateFlow<SeekBarStyle> = preferencesRepository.seekBarStyle
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SeekBarStyle.WAVY)
 
     fun setMiniPlayerStyle(style: MiniPlayerStyle) {
         viewModelScope.launch { preferencesRepository.setMiniPlayerStyle(style) }
+    }
+
+    fun setMiniPlayerDesign(design: MiniPlayerDesign) {
+        viewModelScope.launch { preferencesRepository.setMiniPlayerDesign(design) }
     }
 
     fun setMiniPlayerBackgroundStyle(style: MiniPlayerBackgroundStyle) {

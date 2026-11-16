@@ -122,48 +122,24 @@ configurations.all {
 nucleus.application {
     mainClass = "example.nucleus.MainKt"
 
-    // Perfil de memoria: SerialGC (footprint mínimo, sin card-tables/regiones de G1) + heap
-    // moderado. Devuelve heap al OS vía Min/MaxHeapFreeRatio en cada GC full (el FrameWatcher
-    // de Skiko lo dispara periódicamente). Ver Oracle GC tuning + Skiko configuration.
+    // Perfil de memoria experimental: G1GC con heap acotado (384m) y
+    // footprint reducido. Ver Oracle GC tuning + Skiko configuration.
     jvmArgs(
-        // Heap
-        "-Xms64m",
-        // 320m leaves no room for a 720p SABR video/audio download plus the
-        // Compose/Skia working set; GC thrashing froze the UI during playback.
-        "-Xmx512m",
+        "-Xms64m", "-Xmx384m",
         "-XX:+UseG1GC",
         "-XX:MaxGCPauseMillis=100",
-        // G1PeriodicGC libera periódicamente el heap Y los objetos nativos de Skia (imágenes):
-        // sin GC completo periódico, la memoria nativa de Skia/Compose se acumula (peak 740MB).
-        "-XX:G1PeriodicGCInterval=10000",
+        "-XX:G1PeriodicGCInterval=30000",
         "-XX:G1PeriodicGCSystemLoadThreshold=0.0",
         "-XX:+UseStringDeduplication",
-        // Encoger el heap y devolverlo al OS cuando sobra (default 40/70 retiene demasiado).
         "-XX:MinHeapFreeRatio=10",
         "-XX:MaxHeapFreeRatio=30",
-        // No-heap acotado (hoy sin tope; Compose+Ktor+Coil cargan muchas clases).
         "-XX:MaxMetaspaceSize=192m",
-        // JDK-8376125: el presupuesto de las regiones rw/ro del AOT sale de aqui. Con 64m
-        // (67.108.864 B) el reparto del JDK se quedaba 2-64 KB corto y el writer moria con
-        // "Unable to allocate from 'ro' region" (nosotros en ro, el bug en rw). El total medido
-        // fue 67.043.328 B en todas las pruebas, asi que 96m da holgura de sobra. Subirlo por
-        // `aotCache { extraTrainingJvmArgs }` NO sirve: ese flag no llega al proceso que
-        // escribe la cache, tiene que ir en los jvmArgs de la app.
         "-XX:CompressedClassSpaceSize=96m",
-        "-XX:ReservedCodeCacheSize=128m",
-        "-XX:CICompilerCount=2",
-        // Limita los "cores vistos" por la JVM: reduce ForkJoinPool/Dispatchers.Default (32->4),
-        // el dispatcher de OkHttp y los hilos de GC. Para un reproductor bastan 4 workers CPU.
+        "-XX:ReservedCodeCacheSize=96m",
         "-XX:ActiveProcessorCount=4",
-        // Sin hsperfdata ni contadores de rendimiento: nadie los lee y el mmap se queda residente.
         "-XX:-UsePerfData",
-        // Pilas de hilo más pequeñas (muchos hilos IO/render).
-        "-Xss768k",
-        // Pool IO de coroutines: default real es 64 hilos (~1MB stack c/u).
+        "-Xss1m",
         "-Dkotlinx.coroutines.io.parallelism=16",
-        "-Dpolyglot.engine.WarnInterpreterOnly=false",
-        "-XX:+UnlockExperimentalVMOptions",
-        "-XX:+EnableJVMCI",
         "-Dskiko.gpu.resourceCacheLimit=32M",
     )
 

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +49,7 @@ fun PlaylistsTab(
     onQuickPlayPlaylist: (playlistId: String, endpoint: WatchEndpoint?, title: String, onFallback: () -> Unit) -> Unit,
     onQuickShufflePlaylist: (playlistId: String, endpoint: WatchEndpoint?, title: String, onFallback: () -> Unit) -> Unit,
     viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
+    searchQuery: String = "",
 ) {
     val downloadViewModel = LocalDownloadViewModel.current
     val playlistsViewModel = org.koin.compose.koinInject<example.nucleus.viewmodels.LibraryPlaylistsViewModel>()
@@ -64,7 +66,13 @@ fun PlaylistsTab(
     val hasDownloads = downloadedCount > 0 || fullyDownloadedAlbums.isNotEmpty() || fullyDownloadedPlaylists.isNotEmpty()
     val isEmpty = playlists.isEmpty() && ytmPlaylists.isEmpty() && !isLoadingYtm && !hasDownloads
     if (isEmpty) {
-        LibraryEmptyState(Icons.AutoMirrored.Filled.PlaylistPlay, stringResource(Res.string.no_saved_playlists), stringResource(Res.string.save_playlists_hint))
+        // Con búsqueda activa el header debe seguir visible: si no, no hay
+        // forma de limpiar el filtro ni de cambiar de pestaña.
+        if (searchQuery.isNotBlank()) {
+            LibraryEmptyWithHeader(header, Icons.Default.Search, stringResource(Res.string.no_results), "\"$searchQuery\"")
+        } else {
+            LibraryEmptyWithHeader(header, Icons.AutoMirrored.Filled.PlaylistPlay, stringResource(Res.string.no_saved_playlists), stringResource(Res.string.save_playlists_hint))
+        }
         return
     }
     if (isLoadingYtm && ytmPlaylists.isEmpty()) {

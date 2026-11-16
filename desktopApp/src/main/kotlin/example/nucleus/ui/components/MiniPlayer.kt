@@ -66,6 +66,7 @@ import dev.chrisbanes.haze.glass.hazeGlass
 import dev.chrisbanes.haze.glass.hazeGlassContainer
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
+import example.nucleus.data.repository.MiniPlayerDesign
 import example.nucleus.models.MediaMetadata
 import example.nucleus.player.PlaybackState
 import example.nucleus.viewmodels.PlayerUiState
@@ -122,6 +123,8 @@ fun MiniPlayer(
     isDocked: Boolean = false,
     backgroundStyle: MiniPlayerBackgroundStyle = MiniPlayerBackgroundStyle.TRANSLUCENT,
     hazeState: HazeState? = LocalGlassHaze.current,
+    /** Diseño visual interno (independiente de la posición: barra, flotante o docked). */
+    design: MiniPlayerDesign = MiniPlayerDesign.EXPRESSIVE,
     /** BETA: sustituye blur y botones por Liquid Glass (Haze Glass). */
     liquidGlass: Boolean = false,
     modifier: Modifier = Modifier,
@@ -151,7 +154,28 @@ fun MiniPlayer(
     val colorScheme = MaterialTheme.colorScheme
 
     val playerContent: @Composable () -> Unit = {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        when (design) {
+            MiniPlayerDesign.COMPACT -> MiniPlayerCompactLive(
+                song = song,
+                state = state,
+                isError = isError,
+                onNowPlaying = onNowPlaying,
+                onToggleQueue = onToggleQueue,
+                playerViewModel = playerViewModel,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = sharedVisibilityScope,
+            )
+            MiniPlayerDesign.VINYL -> MiniPlayerVinylLive(
+                song = song,
+                state = state,
+                isError = isError,
+                onNowPlaying = onNowPlaying,
+                onToggleQueue = onToggleQueue,
+                playerViewModel = playerViewModel,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = sharedVisibilityScope,
+            )
+            MiniPlayerDesign.EXPRESSIVE -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             if (maxWidth < MiniPlayerWideMinWidth) {
                 MiniPlayerCompactRow(
                     song = song,
@@ -187,6 +211,7 @@ fun MiniPlayer(
                 )
             }
         }
+    }
     }
 
     if (floating) {
@@ -491,7 +516,7 @@ private val MiniPlayerWideMinWidth = 800.dp
  * controles de transporte, que es donde estaba el problema.
  */
 @Composable
-private fun MiniPlayerCompactRow(
+internal fun MiniPlayerCompactRow(
     song: MediaMetadata,
     state: PlayerUiState,
     isError: Boolean,
@@ -704,7 +729,7 @@ private fun MiniPlayerCompactRow(
 /** Layout de escritorio del mini reproductor: portada · transporte + seek · volumen/cola. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun MiniPlayerWideRow(
+internal fun MiniPlayerWideRow(
     song: MediaMetadata,
     state: PlayerUiState,
     isError: Boolean,

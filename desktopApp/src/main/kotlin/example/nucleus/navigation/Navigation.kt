@@ -57,6 +57,7 @@ import example.nucleus.data.repository.AppMode
 import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
+import example.nucleus.data.repository.MiniPlayerDesign
 import example.nucleus.data.repository.MiniPlayerStyle
 import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.UserPreferencesRepository
@@ -150,6 +151,7 @@ fun NavigationDesktop(
         NavigationRailStyle.DEFAULT
     )
     val miniPlayerStyle by userPreferences.miniPlayerStyle.collectAsState(MiniPlayerStyle.BAR)
+    val miniPlayerDesign by userPreferences.miniPlayerDesign.collectAsState(MiniPlayerDesign.EXPRESSIVE)
     val miniPlayerBackgroundStyle by userPreferences.miniPlayerBackgroundStyle.collectAsState(
         MiniPlayerBackgroundStyle.TRANSLUCENT
     )
@@ -250,6 +252,7 @@ fun NavigationDesktop(
                         sharedVisibilityScope = visibilityScope,
                         floating = floatingMiniPlayer,
                         isDocked = dockedMiniPlayer,
+                        design = miniPlayerDesign,
                         backgroundStyle = miniPlayerBackgroundStyle,
                         liquidGlass = effectiveLiquidGlass,
                         hazeState = miniPlayerHazeState,

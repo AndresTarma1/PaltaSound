@@ -143,6 +143,32 @@ internal fun LibraryEmptyState(
 }
 
 /**
+ * Estado vacío que conserva la cabecera (pestañas + búsqueda): sin ella el
+ * usuario quedaba atrapado al filtrar sin resultados, sin forma de cambiar
+ * de pestaña ni de limpiar la búsqueda (solo reiniciando la app).
+ */
+@Composable
+internal fun LibraryEmptyWithHeader(
+    header: @Composable () -> Unit,
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = libraryGridContentPadding(),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            item(key = "library_header") { header() }
+            item(key = "library_empty") {
+                LibraryEmptyState(icon = icon, title = title, subtitle = subtitle)
+            }
+        }
+    }
+}
+
+/**
  * Filas de lista para las pestañas de biblioteca (modo LISTA). Reutiliza las
  * filas de sección con navegación, reproducir, aleatorio y eliminar.
  */

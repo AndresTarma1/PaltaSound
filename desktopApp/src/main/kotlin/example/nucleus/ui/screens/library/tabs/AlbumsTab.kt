@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,10 +39,17 @@ fun AlbumsTab(
     viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
     playerViewModel: example.nucleus.viewmodels.PlayerViewModel? = null,
     header: @Composable () -> Unit = {},
+    searchQuery: String = "",
 ) {
     val isEmpty = albums.isEmpty() && ytmAlbums.isEmpty() && !isLoadingYtm
     if (isEmpty) {
-        LibraryEmptyState(Icons.Default.Album, stringResource(Res.string.no_saved_albums), stringResource(Res.string.save_albums_hint))
+        // Con búsqueda activa el header debe seguir visible: si no, no hay
+        // forma de limpiar el filtro ni de cambiar de pestaña.
+        if (searchQuery.isNotBlank()) {
+            LibraryEmptyWithHeader(header, Icons.Default.Search, stringResource(Res.string.no_results), "\"$searchQuery\"")
+        } else {
+            LibraryEmptyWithHeader(header, Icons.Default.Album, stringResource(Res.string.no_saved_albums), stringResource(Res.string.save_albums_hint))
+        }
         return
     }
     if (isLoadingYtm && ytmAlbums.isEmpty()) {

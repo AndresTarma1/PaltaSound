@@ -31,6 +31,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -250,42 +252,34 @@ internal fun LibraryHeader(
                     }
                 }
             }
-            // Vista lista / grilla.
-            Surface(
-                shape = RoundedCornerShape(50.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            // Vista lista / parrilla como grupo conectado. Los textos se izan
+            // porque el content de ButtonGroup no es @Composable.
+            val listActive = state.viewMode == LibraryViewMode.LIST
+            val listLabel = stringResource(Res.string.library_view_list)
+            val gridLabel = stringResource(Res.string.library_view_grid)
+            ButtonGroup(
+                overflowIndicator = { ButtonGroupDefaults.OverflowIndicator(menuState = it) },
+                expandedRatio = 0f,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
             ) {
-                Row(
-                    modifier = Modifier.padding(2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val listActive = state.viewMode == LibraryViewMode.LIST
-                    IconButton(
-                        onClick = { actions.onViewModeChange(LibraryViewMode.LIST) },
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = if (listActive) MaterialTheme.colorScheme.primaryContainer
-                            else Color.Transparent,
-                            contentColor = if (listActive) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-                    ) {
-                        Icon(Icons.Default.ViewList, stringResource(Res.string.library_view_list))
-                    }
-                    IconButton(
-                        onClick = { actions.onViewModeChange(LibraryViewMode.GRID) },
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = if (!listActive) MaterialTheme.colorScheme.primaryContainer
-                            else Color.Transparent,
-                            contentColor = if (!listActive) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-                    ) {
-                        Icon(Icons.Default.GridView, stringResource(Res.string.library_view_grid))
-                    }
-                }
+                toggleableItem(
+                    checked = listActive,
+                    onCheckedChange = { _ -> actions.onViewModeChange(LibraryViewMode.LIST) },
+                    label = listLabel,
+                    icon = {
+                        Icon(Icons.Default.ViewList, listLabel)
+                    },
+                )
+                toggleableItem(
+                    checked = !listActive,
+                    onCheckedChange = { _ -> actions.onViewModeChange(LibraryViewMode.GRID) },
+                    label = gridLabel,
+                    icon = {
+                        Icon(Icons.Default.GridView, gridLabel)
+                    },
+                )
             }
         }
         AnimatedVisibility(visible = showSearch || state.searchQuery.isNotBlank()) {

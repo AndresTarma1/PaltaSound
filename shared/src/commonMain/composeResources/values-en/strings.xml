@@ -516,6 +516,13 @@
     <string name="mini_player_bg_solid">Solid color</string>
     <string name="mini_player_bg_cover">From artwork (blurred)</string>
     <string name="mini_player_bg_translucent">Semi-transparent</string>
+    <string name="mini_player_design">Mini player design</string>
+    <string name="mini_player_design_expressive">Expressive</string>
+    <string name="mini_player_design_expressive_desc">Full: artwork, transport and volume</string>
+    <string name="mini_player_design_compact">Compact</string>
+    <string name="mini_player_design_compact_desc">Single row: artwork, title and essential controls</string>
+    <string name="mini_player_design_vinyl">Vinyl</string>
+    <string name="mini_player_design_vinyl_desc">Spinning disc with centered transport</string>
     <string name="settings_island_style">Island style</string>
     <string name="island_style_compact">Compact</string>
     <string name="island_style_comfortable">Comfortable</string>

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +25,7 @@ import example.nucleus.ui.screens.shared.SectionListItem
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.SongItem
 import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.no_results
 import example.nucleus.generated.resources.no_saved_songs
 import example.nucleus.generated.resources.save_songs_hint
 import org.jetbrains.compose.resources.stringResource
@@ -35,9 +37,16 @@ fun SongsTab(
     viewMode: LibraryViewMode = LibraryViewMode.GRID,
     playerViewModel: PlayerViewModel? = null,
     header: @Composable () -> Unit = {},
+    searchQuery: String = "",
 ) {
     if (songs.isEmpty()) {
-        LibraryEmptyState(Icons.Default.MusicNote, stringResource(Res.string.no_saved_songs), stringResource(Res.string.save_songs_hint))
+        // Con búsqueda activa el header debe seguir visible: si no, no hay
+        // forma de limpiar el filtro ni de cambiar de pestaña.
+        if (searchQuery.isNotBlank()) {
+            LibraryEmptyWithHeader(header, Icons.Default.Search, stringResource(Res.string.no_results), "\"$searchQuery\"")
+        } else {
+            LibraryEmptyWithHeader(header, Icons.Default.MusicNote, stringResource(Res.string.no_saved_songs), stringResource(Res.string.save_songs_hint))
+        }
         return
     }
 

@@ -1,6 +1,7 @@
 package example.nucleus.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +45,7 @@ fun SectionHeaderRow(
     title: String,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
+    horizontalStart: Boolean = true,
     iconTint: Color = MaterialTheme.colorScheme.primary,
     trailing: (@Composable RowScope.() -> Unit)? = null,
     actionLabel: String? = null,
@@ -54,6 +56,7 @@ fun SectionHeaderRow(
             .fillMaxWidth()
             .padding(horizontal = AppScreenContentHorizontal),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if(horizontalStart) Arrangement.Start else Arrangement.SpaceBetween
     ) {
         if (icon != null) {
             Icon(

@@ -19,7 +19,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -41,11 +40,27 @@ private enum class SettingsCategory(
     val titleRes: org.jetbrains.compose.resources.StringResource,
     val descRes: org.jetbrains.compose.resources.StringResource,
 ) {
-    APPEARANCE(Icons.Rounded.Palette, Res.string.section_appearance, Res.string.section_appearance_subtitle),
-    ACCESSIBILITY(Icons.Rounded.Accessibility, Res.string.section_accessibility, Res.string.section_accessibility_subtitle),
+    APPEARANCE(
+        Icons.Rounded.Palette,
+        Res.string.section_appearance,
+        Res.string.section_appearance_subtitle
+    ),
+    ACCESSIBILITY(
+        Icons.Rounded.Accessibility,
+        Res.string.section_accessibility,
+        Res.string.section_accessibility_subtitle
+    ),
     AUDIO(Icons.Rounded.GraphicEq, Res.string.section_audio, Res.string.section_audio_subtitle),
-    PLAYBACK(Icons.Rounded.PlayCircle, Res.string.section_playback, Res.string.section_playback_subtitle),
-    LIBRARY(Icons.Rounded.LibraryMusic, Res.string.section_library, Res.string.section_library_subtitle),
+    PLAYBACK(
+        Icons.Rounded.PlayCircle,
+        Res.string.section_playback,
+        Res.string.section_playback_subtitle
+    ),
+    LIBRARY(
+        Icons.Rounded.LibraryMusic,
+        Res.string.section_library,
+        Res.string.section_library_subtitle
+    ),
     SYSTEM(Icons.Rounded.Settings, Res.string.section_system, Res.string.section_system_subtitle),
     ABOUT(Icons.Rounded.Info, Res.string.section_about, Res.string.section_about_subtitle),
 }
@@ -55,7 +70,7 @@ private enum class SettingsCategory(
 fun SettingsScreen() {
     var activeDialog by remember { mutableStateOf<SettingsDialog?>(null) }
     // Sin selección solo se ve la lista; al elegir aparece el detalle.
-    var selected by remember { mutableStateOf<SettingsCategory?>(null) }
+    var selected by remember { mutableStateOf<SettingsCategory?>(SettingsCategory.APPEARANCE) }
 
     CompositionLocalProvider(LocalSettingsColors provides rememberSettingsListItemColors()) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -201,7 +216,10 @@ private fun SettingsSectionList(
                 top = 20.dp,
                 bottom = 24.dp + LocalMiniPlayerInset.current,
             ),
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.spacedBy(
+                space = 8.dp,
+                alignment = Alignment.CenterVertically
+            ),
         ) {
             items(
                 count = SettingsCategory.entries.size,
@@ -232,10 +250,10 @@ private fun SettingsSectionRow(
     Surface(
         onClick = onClick,
         shape = AppShapes.large,
-        color = if (isSelected) colorScheme.secondaryContainer else Color.Transparent,
+        color = if (isSelected) colorScheme.secondaryContainer else colorScheme.surfaceContainerHigh,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -304,55 +322,77 @@ private fun SettingsCategoryDetail(
     val listState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // La guía pide no estirar los ajustes a todo el ancho: columna
-        // centrada de 760dp como máximo (el scrollbar queda al borde).
-        LazyColumn(
-            state = listState,
+        // Panel del contenido de la sección (surfaceContainerLow): las filas
+        // van en High y la seleccionada en secondaryContainer, como en la
+        // referencia. La guía pide no estirar los ajustes a todo el ancho:
+        // columna centrada de 760dp como máximo (el scrollbar queda al borde).
+        Surface(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxHeight()
                 .fillMaxWidth()
+                .padding(top = 14.dp, bottom = 14.dp)
                 .widthIn(max = 760.dp),
-            contentPadding = appScrollContentPadding(
-                start = AppScreenContentHorizontal + 4.dp,
-                end = AppScrollbarGutter + AppScreenContentHorizontal,
-                top = contentTopPadding,
-                bottom = 24.dp + LocalMiniPlayerInset.current,
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            shape = AppShapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            tonalElevation = 0.dp,
         ) {
-            // Contenido desacoplado por categoría — solo se compone la activa
-            when (category) {
-                SettingsCategory.APPEARANCE -> item {
-                    AppearanceSettingsGroup()
-                }
-                SettingsCategory.ACCESSIBILITY -> item {
-                    AccessibilitySettingsGroup()
-                }
-                SettingsCategory.AUDIO -> item {
-                    AudioSettingsGroup(onOpenEqualizer = { onDialog(SettingsDialog.EQUALIZER) })
-                }
-                SettingsCategory.PLAYBACK -> {
-                    item { MiniPlayerSettingsGroup(onOpenSeekBarStyleDialog = { onDialog(SettingsDialog.SEEK_BAR_STYLE) }) }
-                    item { NowPlayingSettingsGroup() }
-                }
-                SettingsCategory.LIBRARY -> item {
-                    SyncSettingsGroup(onShowYtmSyncWarning = { onDialog(SettingsDialog.YTM_SYNC_WARNING) })
-                }
-                SettingsCategory.SYSTEM -> {
-                    item { ApplicationSettingsGroup() }
-                    item {
-                        AdvancedSettingsGroup(
-                            onShowClearDownloadsDialog = { onDialog(SettingsDialog.CLEAR_DOWNLOADS) },
-                            onOpenJvmSettings = { onDialog(SettingsDialog.JVM_SETTINGS) },
-                        )
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = appScrollContentPadding(
+                    start = AppScreenContentHorizontal + 4.dp,
+                    end = AppScrollbarGutter + AppScreenContentHorizontal,
+                    top = contentTopPadding,
+                    bottom = 24.dp + LocalMiniPlayerInset.current,
+                ),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                // Contenido desacoplado por categoría — solo se compone la activa
+                when (category) {
+                    SettingsCategory.APPEARANCE -> item {
+                        AppearanceSettingsGroup()
                     }
-                }
-                SettingsCategory.ABOUT -> {
-                    item { SupportSettingsGroup() }
-                    item {
-                        AboutCard()
-                        Spacer(Modifier.height(16.dp))
+
+                    SettingsCategory.ACCESSIBILITY -> item {
+                        AccessibilitySettingsGroup()
+                    }
+
+                    SettingsCategory.AUDIO -> item {
+                        AudioSettingsGroup(onOpenEqualizer = { onDialog(SettingsDialog.EQUALIZER) })
+                    }
+
+                    SettingsCategory.PLAYBACK -> {
+                        item {
+                            MiniPlayerSettingsGroup(onOpenSeekBarStyleDialog = {
+                                onDialog(
+                                    SettingsDialog.SEEK_BAR_STYLE
+                                )
+                            })
+                        }
+                        item { NowPlayingSettingsGroup() }
+                    }
+
+                    SettingsCategory.LIBRARY -> item {
+                        SyncSettingsGroup(onShowYtmSyncWarning = { onDialog(SettingsDialog.YTM_SYNC_WARNING) })
+                    }
+
+                    SettingsCategory.SYSTEM -> {
+                        item { ApplicationSettingsGroup() }
+                        item {
+                            AdvancedSettingsGroup(
+                                onShowClearDownloadsDialog = { onDialog(SettingsDialog.CLEAR_DOWNLOADS) },
+                                onOpenJvmSettings = { onDialog(SettingsDialog.JVM_SETTINGS) },
+                            )
+                        }
+                    }
+
+                    SettingsCategory.ABOUT -> {
+                        item { SupportSettingsGroup() }
+                        item {
+                            AboutCard()
+                            Spacer(Modifier.height(16.dp))
+                        }
                     }
                 }
             }

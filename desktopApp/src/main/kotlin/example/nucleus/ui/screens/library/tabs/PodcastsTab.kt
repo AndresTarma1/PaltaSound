@@ -10,12 +10,14 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Podcasts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.metrolist.innertube.models.PodcastItem
 import example.nucleus.generated.resources.Res
+import example.nucleus.generated.resources.no_results
 import example.nucleus.generated.resources.no_saved_podcasts
 import example.nucleus.generated.resources.save_podcasts_hint
 import example.nucleus.navigation.ScreenConfig
@@ -37,13 +39,26 @@ fun PodcastsTab(
     viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
     playerViewModel: example.nucleus.viewmodels.PlayerViewModel? = null,
     header: @Composable () -> Unit = {},
+    searchQuery: String = "",
 ) {
     if (podcasts.isEmpty() && !isLoading) {
-        LibraryEmptyState(
-            Icons.Rounded.Podcasts,
-            stringResource(Res.string.no_saved_podcasts),
-            stringResource(Res.string.save_podcasts_hint),
-        )
+        // Con búsqueda activa el header debe seguir visible: si no, no hay
+        // forma de limpiar el filtro ni de cambiar de pestaña.
+        if (searchQuery.isNotBlank()) {
+            LibraryEmptyWithHeader(
+                header,
+                Icons.Default.Search,
+                stringResource(Res.string.no_results),
+                "\"$searchQuery\"",
+            )
+        } else {
+            LibraryEmptyWithHeader(
+                header,
+                Icons.Rounded.Podcasts,
+                stringResource(Res.string.no_saved_podcasts),
+                stringResource(Res.string.save_podcasts_hint),
+            )
+        }
         return
     }
     if (podcasts.isEmpty() && isLoading) {

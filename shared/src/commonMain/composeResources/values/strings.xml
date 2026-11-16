@@ -523,6 +523,13 @@
     <string name="mini_player_bg_solid">Color sólido</string>
     <string name="mini_player_bg_cover">De la carátula (desenfocado)</string>
     <string name="mini_player_bg_translucent">Semitransparente</string>
+    <string name="mini_player_design">Diseño del mini reproductor</string>
+    <string name="mini_player_design_expressive">Expresivo</string>
+    <string name="mini_player_design_expressive_desc">Completo: portada, transporte y volumen</string>
+    <string name="mini_player_design_compact">Compacto</string>
+    <string name="mini_player_design_compact_desc">Una fila: portada, título y controles esenciales</string>
+    <string name="mini_player_design_vinyl">Vinilo</string>
+    <string name="mini_player_design_vinyl_desc">Disco giratorio con transporte centrado</string>
     <string name="settings_island_style">Estilo de las islas</string>
     <string name="island_style_compact">Compacto</string>
     <string name="island_style_comfortable">Cómodo</string>

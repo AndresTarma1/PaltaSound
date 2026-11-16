@@ -13,6 +13,7 @@ import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.LoudnessLevel
 import example.nucleus.data.repository.LyricsAnimationStyle
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
+import example.nucleus.data.repository.MiniPlayerDesign
 import example.nucleus.data.repository.MiniPlayerStyle
 import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.BackgroundStyle
@@ -83,6 +84,20 @@ fun MiniPlayerStyle.displayName(): String = when (this) {
     MiniPlayerStyle.BAR -> stringResource(Res.string.mini_player_style_bar)
     MiniPlayerStyle.FLOATING -> stringResource(Res.string.mini_player_style_floating)
     MiniPlayerStyle.DOCKED -> stringResource(Res.string.mini_player_style_docked)
+}
+
+@Composable
+fun MiniPlayerDesign.displayName(): String = when (this) {
+    MiniPlayerDesign.EXPRESSIVE -> stringResource(Res.string.mini_player_design_expressive)
+    MiniPlayerDesign.COMPACT -> stringResource(Res.string.mini_player_design_compact)
+    MiniPlayerDesign.VINYL -> stringResource(Res.string.mini_player_design_vinyl)
+}
+
+@Composable
+fun MiniPlayerDesign.description(): String = when (this) {
+    MiniPlayerDesign.EXPRESSIVE -> stringResource(Res.string.mini_player_design_expressive_desc)
+    MiniPlayerDesign.COMPACT -> stringResource(Res.string.mini_player_design_compact_desc)
+    MiniPlayerDesign.VINYL -> stringResource(Res.string.mini_player_design_vinyl_desc)
 }
 
 @Composable

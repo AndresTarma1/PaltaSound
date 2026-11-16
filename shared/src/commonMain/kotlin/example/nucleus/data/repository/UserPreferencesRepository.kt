@@ -54,6 +54,11 @@ enum class MiniPlayerStyle {
     BAR, FLOATING, DOCKED
 }
 
+/** Diseño interno del mini reproductor (independiente de su posición). EXPRESSIVE = completo actual. COMPACT = fila fina. VINYL = disco giratorio. */
+enum class MiniPlayerDesign {
+    EXPRESSIVE, COMPACT, VINYL
+}
+
 /** Fondo de la tarjeta del mini reproductor flotante. SOLID = color sólido del chrome. COVER = carátula desenfocada con gradiente de sus colores. TRANSLUCENT = semitransparente. */
 enum class MiniPlayerBackgroundStyle {
     SOLID, COVER, TRANSLUCENT
@@ -273,6 +278,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val VOLUMEN = intPreferencesKey("volumen")
         val NAVIGATION_RAIL_STYLE = stringPreferencesKey("navigation_rail_style")
         val MINI_PLAYER_STYLE = stringPreferencesKey("mini_player_style")
+        val MINI_PLAYER_DESIGN = stringPreferencesKey("mini_player_design")
         val MINI_PLAYER_BG_STYLE = stringPreferencesKey("mini_player_bg_style")
         val NOW_PLAYING_BACKGROUND = stringPreferencesKey("now_playing_background")
         val NOW_PLAYING_DESIGN = stringPreferencesKey("now_playing_design")
@@ -631,6 +637,15 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setMiniPlayerStyle(style: MiniPlayerStyle) {
         dataStore.edit { it[PreferencesKeys.MINI_PLAYER_STYLE] = style.name }
+    }
+
+    val miniPlayerDesign: Flow<MiniPlayerDesign> = dataStore.data.map { pref ->
+        try { MiniPlayerDesign.valueOf(pref[PreferencesKeys.MINI_PLAYER_DESIGN] ?: MiniPlayerDesign.EXPRESSIVE.name) }
+        catch (_: Exception) { MiniPlayerDesign.EXPRESSIVE }
+    }
+
+    suspend fun setMiniPlayerDesign(design: MiniPlayerDesign) {
+        dataStore.edit { it[PreferencesKeys.MINI_PLAYER_DESIGN] = design.name }
     }
 
     val miniPlayerBackgroundStyle: Flow<MiniPlayerBackgroundStyle> = dataStore.data.map { pref ->

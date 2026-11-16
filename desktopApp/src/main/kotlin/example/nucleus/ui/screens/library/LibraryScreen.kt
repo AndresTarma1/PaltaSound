@@ -46,6 +46,7 @@ fun LibraryScreen(
                 viewMode = state.viewMode,
                 playerViewModel = playerViewModel,
                 header = headerContent,
+                searchQuery = state.searchQuery,
             )
 
             LibraryTab.ALBUMS -> AlbumsTab(
@@ -59,6 +60,7 @@ fun LibraryScreen(
                 viewMode = state.viewMode,
                 playerViewModel = playerViewModel,
                 header = headerContent,
+                searchQuery = state.searchQuery,
             )
 
             LibraryTab.ARTISTS -> ArtistsTab(
@@ -70,6 +72,7 @@ fun LibraryScreen(
                 viewMode = state.viewMode,
                 playerViewModel = playerViewModel,
                 header = headerContent,
+                searchQuery = state.searchQuery,
             )
 
             LibraryTab.PLAYLISTS -> PlaylistsTab(
@@ -83,6 +86,7 @@ fun LibraryScreen(
                 onQuickShufflePlaylist = actions.onQuickShufflePlaylist,
                 viewMode = state.viewMode,
                 header = headerContent,
+                searchQuery = state.searchQuery,
             )
 
             LibraryTab.PODCASTS -> PodcastsTab(
@@ -92,6 +96,7 @@ fun LibraryScreen(
                 viewMode = state.viewMode,
                 playerViewModel = playerViewModel,
                 header = headerContent,
+                searchQuery = state.searchQuery,
             )
 
             LibraryTab.LIBRARY -> LibraryMixedTab(
@@ -106,6 +111,7 @@ fun LibraryScreen(
                 onQuickPlayPlaylist = actions.onQuickPlayPlaylist,
                 onQuickShufflePlaylist = actions.onQuickShufflePlaylist,
                 header = headerContent,
+                searchQuery = state.searchQuery,
             )
         }
     }

@@ -152,8 +152,10 @@ class LibraryViewModel(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val sortedFilteredArtists = combine(savedArtists, ytmState, searchQuery, sortOrder) { local, ytm, query, order ->
+        // Los perfiles de usuario (isProfile) no son artistas abribles: sin
+        // página ni avatar, así que se excluyen de la colección.
         mergedFilteredSorted(
-            local, (ytm as? YtmLibraryState.Success)?.artists.orEmpty(),
+            local.filterNot { it.isProfile }, (ytm as? YtmLibraryState.Success)?.artists.orEmpty().filterNot { it.isProfile },
             query, order, { it.id }, { it.title },
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())

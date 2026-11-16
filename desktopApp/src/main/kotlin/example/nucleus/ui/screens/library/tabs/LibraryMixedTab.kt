@@ -14,11 +14,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.screens.shared.SectionListItem
 import example.nucleus.utils.LocalPlayerViewModel
 import com.metrolist.innertube.models.PlaylistItem
@@ -64,6 +63,7 @@ fun LibraryMixedTab(
     onTabSelected: (example.nucleus.viewmodels.LibraryTab) -> Unit = {},
     viewMode: example.nucleus.data.repository.LibraryViewMode = example.nucleus.data.repository.LibraryViewMode.GRID,
     header: @Composable () -> Unit = {},
+    searchQuery: String = "",
 ) {
     val ytm = state.ytmState as? YtmLibraryState.Success
     val downloadViewModel = LocalDownloadViewModel.current
@@ -114,7 +114,8 @@ fun LibraryMixedTab(
         buildList {
 
             val mergedAlbums = (state.albums + ytm?.albums.orEmpty()).distinctBy { it.id }
-            val mergedArtists = (state.artists + ytm?.artists.orEmpty()).distinctBy { it.id }
+            // Perfiles fuera: no son artistas abribles (sin página ni avatar).
+            val mergedArtists = (state.artists.filterNot { it.isProfile } + ytm?.artists.orEmpty().filterNot { it.isProfile }).distinctBy { it.id }
             val mergedPlaylists = (state.playlists + ytm?.playlists.orEmpty()).distinctBy { it.id }
 
             val seenAlbumIds = mutableSetOf<String>()
@@ -311,53 +312,17 @@ fun LibraryMixedTab(
     }
 
     if (items.isEmpty()) {
-        LibraryEmptyState(Icons.Default.LibraryMusic, stringResource(Res.string.empty_library), stringResource(Res.string.empty_library_hint))
+        // Con búsqueda activa el header debe seguir visible: si no, no hay
+        // forma de limpiar el filtro ni de cambiar de pestaña.
+        if (searchQuery.isNotBlank()) {
+            LibraryEmptyWithHeader(header, Icons.Default.Search, stringResource(Res.string.no_results), "\"$searchQuery\"")
+        } else {
+            LibraryEmptyWithHeader(header, Icons.Default.LibraryMusic, stringResource(Res.string.empty_library), stringResource(Res.string.empty_library_hint))
+        }
         return
     }
 
-    val hasNonDownloadItems = items.any {
-        !it.key.startsWith("downloads_") && !it.key.startsWith("dlpl_") && !it.key.startsWith("dlal_")
-    }
-
-    val seeAllLabel = stringResource(Res.string.library_see_all)
-    val albumsTitle = stringResource(Res.string.tab_albums)
-    val artistsTitle = stringResource(Res.string.tab_artists)
-    val playlistsTitle = stringResource(Res.string.tab_playlists)
-    val podcastsTitle = stringResource(Res.string.tab_podcasts)
-    val downloadsTitle = stringResource(Res.string.downloads)
-
-    data class MixedSection(
-        val title: String,
-        val tab: example.nucleus.viewmodels.LibraryTab?,
-        val entries: List<MixedGridEntry>,
-    )
-    val sections = remember(items, albumsTitle, artistsTitle, playlistsTitle, podcastsTitle, downloadsTitle) {
-        buildList {
-            items.filter { it.key.startsWith("alb_") || it.key.startsWith("dlal_") }
-                .takeIf { it.isNotEmpty() }?.let {
-                    add(MixedSection(albumsTitle, example.nucleus.viewmodels.LibraryTab.ALBUMS, it))
-                }
-            items.filter { it.key.startsWith("art_") }
-                .takeIf { it.isNotEmpty() }?.let {
-                    add(MixedSection(artistsTitle, example.nucleus.viewmodels.LibraryTab.ARTISTS, it))
-                }
-            items.filter { it.key.startsWith("pl_") || it.key.startsWith("dlpl_") }
-                .takeIf { it.isNotEmpty() }?.let {
-                    add(MixedSection(playlistsTitle, example.nucleus.viewmodels.LibraryTab.PLAYLISTS, it))
-                }
-            items.filter { it.key.startsWith("pod_") }
-                .takeIf { it.isNotEmpty() }?.let {
-                    add(MixedSection(podcastsTitle, example.nucleus.viewmodels.LibraryTab.PODCASTS, it))
-                }
-            items.filter { it.key.startsWith("downloads_") }
-                .takeIf { it.isNotEmpty() }?.let {
-                    add(MixedSection(downloadsTitle, null, it))
-                }
-        }
-    }
-
-    key(hasNonDownloadItems) {
-        if (viewMode == example.nucleus.data.repository.LibraryViewMode.LIST) {
+    if (viewMode == example.nucleus.data.repository.LibraryViewMode.LIST) {
             val pvm = playerViewModel ?: LocalPlayerViewModel.current
             val localPlaylistIds = remember(state.playlists) { state.playlists.map { it.id }.toSet() }
             val listState = rememberLazyListState()
@@ -368,15 +333,7 @@ fun LibraryMixedTab(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     item(key = "library_header") { header() }
-                    sections.forEach { section ->
-                        item(key = "header_${section.title}") {
-                            SectionHeaderRow(
-                                title = section.title,
-                                actionLabel = section.tab?.let { seeAllLabel },
-                                onAction = section.tab?.let { t -> { onTabSelected(t) } },
-                            )
-                        }
-                        items(items = section.entries, key = { it.key }) { entry ->
+                    items(items = items, key = { it.key }) { entry ->
                             val rowItem = entry.item ?: PlaylistItem(
                                 id = "LOCAL_DOWNLOADS",
                                 title = entry.title,
@@ -398,7 +355,6 @@ fun LibraryMixedTab(
                                 },
                             )
                         }
-                    }
                 }
                 AppVerticalScrollbar(
                     state = listState,
@@ -419,18 +375,7 @@ fun LibraryMixedTab(
                     verticalArrangement = Arrangement.spacedBy(LibraryGridSpacing)
                 ) {
                                         item(span = { GridItemSpan(maxLineSpan) }, key = "library_header") { header() }
-sections.forEach { section ->
-                        item(
-                            span = { GridItemSpan(maxLineSpan) },
-                            key = "header_${section.title}",
-                        ) {
-                            SectionHeaderRow(
-                                title = section.title,
-                                actionLabel = section.tab?.let { seeAllLabel },
-                                onAction = section.tab?.let { t -> { onTabSelected(t) } },
-                            )
-                        }
-                        items(items = section.entries, key = { it.key }) { entry ->
+                        items(items = items, key = { it.key }) { entry ->
                             if (entry.item != null) {
                                 MediaGridItem(
                                     item = entry.item,
@@ -459,7 +404,6 @@ sections.forEach { section ->
                                 )
                             }
                         }
-                    }
                 }
 
                 AppVerticalScrollbar(
@@ -470,5 +414,4 @@ sections.forEach { section ->
                 )
             }
         }
-    }
 }

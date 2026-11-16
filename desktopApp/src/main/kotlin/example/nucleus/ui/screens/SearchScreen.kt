@@ -107,6 +107,7 @@ import example.nucleus.viewmodels.SearchState
 import example.nucleus.viewmodels.SearchViewModel
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
+import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.pages.ChartsPage
 import com.metrolist.innertube.pages.ExplorePage
@@ -339,6 +340,7 @@ fun SearchSection(
                         SectionHeaderRow(
                             title = stringResource(Res.string.recent_searches),
                             actionLabel = stringResource(Res.string.clear_all),
+                            horizontalStart = false,
                             onAction = onClearHistory,
                             modifier = Modifier.padding(bottom = 12.dp,end = 12.dp),
                         )
@@ -563,11 +565,18 @@ fun ResultsList(
     val listState = rememberLazyListState()
 
     // ---- Datos derivados (una sola vez por cambio de estado) ----
+    // Los perfiles de usuario (isProfile) no son artistas abribles: no tienen
+    // página ni avatar, así que se excluyen para no mostrar filas muertas.
     val items = remember(uiState) {
         (uiState as? SearchState.Success)?.items.orEmpty().distinctBy { it.id }
+            .filterNot { (it as? ArtistItem)?.isProfile == true }
     }
     val summaries = remember(uiState) {
         (uiState as? SearchState.SummarySuccess)?.summary?.summaries.orEmpty()
+            .map { s ->
+                s.copy(items = s.items.filterNot { (it as? ArtistItem)?.isProfile == true })
+            }
+            .filter { it.items.isNotEmpty() }
     }
     val hasItems = items.isNotEmpty() || summaries.isNotEmpty()
 
