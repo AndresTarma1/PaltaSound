@@ -16,6 +16,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.glass.hazeGlass
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -36,6 +42,8 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import example.nucleus.ui.components.player.GlassItemActionButton
+import example.nucleus.ui.components.player.LikeToggle
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -69,6 +77,7 @@ import example.nucleus.ui.helpers.rememberSongDownloadState
 import example.nucleus.ui.helpers.rememberSongLikedState
 import example.nucleus.ui.screens.shared.formatDuration
 import example.nucleus.ui.themes.AppShapes
+import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.mediaItemTitle
 import example.nucleus.utils.LocalSnackbarHostState
 import example.nucleus.utils.LocalSnackbarScope
@@ -175,6 +184,18 @@ internal fun MultiSongSelectionBar(
     val allSelected = allSongIds.isNotEmpty() && selectedSongs.size == allSongIds.size
 
     if (selectedSongs.isEmpty()) return
+    val playerInset = LocalMiniPlayerInset.current
+    val bottomPad = 16.dp + playerInset
+    val barGlass = LocalLiquidGlass.current
+    val barHaze = LocalRailHaze.current ?: LocalContentHaze.current
+    val useBarGlass = barGlass && barHaze != null
+    val barShape = AppShapes.xLarge
+    val barStyle = if (useBarGlass) {
+        rememberLiquidGlassStyle(
+            shape = barShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        )
+    } else null
 
     if (showRemoveConfirm) {
         ConfirmDestructiveActionDialog(
@@ -194,10 +215,24 @@ internal fun MultiSongSelectionBar(
 
     Surface(
         tonalElevation = 0.dp,
-        shadowElevation = 6.dp,
+        shadowElevation = if (useBarGlass) 0.dp else 6.dp,
         shape = AppShapes.xLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier.padding(16.dp)
+        color = if (useBarGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = bottomPad,
+            )
+            .then(
+                if (useBarGlass) {
+                    Modifier.hazeGlass(
+                        input = HazeInput.Sources(barHaze),
+                        style = barStyle!!,
+                    )
+                } else Modifier,
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -212,51 +247,66 @@ internal fun MultiSongSelectionBar(
             )
             if (onSelectAll != null && allSongIds.isNotEmpty()) {
                 if (allSelected) {
-                    FilledTonalIconButton(
+                    GlassItemActionButton(
                         onClick = onClearSelection,
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Icon(Icons.Default.Clear, stringResource(Res.string.cd_deselect_all))
-                    }
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = stringResource(Res.string.cd_deselect_all),
+                        size = 40.dp,
+                        iconSize = 24.dp,
+                        fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                        fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 } else {
-                    FilledTonalIconButton(
+                    GlassItemActionButton(
                         onClick = onSelectAll,
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Icon(Icons.Default.AddBox, stringResource(Res.string.cd_select_all))
-                    }
+                        imageVector = Icons.Default.AddBox,
+                        contentDescription = stringResource(Res.string.cd_select_all),
+                        size = 40.dp,
+                        iconSize = 24.dp,
+                        fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                        fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 }
             }
-            FilledTonalIconButton(
+            GlassItemActionButton(
                 onClick = { showPlaylistDialog = true },
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, stringResource(Res.string.cd_add_to_playlist))
-            }
-            FilledTonalIconButton(
+                imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                contentDescription = stringResource(Res.string.cd_add_to_playlist),
+                size = 40.dp,
+                iconSize = 24.dp,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            GlassItemActionButton(
                 onClick = { downloadViewModel.downloadAll(selectedSongs) },
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(Icons.Default.Download, stringResource(Res.string.cd_download))
-            }
+                imageVector = Icons.Default.Download,
+                contentDescription = stringResource(Res.string.cd_download),
+                size = 40.dp,
+                iconSize = 24.dp,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
             if (isLocalPlaylist && onRemoveFromPlaylist != null) {
-                FilledTonalIconButton(
+                GlassItemActionButton(
                     onClick = { showRemoveConfirm = true },
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    ),
-                ) {
-                    Icon(Icons.Default.Delete, stringResource(Res.string.cd_remove_from_playlist))
-                }
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(Res.string.cd_remove_from_playlist),
+                    size = 40.dp,
+                    iconSize = 24.dp,
+                    contentTint = MaterialTheme.colorScheme.error,
+                    fallbackContainer = MaterialTheme.colorScheme.errorContainer,
+                    fallbackContent = MaterialTheme.colorScheme.onErrorContainer,
+                )
             }
-            FilledTonalIconButton(
+            GlassItemActionButton(
                 onClick = onClearSelection,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(Icons.Default.Close, stringResource(Res.string.btn_cancel))
-            }
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(Res.string.btn_cancel),
+                size = 40.dp,
+                iconSize = 24.dp,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
         }
     }
 
@@ -310,6 +360,8 @@ internal fun SongListItem(
     albumIndex: Int? = null,
     song: SongItem,
     onPlay: () -> Unit,
+    onGoToArtist: ((String) -> Unit)? = null,
+    onGoToAlbum: ((String) -> Unit)? = null,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
     onSelectionChange: ((Boolean) -> Unit)? = null,
@@ -392,7 +444,6 @@ internal fun SongListItem(
                                 Box(
                                     modifier = Modifier
                                         .size(ListThumbnailSize)
-                                        .onHover{ isHovered = it }
                                 ) {
                                     MusicPlayerImage(
                                         url = song.thumbnail,
@@ -434,17 +485,18 @@ internal fun SongListItem(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    IconButton(onClick = { playerViewModel.toggleLikeForSong(song) }, modifier = Modifier.size(36.dp)) {
-                                        Icon(
-                                            if (liked) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-                                            null,
-                                            modifier = Modifier.size(20.dp),
-                                            tint = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    IconButton(onClick = openMenuFromButton, modifier = menuButtonModifier.size(36.dp)) {
-                                        Icon(Icons.Default.MoreVert, null, modifier = Modifier.size(20.dp))
-                                    }
+                                    LikeToggle(
+                                        liked = liked,
+                                        onToggle = { playerViewModel.toggleLikeForSong(song) },
+                                    )
+                                    GlassItemActionButton(
+                                        onClick = openMenuFromButton,
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = null,
+                                        modifier = menuButtonModifier,
+                                        size = 36.dp,
+                                        iconSize = 20.dp,
+                                    )
                                 }
                             }
 
@@ -478,6 +530,8 @@ internal fun SongListItem(
             onDismiss = { showContextMenu = false },
             song = song,
             onRemoveFromPlaylist = if (isLocalPlaylist) { { onRemoveFromPlaylist?.invoke(song.id) } } else null,
+            onGoToArtist = onGoToArtist,
+            onGoToAlbum = onGoToAlbum,
         )
     }
 }

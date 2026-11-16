@@ -1,10 +1,24 @@
 package example.nucleus.ui.components.context
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.MenuGroupShapes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.OpticalSizeValue
+import dev.chrisbanes.haze.glass.hazeGlass
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.themes.AppShapes
 
 /**
@@ -72,9 +86,32 @@ fun StableDropdownMenuGroup(
     content: @Composable () -> Unit,
 ) {
     val shape = groupContainerShape(groupIndex, groupCount)
-    // La clave del fix: inactiva == activa, asi que no hay morph. Ver la nota de arriba.
-    DropdownMenuGroup(shapes = MenuGroupShapes(shape = shape, inactiveShape = shape)) {
-        content()
+    val liquidGlass = LocalLiquidGlass.current
+    // Fuente del contenido: los menús son popups (ventana aparte) sin ancestro
+    // con este estado, así que Behind selecciona la caja del contenido siempre
+    // (alineación cross-window según la guía). LocalGlassHaze vive en un
+    // ancestro de la ventana principal y ahí selecciona vacío.
+    val hazeState = LocalContentHaze.current ?: LocalGlassHaze.current
+    if (liquidGlass && hazeState != null) {
+        val glassStyle = rememberLiquidGlassStyle(
+            shape = shape,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
+        )
+        Column(
+            modifier = Modifier
+                .clip(shape)
+                .hazeGlass(
+                    input = HazeInput.Sources(hazeState),
+                    style = glassStyle,
+                ),
+        ) {
+            content()
+        }
+    } else {
+        // La clave del fix: inactiva == activa, asi que no hay morph. Ver la nota de arriba.
+        DropdownMenuGroup(shapes = MenuGroupShapes(shape = shape, inactiveShape = shape)) {
+            content()
+        }
     }
 }
 
@@ -86,7 +123,7 @@ fun StableDropdownMenuGroup(
  * `small` = 8dp = `CornerValueSmall`.
  */
 @Composable
-private fun groupContainerShape(groupIndex: Int, groupCount: Int): Shape {
+private fun groupContainerShape(groupIndex: Int, groupCount: Int): RoundedCornerShape {
     // No hace falta pasar los radios en dp: `RoundedCornerShape.topStart` ya es un `CornerSize`,
     // que es justo lo que acepta el constructor de cuatro esquinas.
     val outer = AppShapes.large.topStart

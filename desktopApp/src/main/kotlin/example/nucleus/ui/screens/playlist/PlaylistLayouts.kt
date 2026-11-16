@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.LoadingMoreSongsItem
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
@@ -37,6 +37,8 @@ import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.appScrollContentPadding
 import example.nucleus.ui.screens.PlaylistActions
 import example.nucleus.ui.screens.PlaylistScreenState
+import example.nucleus.ui.screens.shared.CollectionCompactBreakpoint
+import example.nucleus.ui.screens.shared.CollectionAmbientWash
 import example.nucleus.ui.screens.shared.CollectionCompactCoverSize
 import example.nucleus.ui.screens.shared.CollectionHeroActionRow
 import example.nucleus.ui.screens.shared.CollectionHeroIconButton
@@ -109,7 +111,7 @@ internal fun PlaylistLayout(
     )
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        if (maxWidth < 980.dp) {
+        if (maxWidth < CollectionCompactBreakpoint) {
             PlaylistCompactLayout(
                 playlistPage = playlistPage,
                 state = state,
@@ -166,6 +168,13 @@ internal fun PlaylistWideLayout(
 
     // Scrollbar anclado al borde derecho de la pantalla (no al final de la columna de la lista).
     Box(Modifier.fillMaxSize()) {
+        // Resplandor a pantalla completa detrás de todo: se expande en
+        // horizontal desde el panel (wide).
+        CollectionAmbientWash(
+            thumbnailUrl = playlistPage.playlist.thumbnail,
+            horizontal = true,
+            modifier = Modifier.fillMaxSize(),
+        )
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -233,6 +242,13 @@ internal fun PlaylistCompactLayout(
     onSongPlay: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
+        // Resplandor a pantalla completa detrás de todo: se expande en
+        // vertical desde la cabecera (compacto).
+        CollectionAmbientWash(
+            thumbnailUrl = playlistPage.playlist.thumbnail,
+            horizontal = false,
+            modifier = Modifier.fillMaxSize(),
+        )
         val lazyColumnState = rememberLazyListState()
 
         val showStickHeader by remember {
@@ -288,6 +304,8 @@ internal fun PlaylistCompactLayout(
             ) { index, song ->
                 SongListItem(
                     song = song,
+                    onGoToArtist = { actions.onNavigate(ScreenConfig.Artist(it)) },
+                    onGoToAlbum = { actions.onNavigate(ScreenConfig.collection(it)) },
                     onPlay = {
                         if (selectedSongIds.isNotEmpty()) {
                             onSelectionChange(song.id, song.id !in selectedSongIds)
@@ -363,6 +381,8 @@ private fun PlaylistSongList(
             ) { index, song ->
                 SongListItem(
                     song = song,
+                    onGoToArtist = { actions.onNavigate(ScreenConfig.Artist(it)) },
+                    onGoToAlbum = { actions.onNavigate(ScreenConfig.collection(it)) },
                     onPlay = {
                         if (selectedSongIds.isNotEmpty()) {
                             onSelectionChange(song.id, song.id !in selectedSongIds)
@@ -581,37 +601,5 @@ internal fun PlaylistInfoPanel(
         isFullyDownloaded = isFullyDownloaded(),
         onDownloadClick = onDownloadClick,
     )
-}
 
-@Composable
-fun PlaylistActionButton(
-    onClick: () -> Unit,
-    icon: ImageVector,
-    isActive: Boolean,
-    isLoading: Boolean,
-    activeColor: Color = MaterialTheme.colorScheme.primary,
-    modifier: Modifier = Modifier,
-) {
-    CollectionHeroIconButton(
-        onClick = onClick,
-        icon = icon,
-        active = isActive,
-        isLoading = isLoading,
-        modifier = modifier,
-    )
-}
-
-@Composable
-internal fun DownloadAllButton(
-    isDownloadingAny: () -> Boolean,
-    isFullyDownloaded: () -> Boolean,
-    onClick: () -> Unit,
-) {
-    CollectionHeroIconButton(
-        onClick = onClick,
-        icon = if (isFullyDownloaded()) Icons.Default.DownloadDone else Icons.Default.Download,
-        active = isFullyDownloaded(),
-        isLoading = isDownloadingAny(),
-        useWavyProgress = true,
-    )
 }

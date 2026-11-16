@@ -5,6 +5,8 @@ import dev.nucleusframework.media.control.MediaControlService
 import dev.nucleusframework.media.control.MediaMetadata
 import dev.nucleusframework.media.control.MediaPlaybackState
 import dev.nucleusframework.media.control.MediaPlaybackStatus
+import example.nucleus.platform.OperatingSystem
+import example.nucleus.platform.Platform
 import io.github.aakira.napier.Napier
 import java.util.logging.Logger
 
@@ -35,9 +37,6 @@ class WindowsMediaSession {
     private var onSeek: ((Long) -> Unit)? = null
 
     private var positionProvider: (() -> Long)? = null
-
-    fun initError(): String? =
-        if (MediaControlService.isAvailable()) null else "nucleus.media-control no disponible"
 
     fun isInitialized(): Boolean = configured
 
@@ -78,9 +77,9 @@ class WindowsMediaSession {
         attachCallbacks()
     }
 
-    private fun platformLabel(): String = when {
-        System.getProperty("os.name").lowercase().contains("win") -> "SMTC"
-        System.getProperty("os.name").lowercase().contains("linux") -> "MPRIS"
+    private fun platformLabel(): String = when (Platform.current) {
+        OperatingSystem.WINDOWS -> "SMTC"
+        OperatingSystem.LINUX -> "MPRIS"
         else -> "Now Playing"
     }
 

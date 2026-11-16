@@ -6,7 +6,9 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -28,10 +30,14 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
+import example.nucleus.platform.NativeDesktop
 import example.nucleus.ui.components.*
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.player.GlassIconButton
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
 import example.nucleus.ui.components.layout.HorizontalScrollableRow
@@ -52,21 +58,30 @@ import example.nucleus.viewmodels.ArtistManagerViewModel
 import example.nucleus.viewmodels.PlayerViewModel
 import com.metrolist.innertube.models.*
 import com.metrolist.innertube.pages.ArtistPage
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.glass.hazeGlass
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.utils.upscaleThumbnailUrl
+import java.net.URI
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ArtistScreenRoute(
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
     viewModel: ArtistManagerViewModel,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
     val uiState by viewModel.uiState.collectAsState()
     val isSaved by viewModel.isSaved.collectAsState()
+    val browseId by viewModel.currentBrowseId.collectAsState()
     val success = uiState as? ArtistState.Success
+    // El botón "Abrir en YouTube" solo tiene sentido con un id real de YouTube;
+    // los sinteticos "local:..." no existen fuera de la BD.
+    val browsableId = browseId?.takeIf { !it.startsWith("local:") }
 
     ArtistScreen(
         uiState = uiState,
@@ -74,6 +89,9 @@ fun ArtistScreenRoute(
         onNavigate = onNavigate,
         onBack = onBack,
         isSaved = isSaved,
+        onOpenInBrowser = browsableId?.let { id ->
+            { NativeDesktop.browse(URI("https://www.youtube.com/channel/$id")) }
+        },
         actions = remember(viewModel, playerViewModel, success) {
             ArtistScreenActions(
                 onToggleSave = { viewModel.toggleSave() },
@@ -107,9 +125,10 @@ data class ArtistScreenActions(
 @Composable
 fun ArtistScreen(
     uiState: ArtistState,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
     isSaved: Boolean = false,
+    onOpenInBrowser: (() -> Unit)? = null,
     actions: ArtistScreenActions,
     playerViewModel: PlayerViewModel
 ) {
@@ -126,11 +145,21 @@ fun ArtistScreen(
         when (uiState) {
             is ArtistState.Loading -> ArtistScreenSkeleton()
             is ArtistState.Success -> ArtistScreenContent(uiState.artistPage, onNavigate, isSaved, actions, playerViewModel)
-            is ArtistState.Error -> ExpressiveEmptyState(
-                icon = Icons.Default.ErrorOutline,
-                title = stringResource(Res.string.something_went_wrong),
-                subtitle = uiState.message,
-            )
+            is ArtistState.Error -> if (uiState.isNotFound) {
+                ExpressiveEmptyState(
+                    icon = Icons.Default.ErrorOutline,
+                    title = stringResource(Res.string.artist_not_found),
+                    subtitle = stringResource(Res.string.artist_not_found_desc),
+                    actionLabel = onOpenInBrowser?.let { stringResource(Res.string.open_in_youtube) },
+                    onAction = onOpenInBrowser,
+                )
+            } else {
+                ExpressiveEmptyState(
+                    icon = Icons.Default.ErrorOutline,
+                    title = stringResource(Res.string.something_went_wrong),
+                    subtitle = uiState.message,
+                )
+            }
         }
     }
 }
@@ -139,7 +168,7 @@ fun ArtistScreen(
 @Composable
 private fun ArtistScreenContent(
     artistPage: ArtistPage,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     isSaved: Boolean,
     actions: ArtistScreenActions,
     playerViewModel: PlayerViewModel
@@ -245,6 +274,12 @@ fun ArtistBanner(
     // Aumentamos la resolución a 1440 para que no se pixele en monitores grandes
     val urlImage = upscaleThumbnailUrl(artistPage.artist.thumbnail, 1200)
 
+    // Fuente del cristal de los botones: la propia foto (hermana-anterior de
+    // los botones, patrón sibling). Refractan la portada de verdad.
+    val bannerHaze = rememberHazeState()
+    val bannerGlass = LocalLiquidGlass.current
+    val lensContainer = Color(0xFF1B1B1B)
+
     // Memorizamos los gradientes para ahorrar CPU
     val verticalGradient = remember(surfaceColor) {
         Brush.verticalGradient(
@@ -268,24 +303,35 @@ fun ArtistBanner(
         )
     }
 
+    // Contenido sobre el fundido: el banner termina en surfaceColor, así que
+    // en modo claro el texto y los botones van en negro y en oscuro en blanco.
+    // El fundido no se toca.
+    val onBanner = if (surfaceColor.luminance() > 0.5f) Color.Black else Color.White
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(520.dp) // Permite que el contenedor crezca si es necesario
             .animateContentSize(if (LocalAnimationsEnabled.current) expressiveTween(expressiveFadeDuration) else snap()) // Suaviza el cambio de tamaño al expandir el texto
     ) {
-        MusicPlayerImage(
-            url = urlImage,
-            contentDescription = artistPage.artist.title,
-            modifier = Modifier.fillMaxSize(),
-            shape = RectangleShape,
-            placeholderType = PlaceholderType.ARTIST,
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.TopCenter,
-            // La URL se pide a 1200px; sin override MusicPlayerImage decodifica a 384px y se ve borrosa
-            // al estirarse al banner (igual que hace Metrolist con AsyncImage + resize(1200, 1200)).
-            coilSizeOverride = 1200,
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(bannerHaze),
+        ) {
+            MusicPlayerImage(
+                url = urlImage,
+                contentDescription = artistPage.artist.title,
+                modifier = Modifier.fillMaxSize(),
+                shape = RectangleShape,
+                placeholderType = PlaceholderType.ARTIST,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                // La URL se pide a 1200px; sin override MusicPlayerImage decodifica a 384px y se ve borrosa
+                // al estirarse al banner (igual que hace Metrolist con AsyncImage + resize(1200, 1200)).
+                coilSizeOverride = 1200,
+            )
+        }
 
         // Capa de gradiente vertical
         Box(
@@ -311,7 +357,7 @@ fun ArtistBanner(
             Text(
                 text = artistPage.artist.title,
                 style = MaterialTheme.typography.displayMediumEmphasized,
-                color = Color.White,
+                color = onBanner,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -322,7 +368,7 @@ fun ArtistBanner(
                 Text(
                     text = listeners,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.75f)
+                    color = onBanner.copy(alpha = 0.75f)
                 )
                 Spacer(Modifier.height(8.dp))
             }
@@ -345,7 +391,7 @@ fun ArtistBanner(
                             Text(
                                 text = desc,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.72f),
+                                color = onBanner.copy(alpha = 0.72f),
                                 maxLines = if (expanded) Int.MAX_VALUE else 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -360,7 +406,7 @@ fun ArtistBanner(
                                 Text(
                                     text = if (descExpanded) stringResource(Res.string.less) else stringResource(Res.string.more),
                                     style = MaterialTheme.typography.labelMediumEmphasized,
-                                    color = Color.White.copy(alpha = 0.9f)
+                                    color = onBanner.copy(alpha = 0.9f)
                                 )
                             }
                         }
@@ -369,66 +415,107 @@ fun ArtistBanner(
                 }
             }
 
-            // M3E hero actions: primary play pill + tonal shuffle/radio + outlined subscribe
+            // M3E hero actions: play solo-icono + shuffle/radio + subscribe.
+            // Familia ordenada: el primario va lleno (onBanner), shuffle y
+            // radio son tonales del mismo color y subscribe es outline.
+            // Con cristal son lentes oscuras sobre la foto (siempre legibles
+            // en claro y oscuro); sin cristal, los de abajo.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                ExtendedFloatingActionButton(
-                    text = {
-                        Text(
-                            text = stringResource(Res.string.play_item),
-                            style = MaterialTheme.typography.ctaLabel,
-                            maxLines = 1,
+                if (bannerGlass && hasPlayable) {
+                    GlassIconButton(
+                        onClick = actions.onPlayArtist,
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = stringResource(Res.string.play_item),
+                        hazeState = bannerHaze,
+                        contentTint = Color.White,
+                        containerColor = lensContainer,
+                        size = 56.dp,
+                        iconSize = 28.dp,
+                    )
+                } else {
+                    FilledIconButton(
+                        onClick = { if (hasPlayable) actions.onPlayArtist() },
+                        enabled = hasPlayable,
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = onBanner,
+                            contentColor = surfaceColor,
+                            disabledContainerColor = onBanner.copy(alpha = 0.12f),
+                            disabledContentColor = surfaceColor.copy(alpha = 0.38f),
+                        ),
+                        modifier = Modifier
+                            .size(56.dp)
+                            .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
+                    ) {
+                        Icon(
+                            Icons.Rounded.PlayArrow,
+                            contentDescription = stringResource(Res.string.play_item),
+                            modifier = Modifier.size(28.dp),
                         )
-                    },
-                    icon = {
-                        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(24.dp))
-                    },
-                    onClick = { if (hasPlayable) actions.onPlayArtist() },
-                    expanded = true,
-                    containerColor = Color.White,
-                    contentColor = Color.Black,
-                    elevation = FloatingActionButtonDefaults.elevation(2.dp, 4.dp),
-                    shape = AppShapes.extraLarge,
-                    modifier = Modifier
-                        .height(52.dp)
-                        .defaultMinSize(minWidth = 112.dp)
-                        .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
-                )
-
-                FilledTonalIconButton(
-                    onClick = { if (hasPlayable) actions.onShuffleArtist() },
-                    enabled = hasPlayable,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
-                    shape = circleAwareShape(),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.22f),
-                        contentColor = Color.White,
-                        disabledContainerColor = Color.White.copy(alpha = 0.08f),
-                        disabledContentColor = Color.White.copy(alpha = 0.35f),
-                    ),
-                ) {
-                    Icon(Icons.Rounded.Shuffle, stringResource(Res.string.shuffle), modifier = Modifier.size(22.dp))
+                    }
                 }
 
-                FilledTonalIconButton(
-                    onClick = { if (hasPlayable) actions.onRadioArtist() },
-                    enabled = hasPlayable,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
-                    shape = circleAwareShape(),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.22f),
-                        contentColor = Color.White,
-                        disabledContainerColor = Color.White.copy(alpha = 0.08f),
-                        disabledContentColor = Color.White.copy(alpha = 0.35f),
-                    ),
-                ) {
-                    Icon(Icons.Rounded.Radio, stringResource(Res.string.radio_text), modifier = Modifier.size(22.dp))
+                if (bannerGlass && hasPlayable) {
+                    GlassIconButton(
+                        onClick = { actions.onShuffleArtist() },
+                        imageVector = Icons.Rounded.Shuffle,
+                        contentDescription = stringResource(Res.string.shuffle),
+                        hazeState = bannerHaze,
+                        contentTint = Color.White,
+                        containerColor = lensContainer,
+                        size = 48.dp,
+                        iconSize = 22.dp,
+                    )
+                } else {
+                    FilledTonalIconButton(
+                        onClick = { if (hasPlayable) actions.onShuffleArtist() },
+                        enabled = hasPlayable,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
+                        shape = circleAwareShape(),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = onBanner.copy(alpha = 0.22f),
+                            contentColor = onBanner,
+                            disabledContainerColor = onBanner.copy(alpha = 0.08f),
+                            disabledContentColor = onBanner.copy(alpha = 0.35f),
+                        ),
+                    ) {
+                        Icon(Icons.Rounded.Shuffle, stringResource(Res.string.shuffle), modifier = Modifier.size(22.dp))
+                    }
+                }
+
+                if (bannerGlass && hasPlayable) {
+                    GlassIconButton(
+                        onClick = { actions.onRadioArtist() },
+                        imageVector = Icons.Rounded.Radio,
+                        contentDescription = stringResource(Res.string.radio_text),
+                        hazeState = bannerHaze,
+                        contentTint = Color.White,
+                        containerColor = lensContainer,
+                        size = 48.dp,
+                        iconSize = 22.dp,
+                    )
+                } else {
+                    FilledTonalIconButton(
+                        onClick = { if (hasPlayable) actions.onRadioArtist() },
+                        enabled = hasPlayable,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .pointerHoverIcon(if (hasPlayable) PointerIcon.Hand else PointerIcon.Default),
+                        shape = circleAwareShape(),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = onBanner.copy(alpha = 0.22f),
+                            contentColor = onBanner,
+                            disabledContainerColor = onBanner.copy(alpha = 0.08f),
+                            disabledContentColor = onBanner.copy(alpha = 0.35f),
+                        ),
+                    ) {
+                        Icon(Icons.Rounded.Radio, stringResource(Res.string.radio_text), modifier = Modifier.size(22.dp))
+                    }
                 }
 
                 val subscribedText = stringResource(Res.string.subscribed)
@@ -438,29 +525,49 @@ fun ArtistBanner(
                     artistPage.subscriberCountText?.let { append("  $it") }
                 }
 
-                OutlinedButton(
-                    onClick = actions.onToggleSave,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.White,
-                        containerColor = if (isSaved) Color.White.copy(alpha = 0.18f) else Color.Transparent,
-                    ),
-                    border = BorderStroke(
-                        width = 1.5.dp,
-                        color = Color.White.copy(alpha = if (isSaved) 0.65f else 0.88f),
-                    ),
-                    shape = AppShapes.extraLarge,
-                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
-                    modifier = Modifier
-                        .height(48.dp)
-                        .pointerHoverIcon(PointerIcon.Hand),
-                ) {
-                    if (isSaved) {
-                        Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
+                if (bannerGlass) {
+                    GlassTextPillButton(
+                        onClick = actions.onToggleSave,
+                        text = subLabel,
+                        leadingIcon = if (isSaved) Icons.Rounded.Check else null,
+                        selected = isSaved,
+                        hazeState = bannerHaze,
+                        containerColor = lensContainer,
+                        contentTint = Color.White,
+                        fallbackContainer = if (isSaved) {
+                            Color.White.copy(alpha = 0.18f)
+                        } else {
+                            Color.Transparent
+                        },
+                        fallbackContent = Color.White,
+                        iconSize = 18.dp,
+                        textStyle = MaterialTheme.typography.ctaLabel,
+                        modifier = Modifier.height(48.dp),
+                    )
+                } else {
+                    OutlinedButton(
+                        onClick = actions.onToggleSave,
+                        shape = AppShapes.extraLarge,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = onBanner,
+                            containerColor = Color.Transparent,
+                        ),
+                        border = BorderStroke(
+                            width = 1.5.dp,
+                            color = onBanner.copy(alpha = 0.65f),
+                        ),
+                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                        modifier = Modifier
+                            .height(48.dp)
+                            .pointerHoverIcon(PointerIcon.Hand),
+                    ) {
+                        if (isSaved) {
+                            Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(subLabel, style = MaterialTheme.typography.ctaLabel, maxLines = 1)
                     }
-                    Text(subLabel, style = MaterialTheme.typography.ctaLabel, maxLines = 1)
                 }
-            }
         }
     }
-}
+}}

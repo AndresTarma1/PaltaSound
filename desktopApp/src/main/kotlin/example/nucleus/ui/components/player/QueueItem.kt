@@ -1,6 +1,7 @@
 package example.nucleus.ui.components.player
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -36,7 +37,7 @@ import androidx.compose.ui.unit.sp
 import example.nucleus.models.MediaMetadata
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
-import example.nucleus.ui.components.formatPlayerTimeValue
+import example.nucleus.ui.components.formatClock
 import example.nucleus.ui.components.song.DownloadIndicator
 import example.nucleus.ui.components.skeletons.AnimatedEqualizer
 import example.nucleus.ui.themes.AppShapes
@@ -117,12 +118,16 @@ fun QueueItem(
             }
 
             // Indicador de arrastre: espacio reservado, solo visible en hover o arrastrando
-            if (!queueLocked) {
+
+            val handleWidth by animateDpAsState(
+                targetValue = if (!queueLocked) 24.dp else 0.dp, // 16 + 8
+                label = "dragHandleWidth",
+            )
                 Box(
                     modifier = Modifier
-                        .width(16.dp)
+                        .width(handleWidth)
                         .height(40.dp)
-                        .then(dragModifier),
+                        .then(if (!queueLocked) dragModifier else Modifier),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -134,9 +139,8 @@ fun QueueItem(
                             .alpha(if (isHovered || isDragging) 1f else 0.15f),
                     )
                 }
-            }
 
-            // Portada de la canción con indicador de reproducción / hover
+
             Box(
                 modifier = Modifier
                     .size(46.dp)
@@ -224,7 +228,7 @@ fun QueueItem(
             ) {
                 if (song.duration > 0) {
                     Text(
-                        text = formatPlayerTimeValue(song.duration * 1000L),
+                        text = formatClock(song.duration * 1000L),
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontFeatureSettings = "tnum",
                             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,

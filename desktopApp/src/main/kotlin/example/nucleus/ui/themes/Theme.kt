@@ -20,6 +20,7 @@ import example.nucleus.data.repository.IslandStyle
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.ThemeMode
 import example.nucleus.data.repository.ThemePalette
+import example.nucleus.data.repository.ThemePaletteStyle
 import example.nucleus.data.repository.UserPreferencesRepository
 import example.nucleus.ui.components.artwork.ArtworkColors
 import com.materialkolor.PaletteStyle
@@ -147,6 +148,8 @@ fun AppTheme(
     val themeMode by userPreferences.themeMode.collectAsState(ThemeMode.SYSTEM)
     val dynamicEnabled by userPreferences.dynamicColorFromArtwork.collectAsState(false)
     val palette by userPreferences.themePalette.collectAsState(ThemePalette.DEFAULT)
+    val paletteStyle by userPreferences.themePaletteStyle.collectAsState(ThemePaletteStyle.CONTENT)
+    val customSeed by userPreferences.themeCustomSeed.collectAsState(0)
     val darkLevel by userPreferences.darkLevel.collectAsState(DarkLevel.DIM)
     val backgroundStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
     val layoutMode by userPreferences.layoutMode.collectAsState(LayoutMode.ATTACHED)
@@ -161,16 +164,17 @@ fun AppTheme(
         else -> isSystemInDarkTheme()
     }
 
-    val targetSeeds = remember(artworkColors, dynamicEnabled, palette) {
+    val targetSeeds = remember(artworkColors, dynamicEnabled, palette, customSeed) {
+        val custom = if (customSeed != 0) Color(customSeed) else null
         val basePrimary = if (dynamicEnabled && artworkColors != null && artworkColors != ArtworkColors.Default) {
             artworkColors.vibrant
         } else {
-            Color(palette.primary)
+            custom ?: Color(palette.primary)
         }
         val baseSecondary = if (dynamicEnabled && artworkColors != null && artworkColors != ArtworkColors.Default) {
             artworkColors.muted
         } else {
-            Color(palette.secondary)
+            custom ?: Color(palette.secondary)
         }
         basePrimary to baseSecondary
     }
@@ -195,7 +199,7 @@ fun AppTheme(
 
     val dynamicThemeState = rememberDynamicMaterialThemeState(
         isDark = isDarkTheme,
-        style = PaletteStyle.Content,
+        style = paletteStyle.toMaterial(),
         primary = seeds.first,
         secondary = seeds.second,
     )
@@ -243,7 +247,10 @@ fun AppTheme(
     }
 }
 
-/** Re-derives the dark scheme's surfaces for the chosen [level], tinting them with [accent]. */
+/** Re-derives the dark scheme's surfaces for the chosen [level], tinting them with [accent].
+ *  DIM parte de las surfaces generadas (que ya traen el hue del PaletteStyle)
+ *  y las oscurece hacia negro + tinte del seed, en vez de pisarlas con grises
+ *  fijos: así el fondo sí cambia con el estilo. BLACK sigue negro puro. */
 private fun ColorScheme.darkened(level: DarkLevel, accent: Color): ColorScheme = when (level) {
     DarkLevel.BLACK -> copy(
         background = Color(0xFF000000),
@@ -258,18 +265,30 @@ private fun ColorScheme.darkened(level: DarkLevel, accent: Color): ColorScheme =
         surfaceVariant = Color(0xFF1A1A1A),
     )
     DarkLevel.DIM -> {
-        fun t(baseHex: Long, amount: Float) = lerp(Color(baseHex), accent, amount)
+        fun dark(c: Color) = lerp(c, Color.Black, 0.35f)
+        fun t(c: Color, amount: Float) = lerp(c, accent, amount)
         copy(
-            background = t(0xFF0A0A0C, 0.04f),
-            surface = t(0xFF121214, 0.05f),
-            surfaceDim = t(0xFF0A0A0C, 0.04f),
-            surfaceBright = t(0xFF242428, 0.06f),
-            surfaceContainerLowest = t(0xFF0D0D0F, 0.04f),
-            surfaceContainerLow = t(0xFF161618, 0.05f),
-            surfaceContainer = t(0xFF1A1A1D, 0.06f),
-            surfaceContainerHigh = t(0xFF222226, 0.06f),
-            surfaceContainerHighest = t(0xFF2A2A2E, 0.06f),
-            surfaceVariant = t(0xFF26262A, 0.05f),
+            background = t(dark(background), 0.07f),
+            surface = t(dark(surface), 0.08f),
+            surfaceDim = t(dark(surfaceDim), 0.07f),
+            surfaceBright = t(dark(surfaceBright), 0.09f),
+            surfaceContainerLowest = t(dark(surfaceContainerLowest), 0.07f),
+            surfaceContainerLow = t(dark(surfaceContainerLow), 0.08f),
+            surfaceContainer = t(dark(surfaceContainer), 0.09f),
+            surfaceContainerHigh = t(dark(surfaceContainerHigh), 0.09f),
+            surfaceContainerHighest = t(dark(surfaceContainerHighest), 0.10f),
+            surfaceVariant = t(dark(surfaceVariant), 0.08f),
         )
     }
+}
+
+private fun ThemePaletteStyle.toMaterial(): PaletteStyle = when (this) {
+    ThemePaletteStyle.TONAL_SPOT -> PaletteStyle.TonalSpot
+    ThemePaletteStyle.VIBRANT -> PaletteStyle.Vibrant
+    ThemePaletteStyle.EXPRESSIVE -> PaletteStyle.Expressive
+    ThemePaletteStyle.RAINBOW -> PaletteStyle.Rainbow
+    ThemePaletteStyle.FRUIT_SALAD -> PaletteStyle.FruitSalad
+    ThemePaletteStyle.MONOCHROME -> PaletteStyle.Monochrome
+    ThemePaletteStyle.NEUTRAL -> PaletteStyle.Neutral
+    ThemePaletteStyle.CONTENT -> PaletteStyle.Content
 }

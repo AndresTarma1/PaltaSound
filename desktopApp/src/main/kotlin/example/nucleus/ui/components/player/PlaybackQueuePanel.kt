@@ -2,6 +2,9 @@
 
 package example.nucleus.ui.components.player
 
+import dev.chrisbanes.haze.hazeSource
+import example.nucleus.ui.components.glass.GlassAlertDialog
+import example.nucleus.ui.components.glass.LocalContentHaze
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
@@ -46,6 +49,7 @@ import example.nucleus.models.MediaMetadata
 import example.nucleus.player.PlaybackState
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.artwork.rememberArtworkColors
+import example.nucleus.ui.components.glass.GlassDropdownMenu
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
@@ -138,7 +142,13 @@ fun PlaybackQueuePanel(
     }
 
     Surface(
-        modifier = modifier,
+        modifier = modifier.then(
+            // Fuente para los menús flotantes (p. ej. el dropdown del title
+            // bar cuando la cola está abierta): los popups no tienen ancestro
+            // con este estado y seleccionan todas las fuentes, incluida esta.
+            // El cristal propio del panel usa el fondo ambiental, sin conflicto.
+            LocalContentHaze.current?.let { Modifier.hazeSource(it) } ?: Modifier,
+        ),
         color = containerColor,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
@@ -239,7 +249,7 @@ fun PlaybackQueuePanel(
     }
 
     if (showSaveQueueDialog) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showSaveQueueDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 0.dp,
@@ -309,16 +319,13 @@ private fun QueueHeader(
             )
 
             Box {
-                IconButton(
+                GlassItemActionButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(Res.string.options),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(Res.string.options),
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
                 QueueActionsMenu(
                     expanded = showMenu,
                     onDismiss = { showMenu = false },
@@ -332,16 +339,13 @@ private fun QueueHeader(
             }
 
             if (showCloseButton) {
-                IconButton(
+                GlassItemActionButton(
                     onClick = onDismiss,
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(Res.string.close_queue),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(Res.string.close_queue),
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
             }
         }
 
@@ -444,7 +448,7 @@ internal fun QueueActionsMenu(
     onAddToPlaylist: () -> Unit,
     onDownloadAll: () -> Unit,
 ) {
-    DropdownMenu(
+    GlassDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -486,17 +490,6 @@ internal fun QueueActionsMenu(
             text = { Text(stringResource(Res.string.download_queue), style = MaterialTheme.typography.labelLarge) },
             leadingIcon = { Icon(Icons.Default.Download, null, modifier = Modifier.size(18.dp)) },
         )
-    }
-}
-
-internal fun formatQueueDuration(totalSeconds: Long): String {
-    if (totalSeconds <= 0) return ""
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    return if (hours > 0) {
-        "$hours h $minutes min"
-    } else {
-        "$minutes min"
     }
 }
 

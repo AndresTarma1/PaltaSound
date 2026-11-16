@@ -13,6 +13,7 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.expressive.SettingsSwitch
 import example.nucleus.data.repository.AppLocale
 import example.nucleus.data.repository.YouTubeRegion
+import example.nucleus.platform.Platform
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.ui.screens.shared.displayName
@@ -31,10 +32,11 @@ fun ApplicationSettingsGroup() {
     val trimMemoryOnTray by viewModel.trimMemoryOnTray.collectAsState()
     val launchAtStartup by viewModel.launchAtStartup.collectAsState()
     val taskbarWidgetEnabled by viewModel.taskbarWidgetEnabled.collectAsState()
+    // El widget vive en la taskbar de Windows: en Linux la fila no se muestra.
+    val showTaskbarWidget = Platform.isWindows
+    val itemCount = if (showTaskbarWidget) 6 else 5
 
     var showLanguageDropdown by remember { mutableStateOf(false) }
-    var showRegionDropdown by remember { mutableStateOf(false) }
-
     SettingsGroup(
         title = {
             Text(
@@ -48,28 +50,26 @@ fun ApplicationSettingsGroup() {
             label = stringResource(Res.string.language),
             icon = Icons.Rounded.Language,
             currentValue = currentLocale.displayName(),
-            segmentedShape = ListItemDefaults.segmentedShapes(index = 0, count = 5),
             expanded = showLanguageDropdown,
             onExpandedChange = { showLanguageDropdown = it },
+            segmentedShape = ListItemDefaults.segmentedShapes(index = 0, count = itemCount),
             options = AppLocale.entries.map { it to it.displayName() },
             isSelected = { it == currentLocale },
             onSelect = { viewModel.setLocale(it); showLanguageDropdown = false }
         )
-        DropdownSelector(
+        SingleChoiceRow(
             label = stringResource(Res.string.youtube_region),
             icon = Icons.Rounded.Public,
             currentValue = youtubeRegion.displayName(),
-            segmentedShape = ListItemDefaults.segmentedShapes(index = 1, count = 5),
-            expanded = showRegionDropdown,
-            onExpandedChange = { showRegionDropdown = it },
+            segmentedShape = ListItemDefaults.segmentedShapes(index = 1, count = itemCount),
             options = YouTubeRegion.entries.map { it to it.displayName() },
             isSelected = { it == youtubeRegion },
-            onSelect = { viewModel.setYoutubeRegion(it); showRegionDropdown = false }
+            onSelect = { viewModel.setYoutubeRegion(it) }
         )
         SettingsSwitch(
             icon = { Icon(Icons.Rounded.NotificationsActive, null) },
             title = { Text(stringResource(Res.string.minimize_to_tray)) },
-            shapes = ListItemDefaults.segmentedShapes(index = 2, count = 5),
+            shapes = ListItemDefaults.segmentedShapes(index = 2, count = itemCount),
             colors = colors,
             state = minimizeToTray,
             onCheckedChange = { viewModel.setMinimizeToTray(it) }
@@ -77,30 +77,37 @@ fun ApplicationSettingsGroup() {
         SettingsSwitch(
             icon = { Icon(Icons.Rounded.CleaningServices, null) },
             title = { Text(stringResource(Res.string.trim_memory_on_tray)) },
-            subtitle = { Text(stringResource(Res.string.trim_memory_on_tray_subtitle)) },
-            shapes = ListItemDefaults.segmentedShapes(index = 3, count = 5),
+            subtitle = {
+                Text(
+                    if (minimizeToTray) stringResource(Res.string.trim_memory_on_tray_subtitle)
+                    else stringResource(Res.string.trim_memory_requires_tray)
+                )
+            },
+            shapes = ListItemDefaults.segmentedShapes(index = 3, count = itemCount),
             colors = colors,
             state = trimMemoryOnTray,
+            enabled = minimizeToTray,
             onCheckedChange = { viewModel.setTrimMemoryOnTray(it) }
         )
         SettingsSwitch(
             icon = { Icon(Icons.Rounded.RocketLaunch, null) },
             title = { Text(stringResource(Res.string.launch_at_startup)) },
             subtitle = { Text(stringResource(Res.string.launch_at_startup_subtitle)) },
-            shapes = ListItemDefaults.segmentedShapes(index = 4, count = 6),
+            shapes = ListItemDefaults.segmentedShapes(index = 4, count = itemCount),
             colors = colors,
             state = launchAtStartup,
             onCheckedChange = { viewModel.setLaunchAtStartup(it) }
         )
-        SettingsSwitch(
-            icon = { Icon(Icons.Rounded.MusicNote, null) },
-            title = { Text(stringResource(Res.string.taskbar_widget)) },
-            subtitle = { Text(stringResource(Res.string.taskbar_widget_subtitle)) },
-            shapes = ListItemDefaults.segmentedShapes(index = 5, count = 6),
-            enabled = false,
-            colors = colors,
-            state = taskbarWidgetEnabled,
-            onCheckedChange = { viewModel.setTaskbarWidgetEnabled(it) }
-        )
+        if (showTaskbarWidget) {
+            SettingsSwitch(
+                icon = { Icon(Icons.Rounded.MusicNote, null) },
+                title = { Text(stringResource(Res.string.taskbar_widget)) },
+                subtitle = { Text(stringResource(Res.string.taskbar_widget_subtitle)) },
+                shapes = ListItemDefaults.segmentedShapes(index = 5, count = itemCount),
+                colors = colors,
+                state = taskbarWidgetEnabled,
+                onCheckedChange = { viewModel.setTaskbarWidgetEnabled(it) }
+            )
+        }
     }
 }

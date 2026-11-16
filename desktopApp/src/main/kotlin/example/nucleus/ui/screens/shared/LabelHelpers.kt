@@ -13,11 +13,13 @@ import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.LoudnessLevel
 import example.nucleus.data.repository.LyricsAnimationStyle
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
+import example.nucleus.data.repository.MiniPlayerDesign
 import example.nucleus.data.repository.MiniPlayerStyle
 import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.ThemeMode
 import example.nucleus.data.repository.ThemePalette
+import example.nucleus.data.repository.ThemePaletteStyle
 import example.nucleus.data.repository.RenderApi
 import example.nucleus.data.repository.SeekBarStyle
 import example.nucleus.data.repository.YouTubeRegion
@@ -67,6 +69,7 @@ fun DarkLevel.displayName(): String = when (this) {
 fun NavigationRailStyle.displayName(): String = when (this) {
     NavigationRailStyle.DEFAULT -> stringResource(Res.string.navigation_rail_default)
     NavigationRailStyle.WIDE -> stringResource(Res.string.navigation_rail_wide)
+    NavigationRailStyle.FAB -> stringResource(Res.string.navigation_rail_fab)
 }
 
 @Composable
@@ -81,6 +84,20 @@ fun MiniPlayerStyle.displayName(): String = when (this) {
     MiniPlayerStyle.BAR -> stringResource(Res.string.mini_player_style_bar)
     MiniPlayerStyle.FLOATING -> stringResource(Res.string.mini_player_style_floating)
     MiniPlayerStyle.DOCKED -> stringResource(Res.string.mini_player_style_docked)
+}
+
+@Composable
+fun MiniPlayerDesign.displayName(): String = when (this) {
+    MiniPlayerDesign.EXPRESSIVE -> stringResource(Res.string.mini_player_design_expressive)
+    MiniPlayerDesign.COMPACT -> stringResource(Res.string.mini_player_design_compact)
+    MiniPlayerDesign.VINYL -> stringResource(Res.string.mini_player_design_vinyl)
+}
+
+@Composable
+fun MiniPlayerDesign.description(): String = when (this) {
+    MiniPlayerDesign.EXPRESSIVE -> stringResource(Res.string.mini_player_design_expressive_desc)
+    MiniPlayerDesign.COMPACT -> stringResource(Res.string.mini_player_design_compact_desc)
+    MiniPlayerDesign.VINYL -> stringResource(Res.string.mini_player_design_vinyl_desc)
 }
 
 @Composable
@@ -127,8 +144,19 @@ fun ThemePalette.displayName(): String = when (this) {
 }
 
 @Composable
-fun BackgroundStyle.displayName(): String = when (this) {
-    BackgroundStyle.GRADIENT -> stringResource(Res.string.background_style_gradient)
+fun ThemePaletteStyle.displayName(): String = when (this) {
+    ThemePaletteStyle.TONAL_SPOT -> stringResource(Res.string.palette_style_tonal_spot)
+    ThemePaletteStyle.VIBRANT -> stringResource(Res.string.palette_style_vibrant)
+    ThemePaletteStyle.EXPRESSIVE -> stringResource(Res.string.palette_style_expressive)
+    ThemePaletteStyle.RAINBOW -> stringResource(Res.string.palette_style_rainbow)
+    ThemePaletteStyle.FRUIT_SALAD -> stringResource(Res.string.palette_style_fruit_salad)
+    ThemePaletteStyle.MONOCHROME -> stringResource(Res.string.palette_style_monochrome)
+    ThemePaletteStyle.NEUTRAL -> stringResource(Res.string.palette_style_neutral)
+    ThemePaletteStyle.CONTENT -> stringResource(Res.string.palette_style_content)
+}
+
+@Composable
+fun BackgroundStyle.displayName(): String = when (this) {    BackgroundStyle.GRADIENT -> stringResource(Res.string.background_style_gradient)
     BackgroundStyle.BLURRED_COVER -> stringResource(Res.string.background_style_blur)
     BackgroundStyle.SOLID_COLOR -> stringResource(Res.string.background_style_solid)
 }
@@ -154,6 +182,7 @@ fun LibrarySortOrder.displayName(): String = when (this) {
     LibrarySortOrder.NAME_ASC -> stringResource(Res.string.sort_name_asc_label)
     LibrarySortOrder.NAME_DESC -> stringResource(Res.string.sort_name_desc_label)
     LibrarySortOrder.DATE_ADDED -> stringResource(Res.string.sort_date_added)
+    LibrarySortOrder.DATE_ADDED_DESC -> stringResource(Res.string.sort_date_added_desc)
 }
 
 @Composable

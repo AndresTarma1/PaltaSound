@@ -24,3 +24,6 @@ __pycache__/
 *.py[cod]
 /graphify-out
 /mpv-resources/windows/rustypipe-botguard.exe
+# Configuración local del IDE y volcados de depuración
+.vscode/
+dump.txt

@@ -13,9 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import example.nucleus.ui.components.player.GlassTextPillButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -67,7 +68,7 @@ fun PlaylistSettingsDialog(
     var name by remember(playlistTitle) { mutableStateOf(playlistTitle) }
     val nameChanged = name.trim().isNotBlank() && name.trim() != playlistTitle
 
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -121,18 +122,13 @@ fun PlaylistSettingsDialog(
                             iconSize = 22.dp,
                             contentScale = ContentScale.Crop,
                         )
-                        OutlinedButton(
+                        GlassTextPillButton(
                             onClick = onEditCover,
-                            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Image,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(Res.string.playlist_cover_change))
-                        }
+                            text = stringResource(Res.string.playlist_cover_change),
+                            leadingIcon = Icons.Filled.Image,
+                            fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                            fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
                     }
                 }
 

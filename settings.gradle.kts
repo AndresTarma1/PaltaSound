@@ -40,5 +40,6 @@ plugins {
 include(":desktopApp")
 include(":shared")
 include(":innertube")
+include(":youtube")
 include(":lrclib")
 include(":kugou")

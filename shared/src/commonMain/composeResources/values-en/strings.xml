@@ -42,8 +42,10 @@
     <string name="settings_subtitle">Customize your experience</string>
     <string name="section_audio">Audio</string>
     <string name="streaming_quality">Audio quality</string>
+    <string name="mode_music">Music mode</string>
+    <string name="mode_youtube">YouTube mode</string>
     <string name="sabr_streaming">SABR streaming</string>
-    <string name="sabr_streaming_subtitle">In-process segmented audio when the CDN blocks direct streams. Off: yt-dlp is used, which extracts best when signed in.</string>
+    <string name="sabr_streaming_subtitle">In-process SABR download for YouTube audio and video. Video downloads the full file before playback; off uses DASH/yt-dlp.</string>
     <string name="equalizer">Equalizer</string>
     <string name="ten_bands">5 bands</string>
     <string name="loudness_level">Volume normalization</string>
@@ -68,15 +70,24 @@
     <string name="lyrics_romanize">Romanize lyrics</string>
     <string name="lyrics_romanize_subtitle">Show romanization for Japanese, Korean and Russian</string>
     <string name="lyrics_offset_settings">Lyrics offset (global)</string>
-    <string name="lyrics_offset_settings_subtitle">Global compensation in milliseconds (−10 s … +10 s). Added to the per-song offset from the ⋮ menu in Now Playing.</string>
-    <string name="lyrics_offset_song">Sync for this song</string>
-    <string name="lyrics_offset_song_value">This song: %1$d ms</string>
+    <string name="lyrics_offset_settings_subtitle">Global compensation in milliseconds (−10 s … +10 s).</string>
     <string name="section_appearance">Appearance</string>
     <string name="animations_enabled">Interface animations</string>
     <string name="animations_enabled_subtitle">Enable transition and motion animations</string>
     <string name="theme">Theme</string>
     <string name="color_palette">Color palette</string>
     <string name="dynamic_colors">Dynamic colors from artwork</string>
+    <string name="liquid_glass_beta">Liquid Glass (Beta)</string>
+    <string name="liquid_glass_beta_subtitle">Glass on mini player, rail and buttons</string>
+    <string name="liquid_glass_restart_required">Restart PaltaSound to apply glass</string>
+    <string name="liquid_glass_restart_title">Restart to apply Liquid Glass</string>
+    <string name="liquid_glass_restart_message">Glass compiles its shaders at startup. Close and reopen PaltaSound to enable it.</string>
+    <string name="liquid_glass_restart_confirm">Got it</string>
+    <string name="liquid_glass_blur">Frost</string>
+    <string name="liquid_glass_opacity">Base opacity</string>
+    <string name="liquid_glass_specular">Edge shine</string>
+    <string name="liquid_glass_refraction">Refraction</string>
+    <string name="background_locked_by_glass">Solid (pinned by Liquid Glass)</string>
     <string name="section_player">Player</string>
     <string name="section_mini_player">Mini player</string>
     <string name="section_now_playing">Now Playing</string>
@@ -98,6 +109,7 @@
     <string name="section_library_subtitle">YouTube Music sync</string>
     <string name="section_about">About</string>
     <string name="section_about_subtitle">Support, version and info</string>
+    <string name="settings_select_section">Select a section from the list</string>
     <string name="section_audio_subtitle">Quality, crossfade and equalizer</string>
     <string name="section_appearance_subtitle">Theme, colors and typography</string>
     <string name="section_system_subtitle">Application and advanced options</string>
@@ -176,6 +188,7 @@
     <string name="minimize_to_tray">Minimize to system tray</string>
     <string name="trim_memory_on_tray">Free memory when minimized to tray</string>
     <string name="trim_memory_on_tray_subtitle">Returns unused RAM to the OS while the app is hidden in the tray. Lowers background usage; pages fault back in on restore.</string>
+    <string name="trim_memory_requires_tray">Turn on “Minimize to tray” to use this option.</string>
     <string name="launch_at_startup">Launch on Windows startup</string>
     <string name="launch_at_startup_subtitle">Opens MusicApp automatically when you sign in to Windows.</string>
     <string name="cache_images">Cache images on disk</string>
@@ -232,6 +245,14 @@
     <string name="no_recent_searches">No recent searches yet.</string>
     <string name="suggestions_title">Suggestions</string>
     <string name="filter_all">All</string>
+    <string name="tab_songs">Songs</string>
+    <string name="library_search_hint">Search your library</string>
+    <string name="library_clear_search">Clear search</string>
+    <string name="sort_date_added_desc">Date added (newest first)</string>
+    <string name="library_view_grid">Grid view</string>
+    <string name="library_view_list">List view</string>
+    <string name="library_see_all">See all</string>
+    <string name="tab_podcasts">Podcasts</string>
     <string name="filter_videos">Videos</string>
     <string name="filter_songs">Songs</string>
     <string name="filter_albums">Albums</string>
@@ -240,6 +261,9 @@
     <string name="filter_podcasts">Podcasts</string>
     <string name="filter_episodes">Episodes</string>
     <string name="something_went_wrong">Something went wrong</string>
+    <string name="artist_not_found">This artist page isn't available</string>
+    <string name="artist_not_found_desc">The channel looks like a user profile or content without an artist page on YouTube Music.</string>
+    <string name="open_in_youtube">Open in YouTube</string>
     <string name="no_results">No results found</string>
     <string name="explore_trends">Explore trends and search for music</string>
     <string name="new_releases">New releases</string>
@@ -364,6 +388,8 @@
     <string name="context_remove_playlist">Remove from this playlist</string>
     <string name="context_like">Like</string>
     <string name="context_unlike">Unlike</string>
+    <string name="context_go_to_artist">Go to artist</string>
+    <string name="context_go_to_album">Go to album</string>
 
     <!-- MiniPlayer -->
     <string name="mp_like">Like</string>
@@ -396,9 +422,6 @@
     <string name="lyrics_offset">Lyrics sync offset</string>
     <string name="lyrics_offset_subtitle">Nudge lyrics earlier or later if they drift from the audio</string>
     <string name="lyrics_offset_value">%1$d ms</string>
-    <string name="lyrics_offset_reset">Reset</string>
-    <string name="lyrics_offset_earlier">−0.5 s</string>
-    <string name="lyrics_offset_later">+0.5 s</string>
     <string name="toggle_lyrics_menu">Toggle lyrics</string>
     <string name="queue_download_added">%1$d songs added to downloads</string>
     <string name="queue_saved_as">Queue saved as “%1$s”</string>
@@ -481,6 +504,7 @@
     <string name="dark_level_black">AMOLED (pure black)</string>
     <string name="navigation_rail_default">Default</string>
     <string name="navigation_rail_wide">Wide</string>
+    <string name="navigation_rail_fab">Floating menu</string>
     <string name="layout_islands">Dynamic islands</string>
     <string name="layout_attached">Attached / compact</string>
     <string name="layout_square">Square / borders</string>
@@ -492,6 +516,13 @@
     <string name="mini_player_bg_solid">Solid color</string>
     <string name="mini_player_bg_cover">From artwork (blurred)</string>
     <string name="mini_player_bg_translucent">Semi-transparent</string>
+    <string name="mini_player_design">Mini player design</string>
+    <string name="mini_player_design_expressive">Expressive</string>
+    <string name="mini_player_design_expressive_desc">Full: artwork, transport and volume</string>
+    <string name="mini_player_design_compact">Compact</string>
+    <string name="mini_player_design_compact_desc">Single row: artwork, title and essential controls</string>
+    <string name="mini_player_design_vinyl">Vinyl</string>
+    <string name="mini_player_design_vinyl_desc">Spinning disc with centered transport</string>
     <string name="settings_island_style">Island style</string>
     <string name="island_style_compact">Compact</string>
     <string name="island_style_comfortable">Comfortable</string>
@@ -513,6 +544,17 @@
     <string name="palette_amber">Amber</string>
     <string name="palette_indigo">Indigo</string>
     <string name="palette_ytmusic">YouTube Music</string>
+    <string name="palette_style">Palette style</string>
+    <string name="palette_style_tonal_spot">Tonal spot</string>
+    <string name="palette_style_vibrant">Vibrant</string>
+    <string name="palette_style_expressive">Expressive</string>
+    <string name="palette_style_rainbow">Rainbow</string>
+    <string name="palette_style_fruit_salad">Fruit salad</string>
+    <string name="palette_style_monochrome">Monochrome</string>
+    <string name="palette_style_neutral">Neutral</string>
+    <string name="palette_style_content">Content</string>
+    <string name="custom_color">Custom color</string>
+    <string name="custom_color_hex">Hex (#RRGGBB)</string>
 
     <!-- Background Styles -->
     <string name="background_style_gradient">Gradient</string>
@@ -672,6 +714,8 @@
     <string name="save_albums_hint">Save albums and they\'ll appear here</string>
     <string name="ytm_albums_section">YouTube Music Albums</string>
     <string name="no_saved_artists">No saved artists</string>
+    <string name="no_saved_songs">No saved songs</string>
+    <string name="save_songs_hint">Songs you save will appear here</string>
     <string name="save_artists_hint">Follow artists and they\'ll appear here</string>
     <string name="empty_library">Empty library</string>
     <string name="empty_library_hint">Save albums, artists or playlists</string>

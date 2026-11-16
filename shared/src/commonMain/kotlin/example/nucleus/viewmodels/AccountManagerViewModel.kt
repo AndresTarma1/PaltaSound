@@ -165,7 +165,11 @@ class AccountManagerViewModel(
     }
 
     fun retry() {
-        if (AccountManager.isLoggedIn) loadAccountInfo()
+        if (AccountManager.isLoggedIn) {
+            loadAccountInfo()
+        } else {
+            _uiState.value = AccountState.NotLoggedIn
+        }
     }
 
     /** Llamado desde cualquier parte de la app cuando detecta un 401/403 */

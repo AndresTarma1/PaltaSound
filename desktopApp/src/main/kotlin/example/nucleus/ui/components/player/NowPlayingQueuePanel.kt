@@ -2,6 +2,9 @@
 
 package example.nucleus.ui.components.player
 
+import dev.chrisbanes.haze.hazeSource
+import example.nucleus.ui.components.glass.GlassAlertDialog
+import example.nucleus.ui.components.glass.LocalContentHaze
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,7 +51,7 @@ import example.nucleus.generated.resources.Res
 import example.nucleus.player.PlaybackState
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.context.SongContextMenuPopup
-import example.nucleus.ui.components.formatPlayerTimeValue
+import example.nucleus.ui.components.formatQueueDuration
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
 import example.nucleus.ui.components.layout.AppVerticalScrollbar
@@ -138,7 +141,11 @@ fun NowPlayingQueuePanel(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = 4.dp)
+            .then(
+                // Igual que PlaybackQueuePanel: fuente para menús flotantes.
+                LocalContentHaze.current?.let { Modifier.hazeSource(it) } ?: Modifier,
+            ),
     ) {
         NowPlayingQueueHeader(
             state = state,
@@ -227,7 +234,7 @@ fun NowPlayingQueuePanel(
     }
 
     if (showSaveQueueDialog) {
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { showSaveQueueDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 0.dp,
@@ -263,9 +270,6 @@ fun NowPlayingQueuePanel(
     }
 }
 
-/**
- * Cabecera limpia y moderna del panel de cola en Now Playing.
- */
 @Composable
 private fun NowPlayingQueueHeader(
     state: PlayerUiState,
@@ -340,34 +344,23 @@ private fun NowPlayingQueueHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            IconButton(
+            GlassItemActionButton(
                 onClick = onToggleLock,
-                modifier = Modifier
-                    .size(36.dp)
-                    .pointerHoverIcon(PointerIcon.Hand),
-            ) {
-                Icon(
-                    imageVector = if (queueLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
-                    contentDescription = null,
-                    tint = if (queueLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
+                imageVector = if (queueLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
+                contentDescription = null,
+                selected = queueLocked,
+                size = 36.dp,
+                iconSize = 18.dp,
+            )
 
             Box {
-                IconButton(
+                GlassItemActionButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .pointerHoverIcon(PointerIcon.Hand),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(Res.string.options),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(Res.string.options),
+                    size = 36.dp,
+                    iconSize = 18.dp,
+                )
 
                 QueueActionsMenu(
                     expanded = showMenu,

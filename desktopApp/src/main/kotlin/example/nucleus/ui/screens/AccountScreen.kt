@@ -36,14 +36,20 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import com.metrolist.innertube.YouTube
 import example.nucleus.ui.components.ExpressiveEmptyState
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.player.GlassIconButton
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.helpers.desktopClickableCursor
 import example.nucleus.ui.helpers.desktopInteractiveSurface
 import example.nucleus.ui.utils.circleAwareShape
+import example.nucleus.ui.screens.shared.CollectionHeroIconButton
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.ctaLabel
@@ -77,7 +83,7 @@ data class AccountActions(
     val onReset: () -> Unit,
     val onRetry: () -> Unit,
     val onRefreshPlaylists: () -> Unit,
-    val onNavigate: (Route) -> Unit,
+    val onNavigate: (ScreenConfig) -> Unit,
     val onLoginWithCookie: (String) -> Unit = {},
 )
 
@@ -85,7 +91,7 @@ data class AccountActions(
 @Composable
 fun AccountScreenRoute(
     viewModel: AccountManagerViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
 
     val playerViewModel = LocalPlayerViewModel.current
@@ -158,17 +164,31 @@ fun AccountScreen(
                 },
                 actions = {
                     if (state.uiState is AccountState.LoggedIn) {
-                        FilledTonalIconButton(
-                            onClick = actions.onLogout,
-                            modifier = Modifier.desktopClickableCursor(),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error,
-                            ),
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Logout,
+                        val logoutGlass = LocalLiquidGlass.current
+                        val logoutHaze = LocalRailHaze.current ?: LocalContentHaze.current
+                        if (logoutGlass && logoutHaze != null) {
+                            GlassIconButton(
+                                onClick = actions.onLogout,
+                                imageVector = Icons.AutoMirrored.Filled.Logout,
                                 contentDescription = stringResource(Res.string.logout),
+                                hazeState = logoutHaze,
+                                contentTint = MaterialTheme.colorScheme.error,
+                                size = 40.dp,
+                                iconSize = 20.dp,
                             )
+                        } else {
+                            FilledTonalIconButton(
+                                onClick = actions.onLogout,
+                                modifier = Modifier.desktopClickableCursor(),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error,
+                                ),
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Logout,
+                                    contentDescription = stringResource(Res.string.logout),
+                                )
+                            }
                         }
                     }
                 },
@@ -297,7 +317,6 @@ private fun LoginSection(
                 textAlign = TextAlign.Center
             )
 
-            // ── Browser sign in ─────────────────────────────────────────
             if (hasBrowser) {
                 val browserSignInInteraction = remember { MutableInteractionSource() }
                 Card(
@@ -381,23 +400,16 @@ private fun LoginSection(
                 }
             }
 
-            // ── Import from browser ─────────────────────────────────────
             if (browsers.isNotEmpty()) {
-                TextButton(
+                GlassTextPillButton(
                     onClick = { showAdvanced = !showAdvanced },
-                    modifier = Modifier.desktopClickableCursor(),
-                    shape = AppShapes.extraLarge,
-                ) {
-                    Icon(
-                        if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        null, Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        stringResource(Res.string.import_from_browser),
-                        style = MaterialTheme.typography.labelLargeEmphasized,
-                    )
-                }
+                    text = stringResource(Res.string.import_from_browser),
+                    leadingIcon = if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    iconSize = 18.dp,
+                    textStyle = MaterialTheme.typography.labelLargeEmphasized,
+                    fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                    fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
 
                 AnimatedVisibility(
                     visible = showAdvanced,
@@ -473,7 +485,6 @@ private fun LoginSection(
                 }
             }
 
-            // ── Divider ─────────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -487,7 +498,6 @@ private fun LoginSection(
                 HorizontalDivider(modifier = Modifier.weight(1f))
             }
 
-            // ── Manual cookie paste (existing) ─────────────────────────
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -572,19 +582,21 @@ private fun LoginSection(
                 }
             }
 
-            Button(
+            GlassTextPillButton(
                 onClick = onLogin,
+                text = stringResource(Res.string.login_title),
+                leadingIcon = Icons.AutoMirrored.Filled.Login,
                 enabled = cookieInput.isNotBlank(),
+                selected = true,
+                contentTint = MaterialTheme.colorScheme.primary,
+                iconSize = 20.dp,
+                textStyle = MaterialTheme.typography.ctaLabel,
+                fallbackContainer = MaterialTheme.colorScheme.primary,
+                fallbackContent = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
-                    .desktopClickableCursor(enabled = cookieInput.isNotBlank()),
-                shape = AppShapes.extraLarge,
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(Res.string.login_title), style = MaterialTheme.typography.ctaLabel)
-            }
+                    .height(52.dp),
+            )
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
@@ -670,24 +682,24 @@ private fun ErrorSection(message: String, onRetry: () -> Unit, onReset: () -> Un
                 modifier = Modifier.heightIn(max = 280.dp),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
+                GlassTextPillButton(
                     onClick = onReset,
-                    shape = AppShapes.extraLarge,
-                    modifier = Modifier.desktopClickableCursor(),
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(Res.string.back_to_login), style = MaterialTheme.typography.ctaLabel)
-                }
-                Button(
+                    text = stringResource(Res.string.back_to_login),
+                    leadingIcon = Icons.Default.Close,
+                    iconSize = 16.dp,
+                    textStyle = MaterialTheme.typography.ctaLabel,
+                )
+                GlassTextPillButton(
                     onClick = onRetry,
-                    shape = AppShapes.extraLarge,
-                    modifier = Modifier.desktopClickableCursor(),
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(Res.string.retry), style = MaterialTheme.typography.ctaLabel)
-                }
+                    text = stringResource(Res.string.retry),
+                    leadingIcon = Icons.Default.Refresh,
+                    selected = true,
+                    contentTint = MaterialTheme.colorScheme.primary,
+                    iconSize = 16.dp,
+                    textStyle = MaterialTheme.typography.ctaLabel,
+                    fallbackContainer = MaterialTheme.colorScheme.primary,
+                    fallbackContent = MaterialTheme.colorScheme.onPrimary,
+                )
             }
         }
     }
@@ -698,7 +710,7 @@ private fun ErrorSection(message: String, onRetry: () -> Unit, onReset: () -> Un
 private fun LoggedInSection(
     state: AccountState.LoggedIn,
     onRefresh: () -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val scrollState = rememberScrollState()
 
@@ -707,12 +719,10 @@ private fun LoggedInSection(
             .fillMaxSize()
             .verticalScroll(scrollState)
     ) {
-        // Header de perfil
         AccountProfileHeader(accountInfo = state.accountInfo)
 
         Spacer(Modifier.height(8.dp))
 
-        // Sección de playlists
         PlaylistsSection(
             playlists = state.playlists,
             isLoading = state.isLoadingPlaylists,
@@ -744,7 +754,6 @@ private fun AccountProfileHeader(accountInfo: com.metrolist.innertube.models.Acc
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar
                 if (!accountInfo.thumbnailUrl.isNullOrBlank()) {
                     MusicPlayerImage(
                         url = accountInfo.thumbnailUrl,
@@ -769,7 +778,6 @@ private fun AccountProfileHeader(accountInfo: com.metrolist.innertube.models.Acc
                     }
                 }
 
-                // Info
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         accountInfo.name,
@@ -798,7 +806,6 @@ private fun AccountProfileHeader(accountInfo: com.metrolist.innertube.models.Acc
                     }
                 }
 
-                // Badge de sesión activa
                 AssistChip(
                     onClick = {},
                     label = {
@@ -823,7 +830,6 @@ private fun AccountProfileHeader(accountInfo: com.metrolist.innertube.models.Acc
                 )
             }
 
-            // Barra de info: dónde está guardada la cookie
             if (cookieSize > 0L) {
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -861,10 +867,9 @@ private fun PlaylistsSection(
     playlists: List<PlaylistItem>,
     isLoading: Boolean,
     onRefresh: () -> Unit,
-    onNavigate: (Route) -> Unit
+    onNavigate: (ScreenConfig) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Header de sección
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -876,29 +881,17 @@ private fun PlaylistsSection(
                 stringResource(Res.string.your_playlists),
                 style = MaterialTheme.typography.titleLargeEmphasized,
             )
-            FilledTonalIconButton(
+            CollectionHeroIconButton(
                 onClick = onRefresh,
                 enabled = !isLoading,
-                modifier = Modifier.desktopClickableCursor(enabled = !isLoading),
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = stringResource(Res.string.cd_refresh),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+                active = false,
+                isLoading = isLoading,
+                icon = Icons.Default.Refresh,
+            )
         }
 
         when {
             isLoading && playlists.isEmpty() -> {
-                // Skeleton loaders
                 Column(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -923,7 +916,7 @@ private fun PlaylistsSection(
                     playlists.forEach { playlist ->
                         PlaylistAccountItem(
                             playlist = playlist,
-                            onClick = { onNavigate(Route.Playlist(playlist.id)) }
+                            onClick = { onNavigate(ScreenConfig.Playlist(playlist.id)) }
                         )
                     }
                 }
@@ -955,7 +948,6 @@ private fun PlaylistAccountItem(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Thumbnail
         MusicPlayerImage(
             url = playlist.thumbnail,
             contentDescription = playlist.title,
@@ -964,7 +956,6 @@ private fun PlaylistAccountItem(
             placeholderType = PlaceholderType.PLAYLIST,
         )
 
-        // Info
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 playlist.title,
@@ -1143,33 +1134,31 @@ private fun CookieExpiredSection(
                 }
             }
 
-            Button(
+            GlassTextPillButton(
                 onClick = onRenew,
+                text = stringResource(Res.string.renew_session),
+                leadingIcon = Icons.Default.Refresh,
                 enabled = cookieInput.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .desktopClickableCursor(enabled = cookieInput.isNotBlank()),
-                shape = AppShapes.extraLarge,
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(Res.string.renew_session), style = MaterialTheme.typography.ctaLabel)
-            }
+                selected = true,
+                contentTint = MaterialTheme.colorScheme.primary,
+                iconSize = 20.dp,
+                textStyle = MaterialTheme.typography.ctaLabel,
+                fallbackContainer = MaterialTheme.colorScheme.primary,
+                fallbackContent = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
-            OutlinedButton(
+            GlassTextPillButton(
                 onClick = onLogout,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .desktopClickableCursor(),
-                shape = AppShapes.extraLarge,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(Res.string.logout), style = MaterialTheme.typography.ctaLabel)
-            }
+                text = stringResource(Res.string.logout),
+                leadingIcon = Icons.AutoMirrored.Filled.Logout,
+                contentTint = MaterialTheme.colorScheme.error,
+                iconSize = 18.dp,
+                textStyle = MaterialTheme.typography.ctaLabel,
+                fallbackContainer = MaterialTheme.colorScheme.errorContainer,
+                fallbackContent = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

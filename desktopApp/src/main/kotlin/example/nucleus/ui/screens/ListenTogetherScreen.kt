@@ -67,6 +67,9 @@ import example.nucleus.listentogether.RoomRole
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.ui.helpers.desktopClickableCursor
+import example.nucleus.ui.components.glass.GlassDropdownMenu
+import example.nucleus.ui.components.player.GlassItemActionButton
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.ctaLabel
@@ -288,27 +291,26 @@ private fun LobbyContent(
             Text(
                 stringResource(Res.string.lt_create_title),
                 style = MaterialTheme.typography.titleLargeEmphasized,
+
             )
             Text(
                 stringResource(Res.string.lt_create_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(
+            GlassTextPillButton(
                 onClick = onCreate,
+                text = stringResource(Res.string.lt_create_btn),
                 enabled = !busy,
-                shape = AppShapes.extraLarge,
+                loading = busy,
+                selected = true,
+                contentTint = MaterialTheme.colorScheme.primary,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
-                    .desktopClickableCursor(enabled = !busy),
-            ) {
-                if (busy) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(stringResource(Res.string.lt_create_btn), style = MaterialTheme.typography.ctaLabel)
-                }
-            }
+                    .height(52.dp),
+            )
         }
     }
 
@@ -335,17 +337,16 @@ private fun LobbyContent(
                 ),
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedButton(
+            GlassTextPillButton(
                 onClick = onJoin,
+                text = stringResource(Res.string.lt_join_btn),
                 enabled = !busy && joinCode.isNotBlank(),
-                shape = AppShapes.extraLarge,
+                fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
-                    .desktopClickableCursor(enabled = !busy && joinCode.isNotBlank()),
-            ) {
-                Text(stringResource(Res.string.lt_join_btn), style = MaterialTheme.typography.ctaLabel)
-            }
+                    .height(48.dp),
+            )
         }
     }
 }
@@ -392,19 +393,15 @@ private fun RoomContent(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.width(4.dp))
-                FilledTonalIconButton(
+                GlassItemActionButton(
                     onClick = onCopyCode,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .pointerHoverIcon(PointerIcon.Hand),
-                    shape = circleAwareShape(),
-                ) {
-                    Icon(
-                        Icons.Filled.ContentCopy,
-                        contentDescription = stringResource(Res.string.lt_copy_code),
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+                    imageVector = Icons.Filled.ContentCopy,
+                    contentDescription = stringResource(Res.string.lt_copy_code),
+                    size = 40.dp,
+                    iconSize = 18.dp,
+                    fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                    fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
             }
         }
     }
@@ -427,22 +424,24 @@ private fun RoomContent(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLargeEmphasized)
-                    FilledTonalIconButton(
+                    GlassItemActionButton(
                         onClick = { onApprove(userId) },
-                        modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                    ) {
-                        Icon(Icons.Filled.Check, stringResource(Res.string.lt_approve))
-                    }
-                    IconButton(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = stringResource(Res.string.lt_approve),
+                        contentTint = MaterialTheme.colorScheme.primary,
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                        fallbackContainer = MaterialTheme.colorScheme.primaryContainer,
+                        fallbackContent = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    GlassItemActionButton(
                         onClick = { onReject(userId) },
-                        modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
-                    ) {
-                        Icon(Icons.Filled.Close, stringResource(Res.string.lt_reject), tint = MaterialTheme.colorScheme.error)
-                    }
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = stringResource(Res.string.lt_reject),
+                        contentTint = MaterialTheme.colorScheme.error,
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                    )
                 }
             }
         }
@@ -492,18 +491,14 @@ private fun RoomContent(
                     if (isHost && !member.isMe) {
                         var showMenu by remember { mutableStateOf(false) }
                         Box {
-                            IconButton(
+                            GlassItemActionButton(
                                 onClick = { showMenu = true },
-                                modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
-                            ) {
-                                Icon(
-                                    Icons.Filled.MoreVert,
-                                    contentDescription = stringResource(Res.string.lt_member_options),
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            DropdownMenu(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = stringResource(Res.string.lt_member_options),
+                                size = 40.dp,
+                                iconSize = 20.dp,
+                            )
+                            GlassDropdownMenu(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false },
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -549,21 +544,14 @@ private fun RoomContent(
     }
 
     Spacer(Modifier.height(4.dp))
-    Button(
+    GlassTextPillButton(
         onClick = onLeave,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-            .pointerHoverIcon(PointerIcon.Hand),
-        shape = AppShapes.extraLarge,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        ),
-    ) {
-        Icon(Icons.AutoMirrored.Filled.Logout, null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(Res.string.lt_leave_btn), style = MaterialTheme.typography.ctaLabel)
-    }
+        text = stringResource(Res.string.lt_leave_btn),
+        leadingIcon = Icons.AutoMirrored.Filled.Logout,
+        contentTint = MaterialTheme.colorScheme.error,
+        fallbackContainer = MaterialTheme.colorScheme.errorContainer,
+        fallbackContent = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 

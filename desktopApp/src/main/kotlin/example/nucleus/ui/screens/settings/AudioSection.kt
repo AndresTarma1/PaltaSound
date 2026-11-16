@@ -30,9 +30,8 @@ fun AudioSettingsGroup(
     val audioQuality by viewModel.audioQuality.collectAsState()
     val loudnessLevel by viewModel.loudnessLevel.collectAsState()
     val sabrEnabled by viewModel.sabrEnabled.collectAsState()
-    var showAudioDropdown by remember { mutableStateOf(false) }
-    var showLoudnessDropdown by remember { mutableStateOf(false) }
 
+    var showAudioDropdown by remember { mutableStateOf(false) }
     SettingsGroup(
         title = {
             Text(
@@ -46,23 +45,21 @@ fun AudioSettingsGroup(
             label = stringResource(Res.string.streaming_quality),
             icon = Icons.Rounded.Tune,
             currentValue = audioQuality.displayName(),
-            segmentedShape = ListItemDefaults.segmentedShapes(index = 0, count = 4),
             expanded = showAudioDropdown,
             onExpandedChange = { showAudioDropdown = it },
+            segmentedShape = ListItemDefaults.segmentedShapes(index = 0, count = 4),
             options = AudioQuality.entries.map { it to it.displayName() },
             isSelected = { it == audioQuality },
             onSelect = { viewModel.setAudioQuality(it); showAudioDropdown = false }
         )
-        DropdownSelector(
+        SingleChoiceRow(
             label = stringResource(Res.string.loudness_level),
             icon = Icons.Rounded.VolumeUp,
             currentValue = loudnessLevel.displayName(),
             segmentedShape = ListItemDefaults.segmentedShapes(index = 1, count = 4),
-            expanded = showLoudnessDropdown,
-            onExpandedChange = { showLoudnessDropdown = it },
             options = LoudnessLevel.entries.map { it to it.displayName() },
             isSelected = { it == loudnessLevel },
-            onSelect = { viewModel.setLoudnessLevel(it); showLoudnessDropdown = false }
+            onSelect = { viewModel.setLoudnessLevel(it) }
         )
         SettingsSwitch(
             icon = { Icon(Icons.Rounded.Bolt, null) },

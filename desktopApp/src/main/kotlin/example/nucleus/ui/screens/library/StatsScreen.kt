@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.*
+import example.nucleus.ui.components.glass.GlassFilterChip
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,7 +85,7 @@ fun StatsScreen(onBack: () -> Unit) {
                 },
                 actions = {
                     StatsPeriod.entries.forEach { p ->
-                        FilterChip(
+                        GlassFilterChip(
                             selected = p == period,
                             onClick = { period = p },
                             label = { Text(p.label, style = MaterialTheme.typography.labelMedium) },

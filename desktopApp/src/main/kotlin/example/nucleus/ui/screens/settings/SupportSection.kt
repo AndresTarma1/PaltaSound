@@ -14,6 +14,7 @@ import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.platform.NativeDesktop
+import example.nucleus.ui.components.player.GlassTextPillButton
 import example.nucleus.ui.screens.shared.updateCheckSubtitle
 import example.nucleus.viewmodels.AppViewModel
 import example.nucleus.viewmodels.UpdateCheckState
@@ -55,9 +56,12 @@ fun SupportSettingsGroup() {
             action = {
                 when {
                     ready -> {
-                        FilledTonalButton(onClick = { appViewModel.checkForUpdates(manual = true) }) {
-                            Text(stringResource(Res.string.btn_install_update))
-                        }
+                        GlassTextPillButton(
+                            onClick = { appViewModel.checkForUpdates(manual = true) },
+                            text = stringResource(Res.string.btn_install_update),
+                            fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                            fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
                     }
                     // Variante nativa GraalVM: el instalador no esta en latest.yml a proposito
                     // (el selector no distingue runtimes), asi que se abre la pagina de release
@@ -65,20 +69,24 @@ fun SupportSettingsGroup() {
                     // cambiaria de variante.
                     manualOnly != null -> {
                         val url = manualOnly.info.releaseUrl
-                        FilledTonalButton(
+                        GlassTextPillButton(
                             onClick = {
                                 if (url != null) NativeDesktop.browse(URI(url))
                             },
+                            text = stringResource(Res.string.btn_open_release),
                             enabled = url != null,
-                        ) {
-                            Text(stringResource(Res.string.btn_open_release))
-                        }
+                            fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                            fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
                     }
                     downloading != null || updateCheckState is UpdateCheckState.Checking ->
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else -> TextButton(onClick = { appViewModel.checkForUpdates(manual = true) }) {
-                        Text(stringResource(Res.string.btn_check))
-                    }
+                    else -> GlassTextPillButton(
+                        onClick = { appViewModel.checkForUpdates(manual = true) },
+                        text = stringResource(Res.string.btn_check),
+                        fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                        fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 }
             },
             onClick = {
@@ -125,9 +133,12 @@ fun SupportSettingsGroup() {
             colors = colors,
             action = {
                 if (pendingCrashReports > 0) {
-                    FilledTonalButton(onClick = { appViewModel.sendCrashReports() }) {
-                        Text(stringResource(Res.string.crash_send))
-                    }
+                    GlassTextPillButton(
+                        onClick = { appViewModel.sendCrashReports() },
+                        text = stringResource(Res.string.crash_send),
+                        fallbackContainer = MaterialTheme.colorScheme.secondaryContainer,
+                        fallbackContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 }
             },
             onClick = {

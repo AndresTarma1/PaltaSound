@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.components.SectionSkeleton
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
@@ -38,7 +38,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun YouTubeBrowseScreenRoute(
     viewModel: YouTubeBrowseManagerViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -58,7 +58,7 @@ fun YouTubeBrowseScreen(
     uiState: YouTubeBrowseState,
     title: String,
     onBack: () -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
 
@@ -115,7 +115,7 @@ fun YouTubeBrowseScreen(
 @Composable
 private fun BrowseContent(
     result: BrowseResult,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val listState = rememberLazyListState()
 
@@ -162,7 +162,7 @@ private fun BrowseContent(
 @Composable
 private fun BrowseSection(
     section: BrowseResult.Item,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     if (section.items.isEmpty()) return
 

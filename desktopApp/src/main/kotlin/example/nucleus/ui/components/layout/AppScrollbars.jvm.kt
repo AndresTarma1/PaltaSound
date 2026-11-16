@@ -2,6 +2,7 @@ package example.nucleus.ui.components.layout
 
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.v2.ScrollbarAdapter
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -40,9 +41,6 @@ fun appScrollContentPadding(
     end: Dp = AppScrollbarGutter,
 ): PaddingValues = PaddingValues(start = start, top = top, end = end, bottom = bottom)
 
-/** Reserva el gutter del scrollbar al final del scroller (alternativa a contentPadding). */
-fun Modifier.appScrollbarContentInset(): Modifier = this.padding(end = AppScrollbarGutter)
-
 @Composable
 fun appScrollbarStyle() = LocalScrollbarStyle.current.copy(
     thickness = 5.dp,
@@ -52,12 +50,12 @@ fun appScrollbarStyle() = LocalScrollbarStyle.current.copy(
 )
 
 @Composable
-fun AppVerticalScrollbar(
-    state: ScrollState,
-    modifier: Modifier = Modifier,
+private fun AppVerticalScrollbar(
+    adapter: ScrollbarAdapter,
+    modifier: Modifier,
 ) {
     VerticalScrollbar(
-        adapter = rememberScrollbarAdapter(state),
+        adapter = adapter,
         modifier = modifier
             .width(AppScrollbarTrackWidth)
             .padding(vertical = 2.dp)
@@ -65,6 +63,14 @@ fun AppVerticalScrollbar(
             .padding(bottom = LocalMiniPlayerInset.current),
         style = appScrollbarStyle()
     )
+}
+
+@Composable
+fun AppVerticalScrollbar(
+    state: ScrollState,
+    modifier: Modifier = Modifier,
+) {
+    AppVerticalScrollbar(rememberScrollbarAdapter(state), modifier)
 }
 
 @Composable
@@ -72,15 +78,7 @@ fun AppVerticalScrollbar(
     state: LazyListState,
     modifier: Modifier = Modifier,
 ) {
-    VerticalScrollbar(
-        adapter = rememberScrollbarAdapter(state),
-        modifier = modifier
-            .width(AppScrollbarTrackWidth)
-            .padding(vertical = 2.dp)
-            .padding(start = 4.dp)
-            .padding(bottom = LocalMiniPlayerInset.current),
-        style = appScrollbarStyle()
-    )
+    AppVerticalScrollbar(rememberScrollbarAdapter(state), modifier)
 }
 
 @Composable
@@ -88,13 +86,5 @@ fun AppVerticalScrollbar(
     state: LazyGridState,
     modifier: Modifier = Modifier,
 ) {
-    VerticalScrollbar(
-        adapter = rememberScrollbarAdapter(state),
-        modifier = modifier
-            .width(AppScrollbarTrackWidth)
-            .padding(vertical = 2.dp)
-            .padding(start = 4.dp)
-            .padding(bottom = LocalMiniPlayerInset.current),
-        style = appScrollbarStyle()
-    )
+    AppVerticalScrollbar(rememberScrollbarAdapter(state), modifier)
 }

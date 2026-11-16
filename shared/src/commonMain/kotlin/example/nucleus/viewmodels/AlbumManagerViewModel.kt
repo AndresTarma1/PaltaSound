@@ -5,7 +5,9 @@ import example.nucleus.data.repository.AlbumRepository
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.pages.AlbumPage
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +36,8 @@ class AlbumManagerViewModel(
 
     private val log = Logger.getLogger("AlbumViewModel")
 
+    private var loadJob: Job? = null
+
     private val _uiState = MutableStateFlow<AlbumState>(AlbumState.Loading)
     val uiState: StateFlow<AlbumState> = _uiState.asStateFlow()
 
@@ -61,19 +65,17 @@ class AlbumManagerViewModel(
         }
     }
 
-    fun loadAlbum(browseId: String) {
-        if (_currentBrowseId.value == browseId) return
+    fun loadAlbum(browseId: String, force: Boolean = false) {
+        if (!force && _currentBrowseId.value == browseId) return
         _currentBrowseId.value = browseId
+        loadJob?.cancel()
 
-        viewModelScope.launch {
-            _uiState.value = AlbumState.Loading
-            _songs.value = emptyList()
-            _continuation.value = null
-
+        loadJob = viewModelScope.launch {
             val cachedSongs = repository.getCachedAlbumSongs(browseId)
             val cachedAlbum = repository.getCachedAlbumItem(browseId)
+            val hasCache = cachedSongs != null && cachedAlbum != null
 
-            if (cachedSongs != null && cachedAlbum != null) {
+            if (hasCache) {
                 log.info("Cargando álbum desde caché: $browseId (${cachedSongs.size} canciones)")
                 _songs.value = cachedSongs
                 _continuation.value = null
@@ -85,11 +87,17 @@ class AlbumManagerViewModel(
                     ),
                     isSaved = true,
                 )
-                return@launch
+                if (!force) return@launch
+            } else {
+                _uiState.value = AlbumState.Loading
+                _songs.value = emptyList()
+                _continuation.value = null
             }
 
-            log.info("Álbum no cacheado, cargando desde YouTube: $browseId")
-            YouTube.album(browseId)
+            log.info("Recargando álbum desde YouTube: $browseId")
+            val result = YouTube.album(browseId)
+            if (!isActive) return@launch
+            result
                 .onSuccess { page ->
                     _songs.value = page.songs
                     val saved = repository.isAlbumSavedOnce(browseId)
@@ -97,9 +105,14 @@ class AlbumManagerViewModel(
                         albumPage = page,
                         isSaved = saved,
                     )
+                    if (saved) {
+                        repository.saveAlbumWithSongs(page.album, page.songs)
+                    }
                 }
                 .onFailure {
-                    _uiState.value = AlbumState.Error(it.message ?: "Error desconocido")
+                    if (!hasCache) {
+                        _uiState.value = AlbumState.Error(it.message ?: "Error desconocido")
+                    }
                 }
         }
     }

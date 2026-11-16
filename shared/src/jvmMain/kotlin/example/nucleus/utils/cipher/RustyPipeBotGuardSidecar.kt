@@ -1,6 +1,7 @@
 package example.nucleus.utils.cipher
 
 import example.nucleus.platform.AppPaths
+import example.nucleus.platform.findExecutableOnPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -179,17 +180,6 @@ object RustyPipeBotGuardSidecar {
             log.info("Using bundled rustypipe-botguard: ${it.absolutePath}")
             return it.absolutePath
         }
-        return resolveOnPath(BIN_DIR)?.also { log.info("Using system rustypipe-botguard: $it") }
-    }
-
-    private fun resolveOnPath(name: String): String? = try {
-        val which = if (System.getProperty("os.name").startsWith("Windows", true)) "where" else "which"
-        val proc = ProcessBuilder(which, name).redirectErrorStream(true).start()
-        val out = proc.inputStream.bufferedReader().readText()
-        if (proc.waitFor(5, TimeUnit.SECONDS) && proc.exitValue() == 0) {
-            out.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }
-        } else null
-    } catch (e: Exception) {
-        null
+        return findExecutableOnPath(BIN_DIR)?.also { log.info("Using system rustypipe-botguard: $it") }
     }
 }

@@ -23,6 +23,7 @@ expect object AppPaths {
     val databaseDir: String
     val preferencesFile: String
     val cookieFile: String
+    val exportsDir: String
 
     // Volátiles — se pueden regenerar
     val cacheDir: String

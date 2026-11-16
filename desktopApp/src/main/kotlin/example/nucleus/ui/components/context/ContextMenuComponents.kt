@@ -18,6 +18,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.rememberCursorPositionProvider
 import example.nucleus.models.toMediaMetadata
 import example.nucleus.ui.components.song.AddToPlaylistDialog
+import example.nucleus.ui.components.dialogs.ArtistsModal
 import example.nucleus.ui.helpers.rememberSongDownloadState
 import example.nucleus.ui.helpers.rememberSongLikedState
 import example.nucleus.ui.themes.rememberUiEffectsSpec
@@ -109,6 +110,8 @@ fun SongContextMenuPopup(
     showQueueActions: Boolean = true,
     onRemoveFromLibrary: (() -> Unit)? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    onGoToArtist: ((String) -> Unit)? = null,
+    onGoToAlbum: ((String) -> Unit)? = null,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
     val downloadViewModel = LocalDownloadViewModel.current
@@ -126,6 +129,7 @@ fun SongContextMenuPopup(
     }
 
     var showPlaylistDialog by remember { mutableStateOf(false) }
+    var showArtistsSheet by remember { mutableStateOf(false) }
 
     ContextMenuPopup(expanded = expanded, onDismiss = onDismiss) {
         SongContextMenuContent(
@@ -135,8 +139,14 @@ fun SongContextMenuPopup(
             showQueueActions = showQueueActions,
             showRemoveFromLibrary = onRemoveFromLibrary != null,
             showRemoveFromPlaylist = onRemoveFromPlaylist != null,
+            onGoToArtist = onGoToArtist,
+            onGoToAlbum = onGoToAlbum,
             onAction = { action ->
                 when (action) {
+                    is SongMenuAction.ShowArtists -> {
+                        onDismiss()
+                        showArtistsSheet = true
+                    }
                     SongMenuAction.StartRadio -> {
                         val endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id)
                         playerViewModel.playEndpoint(endpoint, previewSong = song.toMediaMetadata())
@@ -194,6 +204,15 @@ fun SongContextMenuPopup(
             song = song,
             playlistsViewModel = playlistsViewModel,
             onDismiss = { showPlaylistDialog = false }
+        )
+    }
+
+    // Varios artistas: el mismo BottomSheet de artista para elegir.
+    if (showArtistsSheet && onGoToArtist != null) {
+        ArtistsModal(
+            artists = song.artists,
+            onClickArtist = { onGoToArtist(it) },
+            onDismiss = { showArtistsSheet = false }
         )
     }
 }

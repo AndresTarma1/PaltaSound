@@ -37,7 +37,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
+import example.nucleus.ui.components.glass.GlassFilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -73,13 +73,19 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+import example.nucleus.ui.components.glass.ProgressiveBlurBackdrop
 import example.nucleus.db.entities.SearchHistoryEntry
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.SectionHeaderRow
 import example.nucleus.ui.components.layout.AppScrollbarGutter
@@ -101,6 +107,7 @@ import example.nucleus.viewmodels.SearchState
 import example.nucleus.viewmodels.SearchViewModel
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
+import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.pages.ChartsPage
 import com.metrolist.innertube.pages.ExplorePage
@@ -133,7 +140,7 @@ data class SearchActions(
     val onSearch: () -> Unit,
     val onFilterChange: (YouTube.SearchFilter?) -> Unit,
     val onLoadMore: () -> Unit,
-    val onNavigate: (Route) -> Unit,
+    val onNavigate: (ScreenConfig) -> Unit,
     val onDeleteHistoryEntry: (String) -> Unit,
     val onClearHistory: () -> Unit,
 )
@@ -141,7 +148,7 @@ data class SearchActions(
 @Composable
 fun SearchScreenRoute(
     viewModel: SearchViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
 
@@ -192,15 +199,48 @@ fun SearchScreen(
 ) {
     var active by remember { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize(),
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-        Column(
-            Modifier
+    // El contenido es la fuente del difuminado; buscador y filtros flotan
+    // encima con blur progresivo mientras los resultados scrollean debajo.
+    val contentHaze = rememberHazeState()
+    val density = LocalDensity.current
+    var topBarHeight by remember { mutableStateOf(0.dp) }
+    val showFilters = state.uiState !is SearchState.Idle
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .hazeSource(contentHaze),
+        ) {
+            ResultsList(
+                onNavigate = actions.onNavigate,
+                uiState = state.uiState,
+                charts = state.charts,
+                explore = state.explore,
+                moodAndGenres = state.moodAndGenres,
+                filter = state.filter,
+                playerViewModel = playerViewModel,
+                onItemClick = { item -> onYTItemClick(item, actions.onNavigate, playerViewModel) },
+                onMoodClick = { browseId, params -> actions.onNavigate(ScreenConfig.YouTubeBrowse(browseId, params)) },
+                onFilterChange = actions.onFilterChange,
+                onLoadMore = actions.onLoadMore,
+                topInset = topBarHeight,
+            )
+        }
+
+        // Difuminado progresivo detrás de la barra (solo con el buscador
+        // colapsado; expandido tapa la pantalla y no aporta).
+        ProgressiveBlurBackdrop(
+            hazeState = contentHaze,
+            height = if (active) 0.dp else topBarHeight,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .onSizeChanged { topBarHeight = with(density) { it.height.toDp() } },
         ) {
             SearchSection(
                 query = state.query,
@@ -217,20 +257,9 @@ fun SearchScreen(
                 onClearHistory = actions.onClearHistory,
             )
 
-
-            ResultsList(
-                uiState = state.uiState,
-                charts = state.charts,
-                explore = state.explore,
-                moodAndGenres = state.moodAndGenres,
-                showFilterRow = true,
-                filter = state.filter,
-                playerViewModel = playerViewModel,
-                onItemClick = { item -> onYTItemClick(item, actions.onNavigate, playerViewModel) },
-                onMoodClick = { browseId, params -> actions.onNavigate(Route.YouTubeBrowse(browseId, params)) },
-                onFilterChange = actions.onFilterChange,
-                onLoadMore = actions.onLoadMore,
-            )
+            if (showFilters) {
+                FilterRow(selectedFilter = state.filter, onFilterSelected = actions.onFilterChange)
+            }
         }
     }
 }
@@ -311,6 +340,7 @@ fun SearchSection(
                         SectionHeaderRow(
                             title = stringResource(Res.string.recent_searches),
                             actionLabel = stringResource(Res.string.clear_all),
+                            horizontalStart = false,
                             onAction = onClearHistory,
                             modifier = Modifier.padding(bottom = 12.dp,end = 12.dp),
                         )
@@ -498,7 +528,7 @@ fun FilterRow(
     ) {
         items(filters) { (label, f) ->
             val isSelected = selectedFilter == f
-            FilterChip(
+            GlassFilterChip(
                 selected = isSelected,
                 onClick = { onFilterSelected(f) },
                 label = {
@@ -525,20 +555,28 @@ fun ResultsList(
     moodAndGenres: List<MoodAndGenres> = emptyList(),
     playerViewModel: PlayerViewModel,
     onItemClick: (YTItem) -> Unit,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
     onMoodClick: (String, String?) -> Unit = { _, _ -> },
-    showFilterRow: Boolean = true,
     filter: YouTube.SearchFilter?,
     onFilterChange: (YouTube.SearchFilter?) -> Unit,
     onLoadMore: () -> Unit,
+    topInset: Dp = 0.dp,
 ) {
     val listState = rememberLazyListState()
 
     // ---- Datos derivados (una sola vez por cambio de estado) ----
+    // Los perfiles de usuario (isProfile) no son artistas abribles: no tienen
+    // página ni avatar, así que se excluyen para no mostrar filas muertas.
     val items = remember(uiState) {
         (uiState as? SearchState.Success)?.items.orEmpty().distinctBy { it.id }
+            .filterNot { (it as? ArtistItem)?.isProfile == true }
     }
     val summaries = remember(uiState) {
         (uiState as? SearchState.SummarySuccess)?.summary?.summaries.orEmpty()
+            .map { s ->
+                s.copy(items = s.items.filterNot { (it as? ArtistItem)?.isProfile == true })
+            }
+            .filter { it.items.isNotEmpty() }
     }
     val hasItems = items.isNotEmpty() || summaries.isNotEmpty()
 
@@ -552,7 +590,6 @@ fun ResultsList(
 
     // ---- Paginación ----
     val currentState by rememberUpdatedState(uiState)
-    val currentOnLoadMore by rememberUpdatedState(onLoadMore)
     val shouldLoadMore by remember {
         derivedStateOf {
             val state = currentState
@@ -572,12 +609,6 @@ fun ResultsList(
 
     // ---- UI ----
     Column(Modifier.fillMaxSize()) {
-        // La fila de filtros queda fija: siempre se puede cambiar de filtro,
-        // incluso con "sin resultados" o con error.
-        if (showFilterRow && uiState !is SearchState.Idle) {
-            FilterRow(selectedFilter = filter, onFilterSelected = onFilterChange)
-        }
-
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 uiState is SearchState.Idle -> {
@@ -588,6 +619,7 @@ fun ResultsList(
                         playerViewModel = playerViewModel,
                         onItemClick = onItemClick,
                         onMoodClick = onMoodClick,
+                        topInset = topInset,
                     )
                 }
 
@@ -616,6 +648,7 @@ fun ResultsList(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         contentPadding = appScrollContentPadding(
                             end = AppScrollbarGutter + 4.dp,
+                            top = topInset,
                             bottom = LocalMiniPlayerInset.current,
                         ),
                     ) {
@@ -632,12 +665,12 @@ fun ResultsList(
                                     // por eso la key incluye la sección.
                                     key = { "${index}_${it.id}" },
                                 ) { item ->
-                                    ResultRow(item, playerViewModel, onItemClick)
+                                    ResultRow(item, playerViewModel, onItemClick, onNavigate)
                                 }
                             }
 
                             items(items = items, key = { it.id }) { item ->
-                                ResultRow(item, playerViewModel, onItemClick)
+                                ResultRow(item, playerViewModel, onItemClick, onNavigate)
                             }
 
                             if (uiState is SearchState.Success && uiState.isLoadingMore) {
@@ -673,10 +706,11 @@ private fun ResultRow(
     item: YTItem,
     playerViewModel: PlayerViewModel,
     onItemClick: (YTItem) -> Unit,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
 ) {
     SectionListItem(
         item = item,
-        onNavigate = { onItemClick(item) },
+        onNavigate = onNavigate,
         playerViewModel = playerViewModel,
         modifier = Modifier.padding(horizontal = AppScreenContentHorizontal - 8.dp),
         dividerBelow = true,
@@ -691,6 +725,7 @@ private fun SearchChartsContent(
     playerViewModel: PlayerViewModel,
     onItemClick: (YTItem) -> Unit,
     onMoodClick: (String, String?) -> Unit = { _, _ -> },
+    topInset: Dp = 0.dp,
 ) {
     if (charts == null && explore == null && moodAndGenres.isEmpty()) {
         EmptyStateView(Icons.AutoMirrored.Filled.TrendingUp, stringResource(Res.string.explore_trends))
@@ -705,7 +740,7 @@ private fun SearchChartsContent(
         contentPadding = appScrollContentPadding(
             start = AppScreenContentHorizontal,
             end = AppScrollbarGutter + AppScreenContentHorizontal,
-            top = 16.dp,
+            top = 16.dp + topInset,
             bottom = LocalMiniPlayerInset.current + 16.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),

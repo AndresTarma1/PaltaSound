@@ -40,6 +40,7 @@ import example.nucleus.models.MediaMetadata
 import com.metrolist.innertube.models.Artist
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
+import example.nucleus.ui.components.context.isBrowsableArtistId
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.modifier.onHover
@@ -159,7 +160,8 @@ private fun ArtistListItem(
     artistId: String?,
     onClick: (String) -> Unit
 ) {
-    val isClickable = !artistId.isNullOrBlank()
+    val clickableId = artistId?.takeIf { it.isBrowsableArtistId() }
+    val isClickable = clickableId != null
     var isHovered by remember { mutableStateOf(false) }
 
     Row(
@@ -173,9 +175,9 @@ private fun ArtistListItem(
                 }
             )
             .then(
-                if (isClickable) {
+                if (clickableId != null) {
                     Modifier
-                        .clickable { onClick(artistId) }
+                        .clickable { onClick(clickableId) }
                         .pointerHoverIcon(PointerIcon.Hand)
                         .onHover{ isHovered = it }
 

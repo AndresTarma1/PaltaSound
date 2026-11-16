@@ -3,15 +3,14 @@
 package example.nucleus.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -60,8 +60,13 @@ import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.blur.materials.HazeMaterials
+import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.OpticalSizeValue
+import dev.chrisbanes.haze.glass.hazeGlass
+import dev.chrisbanes.haze.glass.hazeGlassContainer
 import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.MiniPlayerBackgroundStyle
+import example.nucleus.data.repository.MiniPlayerDesign
 import example.nucleus.models.MediaMetadata
 import example.nucleus.player.PlaybackState
 import example.nucleus.viewmodels.PlayerUiState
@@ -75,18 +80,22 @@ import example.nucleus.generated.resources.play_item
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.images.MusicPlayerImage
 import example.nucleus.ui.components.images.PlaceholderType
+import example.nucleus.ui.components.glass.LocalGlassHaze
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
 import example.nucleus.ui.components.player.heroCoverElement
+import example.nucleus.ui.helpers.blockPointerEventsBehind
+import example.nucleus.ui.components.player.HeroCoverMorphMs
 import example.nucleus.ui.components.player.PlayerIconToggle
 import example.nucleus.ui.components.player.PlayerProgressRow
 import example.nucleus.ui.components.player.PlayerTransportRow
 import example.nucleus.ui.components.player.PlayerVolumeControl
 import example.nucleus.ui.components.player.LikeToggle
+import example.nucleus.ui.components.player.GlassIconButton
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.LocalChromeSurface
 import example.nucleus.ui.themes.LocalDimens
 import example.nucleus.ui.themes.LocalLayoutMode
 import example.nucleus.ui.themes.expressiveFadeTween
-import example.nucleus.ui.themes.expressiveLayoutTween
 import example.nucleus.ui.themes.expressiveTween
 import example.nucleus.ui.themes.rememberUiTween
 import example.nucleus.ui.themes.songTitle
@@ -113,9 +122,17 @@ fun MiniPlayer(
     floating: Boolean = false,
     isDocked: Boolean = false,
     backgroundStyle: MiniPlayerBackgroundStyle = MiniPlayerBackgroundStyle.TRANSLUCENT,
-    hazeState: HazeState? = null,
+    hazeState: HazeState? = LocalGlassHaze.current,
+    /** Diseño visual interno (independiente de la posición: barra, flotante o docked). */
+    design: MiniPlayerDesign = MiniPlayerDesign.EXPRESSIVE,
+    /** BETA: sustituye blur y botones por Liquid Glass (Haze Glass). */
+    liquidGlass: Boolean = false,
     modifier: Modifier = Modifier,
     sharedTransitionScope: SharedTransitionScope? = null,
+    // Scope del AnimatedVisibility externo (el que muestra/oculta el
+    // MiniPlayer). Es el que tiene transición activa en AMBAS direcciones; el
+    // AV interno del cover nace ya visible al volver y no anima.
+    sharedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
     val state by playerViewModel.uiState.collectAsState()
@@ -133,10 +150,32 @@ fun MiniPlayer(
     val islands = LocalLayoutMode.current == LayoutMode.ISLANDS
     val square = LocalLayoutMode.current == LayoutMode.SQUARE
     val surfaceShape = if (islands) RoundedCornerShape(dimens.surfaceCorner) else RectangleShape
+    val dockedGlassShape = if (islands) RoundedCornerShape(dimens.surfaceCorner) else RoundedCornerShape(0.dp)
     val colorScheme = MaterialTheme.colorScheme
 
     val playerContent: @Composable () -> Unit = {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        when (design) {
+            MiniPlayerDesign.COMPACT -> MiniPlayerCompactLive(
+                song = song,
+                state = state,
+                isError = isError,
+                onNowPlaying = onNowPlaying,
+                onToggleQueue = onToggleQueue,
+                playerViewModel = playerViewModel,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = sharedVisibilityScope,
+            )
+            MiniPlayerDesign.VINYL -> MiniPlayerVinylLive(
+                song = song,
+                state = state,
+                isError = isError,
+                onNowPlaying = onNowPlaying,
+                onToggleQueue = onToggleQueue,
+                playerViewModel = playerViewModel,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = sharedVisibilityScope,
+            )
+            MiniPlayerDesign.EXPRESSIVE -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             if (maxWidth < MiniPlayerWideMinWidth) {
                 MiniPlayerCompactRow(
                     song = song,
@@ -150,6 +189,8 @@ fun MiniPlayer(
                     sharedTransitionScope = sharedTransitionScope,
                     playerViewModel = playerViewModel,
                     colorScheme = colorScheme,
+                    liquidGlass = liquidGlass,
+                    hazeState = hazeState,
                 )
             } else {
                 MiniPlayerWideRow(
@@ -162,11 +203,15 @@ fun MiniPlayer(
                     onToggleQueue = onToggleQueue,
                     ratio = ratio,
                     sharedTransitionScope = sharedTransitionScope,
+                    sharedVisibilityScope = sharedVisibilityScope,
                     playerViewModel = playerViewModel,
                     colorScheme = colorScheme,
+                    liquidGlass = liquidGlass,
+                    hazeState = hazeState,
                 )
             }
         }
+    }
     }
 
     if (floating) {
@@ -178,6 +223,9 @@ fun MiniPlayer(
                 .padding(horizontal = 16.dp)
                 .padding(bottom = dimens.miniPlayerFloatingMargin)
                 .height(dimens.miniPlayerHeight)
+                // Los huecos entre controles no deben dejar pasar clics ni
+                // scroll a la lista de detrás.
+                .blockPointerEventsBehind()
                 .clip(floatingShape)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -185,8 +233,25 @@ fun MiniPlayer(
                     onClick = {},
                 )
                 .then(
-                    when (backgroundStyle) {
-                        MiniPlayerBackgroundStyle.TRANSLUCENT -> if (hazeState != null) {
+                    when {
+                        liquidGlass -> {
+                            // Cristal Regular sobre el contenido real (Sources del
+                            // miniPlayerHazeState): la refracción/blur los aporta
+                            // el estilo, sin fondo extra que lo aplane.
+                            if (hazeState != null) {
+                                val style = rememberMiniPlayerGlassStyle(
+                                    containerColor = colorScheme.surfaceContainer,
+                                    cornerShape = floatingShape,
+                                )
+                                Modifier.hazeGlass(
+                                    input = HazeInput.Sources(hazeState),
+                                    style = style,
+                                )
+                            } else {
+                                Modifier
+                            }
+                        }
+                        backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null -> {
                             val style = HazeMaterials.ultraThin(
                                 containerColor = colorScheme.surfaceContainer,
                             )
@@ -194,7 +259,8 @@ fun MiniPlayer(
                                 input = HazeInput.Sources(hazeState),
                                 style = style,
                             )
-                        } else {
+                        }
+                        backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT -> {
                             Modifier.background(
                                 Brush.verticalGradient(
                                     colors = listOf(
@@ -207,24 +273,43 @@ fun MiniPlayer(
                         else -> Modifier.background(colorScheme.surfaceContainer)
                     },
                 )
-                .border(
-                    width = 1.dp,
-                    color = colorScheme.outlineVariant.copy(alpha = 0.55f),
-                    shape = floatingShape,
+                .then(
+                    if (liquidGlass) {
+                        // El borde lo dibuja el propio cristal (specular + edge);
+                        // este filete claro solo asegura el recorte sobre fondos
+                        // planos donde la refracción no da contraste.
+                        Modifier.border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.25f),
+                            shape = floatingShape,
+                        )
+                    } else {
+                        Modifier.border(
+                            width = 1.dp,
+                            color = colorScheme.outlineVariant.copy(alpha = 0.55f),
+                            shape = floatingShape,
+                        )
+                    },
                 ),
         ) {
-            if (backgroundStyle == MiniPlayerBackgroundStyle.COVER) {
-                MusicPlayerImage(
-                    url = song.thumbnailUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .blur(42.dp),
-                    shape = RectangleShape,
-                    contentScale = ContentScale.Crop,
-                    placeholderType = PlaceholderType.SONG,
-                    iconSize = 24.dp,
-                )
+            if (backgroundStyle == MiniPlayerBackgroundStyle.COVER && !liquidGlass) {
+                // Cacheado por canción + radio 42.dp -> 20.dp (~4x menos costo)
+                // y decode a 96px: el blur lo tapa todo.
+                key(song.thumbnailUrl) {
+                    MusicPlayerImage(
+                        url = song.thumbnailUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer(clip = true)
+                            .blur(20.dp),
+                        shape = RectangleShape,
+                        contentScale = ContentScale.Crop,
+                        placeholderType = PlaceholderType.SONG,
+                        iconSize = 24.dp,
+                        coilSizeOverride = 96,
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -246,12 +331,28 @@ fun MiniPlayer(
             modifier = modifier
                 .fillMaxWidth()
                 .height(dimens.miniPlayerHeight)
+                .blockPointerEventsBehind()
                 .then(
                     if (isOnNowPlaying || bgTransparent) {
                         Modifier.background(Color.Transparent)
                     } else {
-                        when (backgroundStyle) {
-                            MiniPlayerBackgroundStyle.TRANSLUCENT -> if (hazeState != null) {
+                        when {
+                            liquidGlass -> {
+                                // Igual que la flotante: Sources + estilo, sin fondo extra.
+                                if (hazeState != null) {
+                                    val style = rememberMiniPlayerGlassStyle(
+                                        containerColor = colorScheme.surfaceContainer,
+                                        cornerShape = dockedGlassShape,
+                                    )
+                                    Modifier.hazeGlass(
+                                        input = HazeInput.Sources(hazeState),
+                                        style = style,
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            }
+                            backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null -> {
                                 val style = HazeMaterials.ultraThin(
                                     containerColor = colorScheme.surfaceContainer,
                                 )
@@ -259,7 +360,8 @@ fun MiniPlayer(
                                     input = HazeInput.Sources(hazeState),
                                     style = style,
                                 )
-                            } else {
+                            }
+                            backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT -> {
                                 Modifier.background(
                                     Brush.verticalGradient(
                                         colors = listOf(
@@ -269,24 +371,28 @@ fun MiniPlayer(
                                     ),
                                 )
                             }
-                            MiniPlayerBackgroundStyle.SOLID -> Modifier.background(colorScheme.surfaceContainer)
-                            MiniPlayerBackgroundStyle.COVER -> Modifier.background(colorScheme.surfaceContainer)
+                            else -> Modifier.background(colorScheme.surfaceContainer)
                         }
                     }
                 ),
         ) {
-            if (backgroundStyle == MiniPlayerBackgroundStyle.COVER && !isOnNowPlaying && !bgTransparent) {
-                MusicPlayerImage(
-                    url = song.thumbnailUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .blur(32.dp),
-                    shape = RectangleShape,
-                    contentScale = ContentScale.Crop,
-                    placeholderType = PlaceholderType.SONG,
-                    iconSize = 24.dp,
-                )
+            if (backgroundStyle == MiniPlayerBackgroundStyle.COVER && !isOnNowPlaying && !bgTransparent && !liquidGlass) {
+                // Cacheado por canción + radio 32.dp -> 18.dp (~3x menos costo).
+                key(song.thumbnailUrl) {
+                    MusicPlayerImage(
+                        url = song.thumbnailUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer(clip = true)
+                            .blur(18.dp),
+                        shape = RectangleShape,
+                        contentScale = ContentScale.Crop,
+                        placeholderType = PlaceholderType.SONG,
+                        iconSize = 24.dp,
+                        coilSizeOverride = 96,
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -320,21 +426,37 @@ fun MiniPlayer(
             }
         }
     } else {
-        val useHazeDocked = isDocked && backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null && !isOnNowPlaying && !bgTransparent
+        val useHazeBar = backgroundStyle == MiniPlayerBackgroundStyle.TRANSLUCENT && hazeState != null && !liquidGlass && !isOnNowPlaying && !bgTransparent
+        val useGlassBar = liquidGlass && !isOnNowPlaying && !bgTransparent
         Surface(
             modifier = modifier
                 .fillMaxWidth()
                 .then(
-                    if (useHazeDocked) {
+                    if (useGlassBar) {
+                        // Sources del miniPlayerHazeState: en overlay refracta
+                        // las rutas; en barra, base esmerilada visible.
+                        if (hazeState != null) {
+                            val style = rememberMiniPlayerGlassStyle(
+                                containerColor = colorScheme.surfaceContainer,
+                                cornerShape = dockedGlassShape,
+                            )
+                            Modifier.hazeGlass(
+                                input = HazeInput.Sources(hazeState),
+                                style = style,
+                            )
+                        } else {
+                            Modifier
+                        }
+                    } else if (useHazeBar) {
                         val style = HazeMaterials.ultraThin(containerColor = colorScheme.surfaceContainer)
                         Modifier.hazeBlur(
-                            input = HazeInput.Sources(hazeState!!),
+                            input = HazeInput.Sources(hazeState),
                             style = style,
                         )
                     } else Modifier
                 )
                 .then(
-                    if (islands) {
+                    if (islands && !useGlassBar) {
                         Modifier
                             .padding(horizontal = dimens.surfaceGap, vertical = dimens.surfaceGap)
                             .border(
@@ -342,12 +464,15 @@ fun MiniPlayer(
                                 colorScheme.outlineVariant.copy(alpha = 0.7f),
                                 surfaceShape,
                             )
+                    } else if (islands) {
+                        Modifier
+                            .padding(horizontal = dimens.surfaceGap, vertical = dimens.surfaceGap)
                     } else {
                         Modifier
                     },
                 )
                 .height(dimens.miniPlayerHeight),
-            color = if (useHazeDocked) Color.Transparent else chromeSurface,
+            color = if (useHazeBar || useGlassBar) Color.Transparent else chromeSurface,
             shape = surfaceShape,
             tonalElevation = 2.dp,
             shadowElevation = if (islands) 2.dp else 0.dp,
@@ -356,6 +481,23 @@ fun MiniPlayer(
         }
     }
 }
+
+/**
+ * Estilo Glass compartido por las variantes del mini player (BETA).
+ *
+ * Se recuerda porque `GlassStyle` compara por identidad: reconstruirlo en cada
+ * composición reemplazaría el estilo de todos los nodos Glass. El tinte mantiene
+ * el color del contenedor del tema con la transparencia justa para que el texto
+ * siga siendo legible, y la forma adapta el rim/refracción al borde real.
+ */
+@Composable
+private fun rememberMiniPlayerGlassStyle(
+    containerColor: Color,
+    cornerShape: RoundedCornerShape,
+): GlassStyle = rememberLiquidGlassStyle(
+    shape = cornerShape,
+    containerColor = containerColor,
+)
 
 /**
  * Ancho mínimo para el layout de tres zonas (portada · transporte · volumen/cola/expand).
@@ -373,9 +515,8 @@ private val MiniPlayerWideMinWidth = 800.dp
  * pasa al anillo de la portada y desaparecen la barra de búsqueda, el volumen y los
  * controles de transporte, que es donde estaba el problema.
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun MiniPlayerCompactRow(
+internal fun MiniPlayerCompactRow(
     song: MediaMetadata,
     state: PlayerUiState,
     isError: Boolean,
@@ -387,6 +528,8 @@ private fun MiniPlayerCompactRow(
     sharedTransitionScope: SharedTransitionScope?,
     playerViewModel: PlayerViewModel,
     colorScheme: ColorScheme,
+    liquidGlass: Boolean,
+    hazeState: HazeState?,
 ) {
     val progress by playerViewModel.progressState.collectAsState()
     val isPlaying = state.playbackState == PlaybackState.PLAYING
@@ -498,46 +641,87 @@ private fun MiniPlayerCompactRow(
             )
         }
 
-        LikeToggle(
-            liked = song.liked,
-            onToggle = { playerViewModel.toggleLike() },
-        )
-
-        PlayerIconToggle(
-            selected = isQueueVisible,
-            onClick = onToggleQueue,
-            imageVector = Icons.AutoMirrored.Filled.QueueMusic,
-            contentDescription = stringResource(Res.string.mp_queue),
-            size = 36.dp,
-            iconSize = 20.dp,
-        )
-
-        FilledTonalIconButton(
-            onClick = onNowPlaying,
-            modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
-            shape = CircleShape,
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = if (isOnNowPlaying) {
-                    colorScheme.primaryContainer
-                } else {
-                    colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
-                },
-                contentColor = if (isOnNowPlaying) {
-                    colorScheme.onPrimaryContainer
-                } else {
-                    colorScheme.onSurfaceVariant
-                },
+        // Cluster de acciones: contenedor Glass para que las lentes vecinas
+        // fusionen en una sola forma (mergeDistance) en vez de recortes sueltos.
+        val actionsGlass = liquidGlass && hazeState != null
+        Row(
+            modifier = Modifier.then(
+                if (actionsGlass) Modifier.hazeGlassContainer(mergeDistance = 12.dp) else Modifier,
             ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Icon(
-                imageVector = if (isOnNowPlaying) {
-                    Icons.Rounded.ExpandMore
-                } else {
-                    Icons.Rounded.ExpandLess
-                },
-                contentDescription = stringResource(Res.string.mp_expand),
-                modifier = Modifier.size(24.dp),
+            LikeToggle(
+                liked = song.liked,
+                onToggle = { playerViewModel.toggleLike() },
+                liquidGlass = liquidGlass,
+                hazeState = hazeState,
             )
+
+            if (actionsGlass) {
+                GlassIconButton(
+                    onClick = onToggleQueue,
+                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = stringResource(Res.string.mp_queue),
+                    hazeState = hazeState,
+                    selected = isQueueVisible,
+                    size = 36.dp,
+                    iconSize = 20.dp,
+                )
+            } else {
+                PlayerIconToggle(
+                    selected = isQueueVisible,
+                    onClick = onToggleQueue,
+                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = stringResource(Res.string.mp_queue),
+                    size = 36.dp,
+                    iconSize = 20.dp,
+                )
+            }
+
+            if (actionsGlass) {
+                GlassIconButton(
+                    onClick = onNowPlaying,
+                    imageVector = if (isOnNowPlaying) {
+                        Icons.Rounded.ExpandMore
+                    } else {
+                        Icons.Rounded.ExpandLess
+                    },
+                    contentDescription = stringResource(Res.string.mp_expand),
+                    hazeState = hazeState,
+                    selected = isOnNowPlaying,
+                    size = 40.dp,
+                    iconSize = 24.dp,
+                )
+            } else {
+                FilledTonalIconButton(
+                    onClick = onNowPlaying,
+                    modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (isOnNowPlaying) {
+                            colorScheme.primaryContainer
+                        } else {
+                            colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+                        },
+                        contentColor = if (isOnNowPlaying) {
+                            colorScheme.onPrimaryContainer
+                        } else {
+                            colorScheme.onSurfaceVariant
+                        },
+                    ),
+                ) {
+                    Icon(
+                        imageVector = if (isOnNowPlaying) {
+                            Icons.Rounded.ExpandMore
+                        } else {
+                            Icons.Rounded.ExpandLess
+                        },
+                        contentDescription = stringResource(Res.string.mp_expand),
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -545,7 +729,7 @@ private fun MiniPlayerCompactRow(
 /** Layout de escritorio del mini reproductor: portada · transporte + seek · volumen/cola. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun MiniPlayerWideRow(
+internal fun MiniPlayerWideRow(
     song: MediaMetadata,
     state: PlayerUiState,
     isError: Boolean,
@@ -555,8 +739,11 @@ private fun MiniPlayerWideRow(
     onToggleQueue: () -> Unit,
     ratio: Float,
     sharedTransitionScope: SharedTransitionScope?,
+    sharedVisibilityScope: AnimatedVisibilityScope?,
     playerViewModel: PlayerViewModel,
     colorScheme: ColorScheme,
+    liquidGlass: Boolean,
+    hazeState: HazeState?,
 ) {
     Row(
         modifier = Modifier
@@ -577,34 +764,28 @@ private fun MiniPlayerWideRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                val animationsEnabled = LocalAnimationsEnabled.current
-                AnimatedVisibility(
-                    visible = !isOnNowPlaying,
-                    enter = if (animationsEnabled) {
-                        fadeIn(expressiveFadeTween()) +
-                            expandHorizontally(animationSpec = expressiveLayoutTween())
-                    } else {
-                        EnterTransition.None
-                    },
-                    exit = if (animationsEnabled) {
-                        fadeOut(expressiveTween(180)) +
-                            shrinkHorizontally(animationSpec = expressiveLayoutTween())
-                    } else {
-                        ExitTransition.None
-                    },
-                ) {
-                    var isHovered by remember { mutableStateOf(false) }
-                    val overlayAlpha by animateFloatAsState(
-                        targetValue = if (isHovered) 0.42f else 0f,
-                        animationSpec = rememberUiTween(durationMillis = 160),
-                        label = "coverHover",
-                    )
+                var isHovered by remember { mutableStateOf(false) }
+                val overlayAlpha by animateFloatAsState(
+                    targetValue = if (isHovered) 0.42f else 0f,
+                    animationSpec = rememberUiTween(durationMillis = 160),
+                    label = "coverHover",
+                )
 
-                    Box(
-                        modifier = Modifier
+                Box(
+                    modifier = Modifier
+                            // El shared modifier va ANTES de los modificadores de tamaño
+                            // (guía oficial: "place size modifiers after the shared
+                            // element modifiers"). Con el orden inverso, los bounds se
+                            // derivaban de las constraints del padre y la portada
+                            // "aparecía de cualquier lado" al viajar.
+                            .heroCoverElement(
+                                songId = song.id,
+                                sharedTransitionScope = sharedTransitionScope,
+                                animatedVisibilityScope = sharedVisibilityScope,
+                                debugTag = "mini",
+                            )
                             .sizeIn(maxWidth = thumbSize * ratio, maxHeight = thumbSize)
                             .aspectRatio(ratio)
-                            .heroCoverElement(song.id, sharedTransitionScope, this)
                             .clip(coverShape)
                             .onHover { isHovered = it }
                             .clickable(onClick = onNowPlaying, role = Role.Button)
@@ -647,7 +828,6 @@ private fun MiniPlayerWideRow(
                             )
                         }
                     }
-                }
 
                 Column(
                     modifier = Modifier
@@ -684,6 +864,8 @@ private fun MiniPlayerWideRow(
                 LikeToggle(
                     liked = song.liked,
                     onToggle = { playerViewModel.toggleLike() },
+                    liquidGlass = liquidGlass,
+                    hazeState = hazeState,
                 )
             }
         }
@@ -694,53 +876,94 @@ private fun MiniPlayerWideRow(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
         ) {
-            PlayerTransportRow()
+            PlayerTransportRow(
+                liquidGlass = liquidGlass,
+                hazeState = hazeState,
+            )
             PlayerProgressRow()
         }
 
         // —— DERECHA: volumen + cola + expand ——
+        // Contenedor Glass: las tres lentes fusionan bordes al estar juntas.
+        val rightGlass = liquidGlass && hazeState != null
         Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.End,
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (rightGlass) Modifier.hazeGlassContainer(mergeDistance = 12.dp) else Modifier,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PlayerVolumeControl(modifier = Modifier.padding(end = 6.dp))
-
-            PlayerIconToggle(
-                selected = isQueueVisible,
-                onClick = onToggleQueue,
-                imageVector = Icons.AutoMirrored.Filled.QueueMusic,
-                contentDescription = stringResource(Res.string.mp_queue),
-                size = 40.dp,
-                iconSize = 22.dp,
+            PlayerVolumeControl(
+                modifier = Modifier.padding(end = 6.dp),
+                liquidGlass = liquidGlass,
+                hazeState = hazeState,
             )
 
-            FilledTonalIconButton(
-                onClick = onNowPlaying,
-                modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
-                shape = CircleShape,
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = if (isOnNowPlaying) {
-                        colorScheme.primaryContainer
-                    } else {
-                        colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
-                    },
-                    contentColor = if (isOnNowPlaying) {
-                        colorScheme.onPrimaryContainer
-                    } else {
-                        colorScheme.onSurfaceVariant
-                    },
-                ),
-            ) {
-                Icon(
+            if (liquidGlass && hazeState != null) {
+                GlassIconButton(
+                    onClick = onToggleQueue,
+                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = stringResource(Res.string.mp_queue),
+                    hazeState = hazeState,
+                    selected = isQueueVisible,
+                    size = 40.dp,
+                    iconSize = 22.dp,
+                )
+            } else {
+                PlayerIconToggle(
+                    selected = isQueueVisible,
+                    onClick = onToggleQueue,
+                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = stringResource(Res.string.mp_queue),
+                    size = 40.dp,
+                    iconSize = 22.dp,
+                )
+            }
+
+            if (liquidGlass && hazeState != null) {
+                GlassIconButton(
+                    onClick = onNowPlaying,
                     imageVector = if (isOnNowPlaying) {
                         Icons.Rounded.ExpandMore
                     } else {
                         Icons.Rounded.ExpandLess
                     },
                     contentDescription = stringResource(Res.string.play_item),
-                    modifier = Modifier.size(24.dp),
+                    hazeState = hazeState,
+                    selected = isOnNowPlaying,
+                    size = 40.dp,
+                    iconSize = 24.dp,
                 )
+            } else {
+                FilledTonalIconButton(
+                    onClick = onNowPlaying,
+                    modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand),
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (isOnNowPlaying) {
+                            colorScheme.primaryContainer
+                        } else {
+                            colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+                        },
+                        contentColor = if (isOnNowPlaying) {
+                            colorScheme.onPrimaryContainer
+                        } else {
+                            colorScheme.onSurfaceVariant
+                        },
+                    ),
+                ) {
+                    Icon(
+                        imageVector = if (isOnNowPlaying) {
+                            Icons.Rounded.ExpandMore
+                        } else {
+                            Icons.Rounded.ExpandLess
+                        },
+                        contentDescription = stringResource(Res.string.play_item),
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
     }
@@ -749,7 +972,7 @@ private fun MiniPlayerWideRow(
 @Composable
 fun TimeText(millis: Long, seekValue: Float? = null) {
     Text(
-        text = formatPlayerTimeValue(millis),
+        text = formatClock(millis),
         style = MaterialTheme.typography.labelSmall.copy(
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,

@@ -10,8 +10,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import example.nucleus.ui.components.layout.AppScreenContentHorizontal
 import example.nucleus.ui.components.layout.AppScrollbarGutter
@@ -35,13 +38,29 @@ import org.jetbrains.compose.resources.stringResource
 private enum class SettingsCategory(
     val icon: ImageVector,
     val titleRes: org.jetbrains.compose.resources.StringResource,
-    val subtitleRes: org.jetbrains.compose.resources.StringResource,
+    val descRes: org.jetbrains.compose.resources.StringResource,
 ) {
-    APPEARANCE(Icons.Rounded.Palette, Res.string.section_appearance, Res.string.section_appearance_subtitle),
-    ACCESSIBILITY(Icons.Rounded.Accessibility, Res.string.section_accessibility, Res.string.section_accessibility_subtitle),
+    APPEARANCE(
+        Icons.Rounded.Palette,
+        Res.string.section_appearance,
+        Res.string.section_appearance_subtitle
+    ),
+    ACCESSIBILITY(
+        Icons.Rounded.Accessibility,
+        Res.string.section_accessibility,
+        Res.string.section_accessibility_subtitle
+    ),
     AUDIO(Icons.Rounded.GraphicEq, Res.string.section_audio, Res.string.section_audio_subtitle),
-    PLAYBACK(Icons.Rounded.PlayCircle, Res.string.section_playback, Res.string.section_playback_subtitle),
-    LIBRARY(Icons.Rounded.LibraryMusic, Res.string.section_library, Res.string.section_library_subtitle),
+    PLAYBACK(
+        Icons.Rounded.PlayCircle,
+        Res.string.section_playback,
+        Res.string.section_playback_subtitle
+    ),
+    LIBRARY(
+        Icons.Rounded.LibraryMusic,
+        Res.string.section_library,
+        Res.string.section_library_subtitle
+    ),
     SYSTEM(Icons.Rounded.Settings, Res.string.section_system, Res.string.section_system_subtitle),
     ABOUT(Icons.Rounded.Info, Res.string.section_about, Res.string.section_about_subtitle),
 }
@@ -50,16 +69,16 @@ private enum class SettingsCategory(
 @Composable
 fun SettingsScreen() {
     var activeDialog by remember { mutableStateOf<SettingsDialog?>(null) }
-    var selected by remember { mutableStateOf(SettingsCategory.APPEARANCE) }
+    // Sin selección solo se ve la lista; al elegir aparece el detalle.
+    var selected by remember { mutableStateOf<SettingsCategory?>(SettingsCategory.APPEARANCE) }
 
     CompositionLocalProvider(LocalSettingsColors provides rememberSettingsListItemColors()) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val isNarrow = maxWidth < 900.dp
-
-            if (isNarrow) {
+            if (maxWidth < 900.dp) {
                 NarrowSettingsLayout(
                     selected = selected,
                     onSelect = { selected = it },
+                    onBack = { selected = null },
                     onDialog = { activeDialog = it },
                 )
             } else {
@@ -93,84 +112,38 @@ private fun settingsCategoryTransition(animationsEnabled: Boolean): ContentTrans
         EnterTransition.None togetherWith ExitTransition.None
     }
 
+/** Ancho de la columna de secciones en el layout ancho. */
+private val SettingsListPaneWidth = 320.dp
+
 @Composable
 private fun WideSettingsLayout(
-    selected: SettingsCategory,
-    onSelect: (SettingsCategory) -> Unit,
+    selected: SettingsCategory?,
+    onSelect: (SettingsCategory?) -> Unit,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    Column(modifier = Modifier.fillMaxSize()) {
+    Row(modifier = Modifier.fillMaxSize()) {
+        SettingsSectionList(
+            selected = selected,
+            onSelect = onSelect,
+            modifier = Modifier
+                .width(SettingsListPaneWidth)
+                .fillMaxHeight(),
+        )
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 4.dp),
-            contentAlignment = Alignment.Center,
+                .weight(1f)
+                .fillMaxHeight(),
         ) {
-            SettingsCategoryTabs(
-                selected = selected,
-                onSelect = onSelect,
-            )
-        }
-
-        // Detail — solo la categoría seleccionada, desacoplado
-        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             AnimatedContent(
                 targetState = selected,
                 transitionSpec = { settingsCategoryTransition(animationsEnabled) },
-                label = "settings_category",
+                label = "settings_detail",
             ) { cat ->
-                SettingsCategoryDetail(
-                    category = cat,
-                    onDialog = onDialog,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsCategoryTabs(
-    selected: SettingsCategory,
-    onSelect: (SettingsCategory) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SettingsCategory.entries.forEach { cat ->
-            val isSelected = cat == selected
-            val containerColor = if (isSelected) colorScheme.secondaryContainer.copy(alpha = 0.85f)
-            else androidx.compose.ui.graphics.Color.Transparent
-            val contentColor = if (isSelected) colorScheme.onSecondaryContainer
-            else colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
-
-            Surface(
-                onClick = { onSelect(cat) },
-                shape = AppShapes.xLarge,
-                color = containerColor,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                modifier = Modifier.height(38.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        cat.icon, null,
-                        tint = contentColor,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        stringResource(cat.titleRes),
-                        style = MaterialTheme.typography.labelLargeEmphasized,
-                        color = contentColor,
-                    )
+                if (cat != null) {
+                    SettingsCategoryDetail(category = cat, onDialog = onDialog)
+                } else {
+                    SettingsEmptyState()
                 }
             }
         }
@@ -179,65 +152,163 @@ private fun SettingsCategoryTabs(
 
 @Composable
 private fun NarrowSettingsLayout(
-    selected: SettingsCategory,
-    onSelect: (SettingsCategory) -> Unit,
+    selected: SettingsCategory?,
+    onSelect: (SettingsCategory?) -> Unit,
+    onBack: () -> Unit,
     onDialog: (SettingsDialog?) -> Unit,
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    Column(modifier = Modifier.fillMaxSize()) {
-        val selectedTabIndex = SettingsCategory.entries.indexOf(selected)
-        // Top tabs para narrow
-        SecondaryTabRow(
-            selectedTabIndex = selectedTabIndex,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            divider = {},
-            indicator = {
-                TabRowDefaults.SecondaryIndicator(
-                    Modifier.tabIndicatorOffset(selectedTabIndex, matchContentSize = false),
-                )
-            },
-        ) {
-            SettingsCategory.entries.forEach { cat ->
-                Tab(
-                    selected = cat == selected,
-                    onClick = { onSelect(cat) },
-                    text = {
-                        Text(
-                            stringResource(cat.titleRes),
-                            style = MaterialTheme.typography.labelLargeEmphasized,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+    AnimatedContent(
+        targetState = selected,
+        transitionSpec = { settingsCategoryTransition(animationsEnabled) },
+        label = "settings_narrow",
+        modifier = Modifier.fillMaxSize(),
+    ) { cat ->
+        if (cat == null) {
+            SettingsSectionList(
+                selected = null,
+                onSelect = onSelect,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(Res.string.back),
                         )
-                    },
-                    icon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp)) },
+                    }
+                    Text(
+                        text = stringResource(cat.titleRes),
+                        style = MaterialTheme.typography.titleLargeEmphasized,
+                    )
+                }
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    SettingsCategoryDetail(category = cat, onDialog = onDialog)
+                }
+            }
+        }
+    }
+}
+
+/** Lista de secciones con su descripción: primera columna / pantalla inicial. */
+@Composable
+private fun SettingsSectionList(
+    selected: SettingsCategory?,
+    onSelect: (SettingsCategory?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = appScrollContentPadding(
+                start = AppScreenContentHorizontal,
+                end = AppScreenContentHorizontal,
+                top = 20.dp,
+                bottom = 24.dp + LocalMiniPlayerInset.current,
+            ),
+            verticalArrangement = Arrangement.spacedBy(
+                space = 8.dp,
+                alignment = Alignment.CenterVertically
+            ),
+        ) {
+            items(
+                count = SettingsCategory.entries.size,
+                key = { SettingsCategory.entries[it] },
+            ) { index ->
+                val cat = SettingsCategory.entries[index]
+                SettingsSectionRow(
+                    cat = cat,
+                    isSelected = cat == selected,
+                    onClick = { onSelect(cat) },
                 )
             }
         }
-//        ScrollableTabRow(
-//            selectedTabIndex = SettingsCategory.entries.indexOf(selected),
-//            contentColor = MaterialTheme.colorScheme.onSurface,
-//            divider = {},
-//            edgePadding = 8.dp,
-//        ) {
-//            SettingsCategory.entries.forEach { cat ->
-//                Tab(
-//                    selected = cat == selected,
-//                    onClick = { onSelect(cat) },
-//                    text = { Text(stringResource(cat.titleRes), style = MaterialTheme.typography.labelLargeEmphasized) },
-//                    icon = { Icon(cat.icon, null, modifier = Modifier.size(18.dp)) },
-//                )
-//            }
-//        }
+        AppVerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+        )
+    }
+}
 
-        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-            AnimatedContent(
-                targetState = selected,
-                transitionSpec = { settingsCategoryTransition(animationsEnabled) },
-                label = "settings_category_narrow",
-            ) { cat ->
-                SettingsCategoryDetail(category = cat, onDialog = onDialog)
+@Composable
+private fun SettingsSectionRow(
+    cat: SettingsCategory,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick,
+        shape = AppShapes.large,
+        color = if (isSelected) colorScheme.secondaryContainer else colorScheme.surfaceContainerHigh,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        modifier = Modifier.fillMaxWidth().padding(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                cat.icon, null,
+                tint = if (isSelected) colorScheme.onSecondaryContainer
+                else colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(cat.titleRes),
+                    style = MaterialTheme.typography.labelLargeEmphasized,
+                    color = if (isSelected) colorScheme.onSecondaryContainer
+                    else colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    stringResource(cat.descRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    else colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsEmptyState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(32.dp),
+        ) {
+            Icon(
+                Icons.Rounded.Settings, null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(48.dp),
+            )
+            Text(
+                stringResource(Res.string.settings_select_section),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -246,53 +317,82 @@ private fun NarrowSettingsLayout(
 private fun SettingsCategoryDetail(
     category: SettingsCategory,
     onDialog: (SettingsDialog?) -> Unit,
+    contentTopPadding: Dp = 20.dp,
 ) {
     val listState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = appScrollContentPadding(
-                start = AppScreenContentHorizontal + 4.dp,
-                end = AppScrollbarGutter + AppScreenContentHorizontal,
-                top = 20.dp,
-                bottom = 24.dp + LocalMiniPlayerInset.current,
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        // Panel del contenido de la sección (surfaceContainerLow): las filas
+        // van en High y la seleccionada en secondaryContainer, como en la
+        // referencia. La guía pide no estirar los ajustes a todo el ancho:
+        // columna centrada de 760dp como máximo (el scrollbar queda al borde).
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxHeight()
+                .fillMaxWidth()
+                .padding(top = 14.dp, bottom = 14.dp)
+                .widthIn(max = 760.dp),
+            shape = AppShapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            tonalElevation = 0.dp,
         ) {
-            // Contenido desacoplado por categoría — solo se compone la activa
-            when (category) {
-                SettingsCategory.APPEARANCE -> item {
-                    AppearanceSettingsGroup()
-                }
-                SettingsCategory.ACCESSIBILITY -> item {
-                    AccessibilitySettingsGroup()
-                }
-                SettingsCategory.AUDIO -> item {
-                    AudioSettingsGroup(onOpenEqualizer = { onDialog(SettingsDialog.EQUALIZER) })
-                }
-                SettingsCategory.PLAYBACK -> {
-                    item { MiniPlayerSettingsGroup(onOpenSeekBarStyleDialog = { onDialog(SettingsDialog.SEEK_BAR_STYLE) }) }
-                    item { NowPlayingSettingsGroup() }
-                }
-                SettingsCategory.LIBRARY -> item {
-                    SyncSettingsGroup(onShowYtmSyncWarning = { onDialog(SettingsDialog.YTM_SYNC_WARNING) })
-                }
-                SettingsCategory.SYSTEM -> {
-                    item { ApplicationSettingsGroup() }
-                    item {
-                        AdvancedSettingsGroup(
-                            onShowClearDownloadsDialog = { onDialog(SettingsDialog.CLEAR_DOWNLOADS) },
-                            onOpenJvmSettings = { onDialog(SettingsDialog.JVM_SETTINGS) },
-                        )
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = appScrollContentPadding(
+                    start = AppScreenContentHorizontal + 4.dp,
+                    end = AppScrollbarGutter + AppScreenContentHorizontal,
+                    top = contentTopPadding,
+                    bottom = 24.dp + LocalMiniPlayerInset.current,
+                ),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                // Contenido desacoplado por categoría — solo se compone la activa
+                when (category) {
+                    SettingsCategory.APPEARANCE -> item {
+                        AppearanceSettingsGroup()
                     }
-                }
-                SettingsCategory.ABOUT -> {
-                    item { SupportSettingsGroup() }
-                    item {
-                        AboutCard()
-                        Spacer(Modifier.height(16.dp))
+
+                    SettingsCategory.ACCESSIBILITY -> item {
+                        AccessibilitySettingsGroup()
+                    }
+
+                    SettingsCategory.AUDIO -> item {
+                        AudioSettingsGroup(onOpenEqualizer = { onDialog(SettingsDialog.EQUALIZER) })
+                    }
+
+                    SettingsCategory.PLAYBACK -> {
+                        item {
+                            MiniPlayerSettingsGroup(onOpenSeekBarStyleDialog = {
+                                onDialog(
+                                    SettingsDialog.SEEK_BAR_STYLE
+                                )
+                            })
+                        }
+                        item { NowPlayingSettingsGroup() }
+                    }
+
+                    SettingsCategory.LIBRARY -> item {
+                        SyncSettingsGroup(onShowYtmSyncWarning = { onDialog(SettingsDialog.YTM_SYNC_WARNING) })
+                    }
+
+                    SettingsCategory.SYSTEM -> {
+                        item { ApplicationSettingsGroup() }
+                        item {
+                            AdvancedSettingsGroup(
+                                onShowClearDownloadsDialog = { onDialog(SettingsDialog.CLEAR_DOWNLOADS) },
+                                onOpenJvmSettings = { onDialog(SettingsDialog.JVM_SETTINGS) },
+                            )
+                        }
+                    }
+
+                    SettingsCategory.ABOUT -> {
+                        item { SupportSettingsGroup() }
+                        item {
+                            AboutCard()
+                            Spacer(Modifier.height(16.dp))
+                        }
                     }
                 }
             }

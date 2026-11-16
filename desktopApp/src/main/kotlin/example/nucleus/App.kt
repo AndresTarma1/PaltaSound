@@ -14,6 +14,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.AlertDialog
+import example.nucleus.ui.components.glass.GlassAlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
@@ -41,6 +43,8 @@ import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AccountInfo
 import com.metrolist.innertube.models.YouTubeLocale
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import dev.nucleusframework.application.DecoratedWindow
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.application.NucleusDecoratedWindowScope
@@ -59,6 +63,7 @@ import dev.nucleusframework.window.styling.TitleBarStyle
 import example.nucleus.bootstrap.CrashReportDialog
 import example.nucleus.data.account.AccountManager
 import example.nucleus.data.repository.AppLocale
+import example.nucleus.data.repository.AppMode
 import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.CrashReport
 import example.nucleus.data.repository.CrashReportRepository
@@ -72,6 +77,8 @@ import example.nucleus.navigation.ScreenConfig
 import example.nucleus.overlay.GlobalHotkeyManager
 import example.nucleus.overlay.HotkeyCombo
 import example.nucleus.player.PlaybackState
+import example.nucleus.player.YouTubePlayerService
+import example.nucleus.platform.Platform
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import example.nucleus.ui.components.CoilSetup
@@ -79,6 +86,7 @@ import example.nucleus.ui.components.artwork.ArtworkColors
 import example.nucleus.ui.components.artwork.LocalArtworkColors
 import example.nucleus.ui.components.artwork.rememberArtworkColors
 import example.nucleus.ui.components.background.BackgroundStyle
+import example.nucleus.ui.youtube.YouTubeFullscreenWindow
 import example.nucleus.ui.themes.AppTheme
 import example.nucleus.utils.LocalDownloadViewModel
 import example.nucleus.utils.LocalPlayerViewModel
@@ -91,6 +99,7 @@ import example.nucleus.viewmodels.AppViewModel
 import example.nucleus.viewmodels.DownloadViewModel
 import example.nucleus.viewmodels.LibraryPlaylistsViewModel
 import example.nucleus.viewmodels.PlayerViewModel
+import example.nucleus.viewmodels.YouTubeWatchViewModel
 import example.nucleus.viewmodels.UpdateStatus
 import example.nucleus.windows.TaskBarMediaWidget
 import example.nucleus.windows.WindowsThumbBar
@@ -139,6 +148,7 @@ private object NoIndication : IndicationNodeFactory {
     override fun equals(other: Any?): Boolean = this === other
 }
 
+@OptIn(androidx.compose.ui.InternalComposeUiApi::class)
 @Composable
 fun NucleusApplicationScope.App(
     rootComponent: RootComponent,
@@ -146,11 +156,14 @@ fun NucleusApplicationScope.App(
     playerViewModel: PlayerViewModel,
     downloadViewModel: DownloadViewModel,
     userPreferences: UserPreferencesRepository,
+    /** El proceso arrancó con cristal ya activo: sus shaders están compilados. */
+    startedWithLiquidGlass: Boolean,
     onExit: () -> Unit,
     windowState: WindowState,
     /** Arrancar con la ventana oculta (lanzamiento al iniciar sesión → directo a la bandeja). */
     startHidden: Boolean = false,
 ) {
+    val appScope = this
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
@@ -183,7 +196,6 @@ fun NucleusApplicationScope.App(
         }
     }
 
-    // Estado del overlay
     val hotkeyManager: GlobalHotkeyManager = koinInject()
     val overlayEnabled by remember(userPreferences) { userPreferences.overlayHotkeyEnabled }.collectAsState(true)
     val overlayCode by remember(userPreferences) { userPreferences.overlayHotkeyCode }.collectAsState(0)
@@ -199,7 +211,6 @@ fun NucleusApplicationScope.App(
         hotkeyManager.updateCombo(HotkeyCombo.fromPrefs(overlayCode, overlayMods))
     }
 
-    // Estado de sincronización YTM
     val syncUtils: example.nucleus.utils.SyncUtils = koinInject()
     val ytmSyncEnabled by remember(userPreferences) { userPreferences.ytmSyncEnabled }.collectAsState(false)
     val offlineMode by remember(userPreferences) { userPreferences.offlineModeEnabled }.collectAsState(false)
@@ -248,8 +259,12 @@ fun NucleusApplicationScope.App(
         ArtworkColors.Default
     }
     val themeMode by remember(userPreferences) { userPreferences.themeMode }.collectAsState(ThemeMode.SYSTEM)
+    val appMode by remember(userPreferences) { userPreferences.appMode }.collectAsState(AppMode.MUSIC)
     val youtubeRegion by remember(userPreferences) { userPreferences.youtubeRegion }.collectAsState(YouTubeRegion.SYSTEM)
     val animationsEnabled by remember(userPreferences) { userPreferences.animationsEnabled }.collectAsState(true)
+    val youtubePlayerService: YouTubePlayerService = koinInject()
+    val youtubeWatchViewModel: YouTubeWatchViewModel = koinInject()
+    val youtubeFullscreen by youtubePlayerService.fullscreen.collectAsState()
 
     if (!isVisible || minimizeToTray) {
         TrayCustom(
@@ -281,6 +296,45 @@ fun NucleusApplicationScope.App(
 
     val uiScaleFactor by userPreferences.uiScale.collectAsState(1f)
     val backgroundAppStyle by userPreferences.appBackgroundStyle.collectAsState(BackgroundStyle.SOLID_COLOR)
+    // Si el proceso arrancó en cristal, el primer frame ya debe ser cristal: de
+    // lo contrario se compondría material y el cristal entraría en caliente,
+    // pagando igualmente la compilación de shaders pero con la ventana visible.
+    val liquidGlassEnabled by userPreferences.liquidGlassEnabled.collectAsState(
+        initial = startedWithLiquidGlass
+    )
+    // El cristal solo rinde sobre fondo SÓLIDO: con superficies transparentes
+    // (degradado/desenfocado) la fuente queda con huecos y el blur no cubre.
+    // Se fija al activar el interruptor y el selector de fondo se bloquea.
+    //
+    // Haze Glass compila su shader en el primer frame que dibuja cristal; en
+    // algunos equipos eso bloquea la UI 7-11 s. Por eso el modo efectivo NO
+    // sigue al interruptor si el proceso arrancó en material: se aplica al
+    // reiniciar. Si arrancó en cristal, los shaders ya están compilados y el
+    // interruptor puede alternar en caliente sin coste.
+    val glassCanToggleLive = startedWithLiquidGlass
+    val effectiveLiquidGlass = startedWithLiquidGlass &&
+        liquidGlassEnabled && backgroundAppStyle == BackgroundStyle.SOLID_COLOR
+    // Ajustes del material (sliders de Ajustes → preview en vivo).
+    val glassBlur by userPreferences.liquidGlassBlur.collectAsState(16f)
+    val glassBaseAlpha by userPreferences.liquidGlassBaseAlpha.collectAsState(0.9f)
+    val glassSpecular by userPreferences.liquidGlassSpecular.collectAsState(0.55f)
+    val glassRefraction by userPreferences.liquidGlassRefraction.collectAsState(0.8f)
+    val glassTuning = remember(glassBlur, glassBaseAlpha, glassSpecular, glassRefraction) {
+        example.nucleus.ui.components.glass.LiquidGlassTuning(
+            blurDp = glassBlur,
+            baseAlpha = glassBaseAlpha,
+            specular = glassSpecular,
+            refraction = glassRefraction,
+        )
+    }
+    // Fuente propia para el Glass de la navegación (BETA): muestrea solo el fondo
+    // de la ventana (cover desenfocado / degradado / color), no el contenido.
+    val railHazeState = rememberHazeState()
+    val appContentHazeState = rememberHazeState()
+    // Fuente del MiniPlayer y menús sobre el contenido: Navigation le ata la
+    // fuente a la caja del contenido (patrón sibling). Estado aparte porque
+    // appContentHazeState vive en un ancestro y Behind ahí selecciona vacío.
+    val contentHazeState = rememberHazeState()
 
     AppTheme(artworkColors = artworkColors, userPreferences = userPreferences) {
 
@@ -295,6 +349,19 @@ fun NucleusApplicationScope.App(
                 LocalPlaylistsViewModel provides playlistsViewModel,
                 LocalUserPreferences provides userPreferences,
                 LocalAnimationsEnabled provides animationsEnabled,
+                example.nucleus.ui.components.glass.LocalLiquidGlass provides effectiveLiquidGlass,
+                example.nucleus.ui.components.glass.LocalLiquidGlassCanToggleLive provides glassCanToggleLive,
+                example.nucleus.ui.components.glass.LocalLiquidGlassTuning provides glassTuning,
+                example.nucleus.ui.components.glass.LocalGlassHaze provides appContentHazeState,
+                example.nucleus.ui.components.glass.LocalContentHaze provides contentHazeState,
+                example.nucleus.ui.components.glass.LocalRailHaze provides railHazeState,
+                // Haze elige su respuesta claro/oscuro del host (en desktop,
+                // LocalSystemTheme = SO), no del tema de la app: con app clara
+                // en SO oscuro pintaba cristal oscuro. Se le entrega el tema
+                // real de la app para que el cristal la acompañe.
+                androidx.compose.ui.LocalSystemTheme provides
+                    if (isDark) androidx.compose.ui.SystemTheme.Dark
+                    else androidx.compose.ui.SystemTheme.Light,
             ) {
                 // Widget de medios dentro de la barra de tareas de Windows (antes de la bandeja).
                 // Se compone en su propia ventana, pero hereda estos CompositionLocals y el tema.
@@ -316,7 +383,12 @@ fun NucleusApplicationScope.App(
                 val isSquareLayout = LocalLayoutMode.current == LayoutMode.SQUARE
                 val navStack by rootComponent.childStack.subscribeAsState()
                 val canGoBack = navStack.items.size > 1
-                val isOnNowPlaying = navStack.active.configuration is ScreenConfig.NowPlaying
+                // Overlay de Now Playing: la pantalla vive sobre el contenido sin
+                // reemplazar la pila (el fondo queda compuesto, solo viaja la
+                // portada). El flag efectivo cubre la ruta legacy en la pila.
+                var nowPlayingOverlay by remember { mutableStateOf(false) }
+                val isOnNowPlaying =
+                    navStack.active.configuration is ScreenConfig.NowPlaying || nowPlayingOverlay
 
                 val titleBarHeight = 36.dp
 
@@ -358,8 +430,6 @@ fun NucleusApplicationScope.App(
                         // arranca en blanco/black antes de que el arbol de Compose dibuje.
                         WindowBackground(MaterialTheme.colorScheme.background)
 
-                        // Estado de actualizaciones. En training no se comprueba: es red (no determinista
-                        // para la cache) y el resultado no se usa para nada en un training.
                         val updateStatus by appViewModel.updateStatus.collectAsState()
                         val showInstallPrompt by appViewModel.showInstallPrompt.collectAsState()
                         LaunchedEffect(Unit) {
@@ -395,7 +465,7 @@ fun NucleusApplicationScope.App(
                         val mpvError by playerViewModel.mpvError.collectAsState()
                         if (mpvError != null) {
                             val scheme = MaterialTheme.colorScheme
-                            AlertDialog(
+                            GlassAlertDialog(
                                 onDismissRequest = { playerViewModel.clearMpvError() },
                                 containerColor = scheme.surfaceContainerHigh,
                                 titleContentColor = scheme.onSurface,
@@ -412,7 +482,16 @@ fun NucleusApplicationScope.App(
 
                         BackgroundStyle(
                             imageUrl = playerUiState.currentSong?.thumbnailUrl,
-                            backgroundStyle = backgroundAppStyle
+                            backgroundStyle = backgroundAppStyle,
+                            modifier = Modifier.hazeSource(appContentHazeState),
+                            // El fondo ambiental es SEGUNDA fuente del cristal del
+                            // player/menús: con fondo desenfocado/degradado el Surface
+                            // del contenido es transparente y la fuente del contenido
+                            // queda con huecos (el blur "no rinde"); el fondo cubre
+                            // ventana completa y siempre aporta datos.
+                            backgroundModifier = Modifier
+                                .hazeSource(railHazeState)
+                                .hazeSource(contentHazeState),
                         ) {
 
                             // Definida UNA vez y reutilizada por las dos ramas de abajo. No es que haya dos
@@ -427,15 +506,27 @@ fun NucleusApplicationScope.App(
                                         style = titleBarStyle
                                     ) {
                                         DesktopTitleBar(
-                                            currentSong = currentSong?.title,
-                                            isPlaying = isPlaying,
+                                            currentSong = currentSong?.title
+                                                ?.takeIf { appMode == AppMode.MUSIC },
+                                            isPlaying = isPlaying && appMode == AppMode.MUSIC,
                                             isLoggedIn = isLoggedIn,
                                             accountInfo = accountInfo,
+                                            appMode = appMode,
+                                            onModeChange = { mode ->
+                                                scope.launch { userPreferences.setAppMode(mode) }
+                                            },
                                             ytmSyncEnabled = ytmSyncEnabled,
                                             isSyncing = syncState.overallStatus is example.nucleus.utils.SyncStatus.Syncing,
                                             isOfflineMode = offlineMode,
-                                            canGoBack = canGoBack,
-                                            onBack = { if (canGoBack) rootComponent.onBack() },
+                                            canGoBack = canGoBack || nowPlayingOverlay,
+                                            onBack = {
+                                                if (nowPlayingOverlay) {
+                                                    nowPlayingOverlay = false
+                                                    if (navStack.active.configuration is ScreenConfig.NowPlaying) {
+                                                        rootComponent.onBack()
+                                                    }
+                                                } else if (canGoBack) rootComponent.onBack()
+                                            },
                                             onRefresh = { rootComponent.refresh() },
                                             onToggleOfflineMode = { enabled ->
                                                 scope.launch { userPreferences.setOfflineModeEnabled(enabled) }
@@ -457,6 +548,8 @@ fun NucleusApplicationScope.App(
 
                                         // Fuera de Now Playing la barra va APILADA arriba, dentro de la
                                         // columna: reserva su alto y el contenido empieza debajo.
+                                        // En fullscreen de vídeo tampoco se compone: el contenido
+                                        // llena la ventana y se sale con Esc o con el botón del vídeo.
                                         if (!isOnNowPlaying) {
                                             titleBar()
                                             if (isSquareLayout) {
@@ -489,7 +582,11 @@ fun NucleusApplicationScope.App(
                                         key(appLocale) {
                                             NavigationDesktop(
                                                 rootComponent = rootComponent,
-                                                userPreferences = userPreferences
+                                                userPreferences = userPreferences,
+                                                canToggleLiquidGlassLive = glassCanToggleLive,
+                                                appMode = appMode,
+                                                nowPlayingOverlay = nowPlayingOverlay,
+                                                onNowPlayingOverlayChange = { nowPlayingOverlay = it },
                                             )
                                         }
                                     }
@@ -505,6 +602,16 @@ fun NucleusApplicationScope.App(
                                 }
                             }
                         }
+
+                        // Ventana aparte para el vídeo fullscreen: la principal
+                        // no cambia de tamaño ni de layout, así no hay transición
+                        // de swapchain que pueda dejar frames viejos.
+                        YouTubeFullscreenWindow(
+                            scope = appScope,
+                            playerService = youtubePlayerService,
+                            viewModel = youtubeWatchViewModel,
+                            visible = youtubeFullscreen,
+                        )
                     }
                 }
             }
@@ -528,7 +635,7 @@ private fun UpdateReadyDialog(
         // no dentro del content del diálogo, que se compone en su propia ventana y puede
         // caer al tema por defecto (claro) dejando texto negro sobre fondo oscuro.
         val scheme = MaterialTheme.colorScheme
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = onPostpone,
             containerColor = scheme.surfaceContainerHigh,
             titleContentColor = scheme.onSurface,
@@ -555,7 +662,7 @@ private fun YtmSyncWarningDialog(
 ) {
     if (show) {
         val scheme = MaterialTheme.colorScheme
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = onDismiss,
             containerColor = scheme.surfaceContainerHigh,
             titleContentColor = scheme.onSurface,
@@ -616,7 +723,7 @@ private fun NucleusDecoratedWindowScope.WindowsTaskbarIntegration(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
 ) {
-    if (!isWindows()) return
+    if (!Platform.isWindows) return
     val thumbBar = remember { WindowsThumbBar(onPrevious, onPlayPause, onNext) }
 
     LaunchedEffect(isVisible) {
@@ -636,6 +743,3 @@ private fun NucleusDecoratedWindowScope.WindowsTaskbarIntegration(
         thumbBar.setPlaying(isPlaying)
     }
 }
-
-private fun isWindows(): Boolean =
-    System.getProperty("os.name").orEmpty().lowercase().contains("win")

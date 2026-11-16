@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlin.serialization)
-    id("dev.nucleusframework") version "3.0.0-dev-202610230652"
+    id("dev.nucleusframework") version "3.0.0-dev-202611141550"
 
 }
 
@@ -18,7 +18,7 @@ kotlin {
 
 dependencies {
     implementation(project(":shared"))
-    val nucleusVersion = "3.0.0-dev-202610230652"
+    val nucleusVersion = "3.0.0-dev-202611141550"
 
 
 
@@ -79,6 +79,8 @@ dependencies {
     implementation(libs.heze)
     implementation(libs.heze.blur)
     implementation(libs.heze.blur.materials)
+    implementation(libs.heze.glass)
+    implementation(libs.heze.glass.material3)
 
     implementation("ir.mahozad.multiplatform:wavy-slider:2.2.0")
 
@@ -88,7 +90,7 @@ dependencies {
 
 
 
-    implementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.test)
 
     implementation(compose.desktop.currentOs) {
         exclude(group = "org.jetbrains.compose.material")
@@ -103,10 +105,6 @@ dependencies {
 
     // Widgets Compose dentro de la barra de tareas de Windows (solo desktop/JVM)
     implementation("uk.kulikov:compose-windows-taskbar:0.1.0")
-
-
-
-    implementation(compose.desktop.currentOs)
 }
 
 // Jewel trae el fork de coroutines de JetBrains (`org.jetbrains.intellij.deps.kotlinx`,
@@ -120,50 +118,37 @@ configurations.all {
     exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
 }
 
+// BouncyCastle (vía PipePipeExtractor) firma sus jars: al fusionarlos en el
+// uber-jar las firmas quedan inválidas y native-image muere con
+// "Invalid signature file digest for Manifest main attributes".
+// Se excluyen (práctica estándar: nadie debe distribuir .SF/.DSA/.RSA
+// fusionados; el proveedor JCE funciona igual sin ellas desde Java 9).
+tasks.withType<org.gradle.jvm.tasks.Jar>().configureEach {
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
+}
+
 
 nucleus.application {
     mainClass = "example.nucleus.MainKt"
 
-    // Perfil de memoria: SerialGC (footprint mínimo, sin card-tables/regiones de G1) + heap
-    // moderado. Devuelve heap al OS vía Min/MaxHeapFreeRatio en cada GC full (el FrameWatcher
-    // de Skiko lo dispara periódicamente). Ver Oracle GC tuning + Skiko configuration.
+    // Perfil de memoria experimental: G1GC con heap acotado (384m) y
+    // footprint reducido. Ver Oracle GC tuning + Skiko configuration.
     jvmArgs(
-        // Heap
-        "-Xms64m",
-        "-Xmx320m",
+        "-Xms64m", "-Xmx384m",
         "-XX:+UseG1GC",
         "-XX:MaxGCPauseMillis=100",
-        // G1PeriodicGC libera periódicamente el heap Y los objetos nativos de Skia (imágenes):
-        // sin GC completo periódico, la memoria nativa de Skia/Compose se acumula (peak 740MB).
-        "-XX:G1PeriodicGCInterval=10000",
+        "-XX:G1PeriodicGCInterval=30000",
         "-XX:G1PeriodicGCSystemLoadThreshold=0.0",
         "-XX:+UseStringDeduplication",
-        // Encoger el heap y devolverlo al OS cuando sobra (default 40/70 retiene demasiado).
         "-XX:MinHeapFreeRatio=10",
         "-XX:MaxHeapFreeRatio=30",
-        // No-heap acotado (hoy sin tope; Compose+Ktor+Coil cargan muchas clases).
         "-XX:MaxMetaspaceSize=192m",
-        // JDK-8376125: el presupuesto de las regiones rw/ro del AOT sale de aqui. Con 64m
-        // (67.108.864 B) el reparto del JDK se quedaba 2-64 KB corto y el writer moria con
-        // "Unable to allocate from 'ro' region" (nosotros en ro, el bug en rw). El total medido
-        // fue 67.043.328 B en todas las pruebas, asi que 96m da holgura de sobra. Subirlo por
-        // `aotCache { extraTrainingJvmArgs }` NO sirve: ese flag no llega al proceso que
-        // escribe la cache, tiene que ir en los jvmArgs de la app.
         "-XX:CompressedClassSpaceSize=96m",
-        "-XX:ReservedCodeCacheSize=128m",
-        "-XX:CICompilerCount=2",
-        // Limita los "cores vistos" por la JVM: reduce ForkJoinPool/Dispatchers.Default (32->4),
-        // el dispatcher de OkHttp y los hilos de GC. Para un reproductor bastan 4 workers CPU.
+        "-XX:ReservedCodeCacheSize=96m",
         "-XX:ActiveProcessorCount=4",
-        // Sin hsperfdata ni contadores de rendimiento: nadie los lee y el mmap se queda residente.
         "-XX:-UsePerfData",
-        // Pilas de hilo más pequeñas (muchos hilos IO/render).
-        "-Xss768k",
-        // Pool IO de coroutines: default real es 64 hilos (~1MB stack c/u).
+        "-Xss1m",
         "-Dkotlinx.coroutines.io.parallelism=16",
-        "-Dpolyglot.engine.WarnInterpreterOnly=false",
-        "-XX:+UnlockExperimentalVMOptions",
-        "-XX:+EnableJVMCI",
         "-Dskiko.gpu.resourceCacheLimit=32M",
     )
 
@@ -224,7 +209,8 @@ nucleus.application {
         // getResourceAsStream("/thumbbar/...") funcione en el binario nativo.
         buildArgs.add("-H:IncludeResources=thumbbar/.*")
         // Heap del binario nativo acotado (objetivo RAM); Serial GC por defecto.
-        maxHeapSize = "320m"
+        // 512m deja margen para el MVP SABR de vídeo sin disparar pausas de GC.
+        maxHeapSize = "512m"
     }
 
     // Los recursos Windows de runtime a veces no se propagan desde appResources al app-image

@@ -22,8 +22,6 @@ fun AccessibilitySettingsGroup() {
     val uiScale by viewModel.uiScale.collectAsState()
     val selectedFont by viewModel.selectedFont.collectAsState()
 
-    var showUiScaleDropdown by remember { mutableStateOf(false) }
-
     SettingsGroup(
         title = { Text(stringResource(Res.string.appearance_motion), style = MaterialTheme.typography.titleMediumEmphasized) },
         colors = colors,
@@ -49,17 +47,14 @@ fun AccessibilitySettingsGroup() {
             segmentedShape = ListItemDefaults.segmentedShapes(index = 0, count = 2),
         )
         val closestScale = scalePresets.minByOrNull { kotlin.math.abs(it - uiScale) } ?: 1.00f
-        var showScale by remember { mutableStateOf(false) }
-        DropdownSelector(
+        SingleChoiceRow(
             label = stringResource(Res.string.ui_scale),
             icon = Icons.Rounded.ZoomIn,
             currentValue = "${(closestScale * 100).roundToInt()}%",
-            expanded = showScale,
             segmentedShape = ListItemDefaults.segmentedShapes(index = 1, count = 2),
-            onExpandedChange = { showScale = it },
             options = scalePresets.map { it to "${(it * 100).roundToInt()}%" },
             isSelected = { it == closestScale },
-            onSelect = { viewModel.setUiScale(it); showScale = false },
+            onSelect = { viewModel.setUiScale(it) },
         )
     }
 }

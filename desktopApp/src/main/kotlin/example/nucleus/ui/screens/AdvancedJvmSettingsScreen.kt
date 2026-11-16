@@ -1,5 +1,7 @@
 package example.nucleus.ui.screens
 
+import example.nucleus.ui.components.glass.GlassAlertDialog
+import example.nucleus.ui.components.glass.GlassDialogSurface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -50,10 +52,10 @@ fun AdvancedJvmSettingsScreen(
             val dialogWidth = (maxWidth * 0.9f).coerceIn(420.dp, maxWidth)
             val dialogHeight = (maxHeight * 0.7f).coerceIn(420.dp, maxHeight)
 
-            Surface(
+            GlassDialogSurface(
                 modifier = Modifier.width(dialogWidth).height(dialogHeight),
                 shape = AppShapes.large,
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp,
             ) {
                 Box {
@@ -146,7 +148,7 @@ private fun RestartDialog(
     onSaveWithoutRestart: () -> Unit,
     onSaveAndRestart: () -> Unit,
 ) {
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.primary) },
         title = { Text(stringResource(Res.string.apply_changes_title)) },

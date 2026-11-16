@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.CornerQuickPlayConfig
 import example.nucleus.ui.components.ItemContentSource
 import example.nucleus.ui.components.images.PlaceholderType
@@ -45,22 +45,23 @@ import org.jetbrains.compose.resources.*
 
 fun onYTItemClick(
     item: YTItem,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel?,
 ) {
     when (item) {
         is SongItem -> playerViewModel?.playSingle(item)
-        is AlbumItem -> onNavigate(Route.Album(item.browseId))
-        is PlaylistItem -> onNavigate(Route.Playlist(item.id))
-        is ArtistItem -> onNavigate(Route.Artist(item.id))
-        is PodcastItem -> onNavigate(Route.Playlist(item.id))
+        is AlbumItem -> onNavigate(ScreenConfig.collection(item.browseId))
+        is PlaylistItem -> onNavigate(ScreenConfig.Playlist(item.id))
+        // Los perfiles de usuario no tienen página de artista (browse 400).
+        is ArtistItem -> if (!item.isProfile) onNavigate(ScreenConfig.Artist(item.id))
+        is PodcastItem -> onNavigate(ScreenConfig.Playlist(item.id))
         is EpisodeItem -> playerViewModel?.playSingle(item.asSongItem())
     }
 }
 
 private fun playYTItem(
     item: YTItem,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
     onClick: (YTItem) -> Unit,
 ) {
@@ -79,8 +80,8 @@ private fun playYTItem(
             title = item.title,
             onEmpty = { onClick(item) }
         )
-        is PodcastItem -> onNavigate(Route.Playlist(item.id))
-        is ArtistItem -> onNavigate(Route.Artist(item.id))
+        is PodcastItem -> onNavigate(ScreenConfig.Playlist(item.id))
+        is ArtistItem -> if (!item.isProfile) onNavigate(ScreenConfig.Artist(item.id))
     }
 }
 
@@ -116,6 +117,7 @@ fun SongGridItem(
     modifier: Modifier = Modifier,
     onClick: (YTItem) -> Unit,
     onClickSubtitle: (String) -> Unit,
+    onGoToAlbum: ((String) -> Unit)? = null,
 ) {
     val downloadViewModel = LocalDownloadViewModel.current
     val downloadState by rememberSongDownloadState(item.id, downloadViewModel)
@@ -152,7 +154,9 @@ fun SongGridItem(
             SongContextMenuPopup(
                 expanded = showMenu,
                 onDismiss = { showMenu = false },
-                song = item
+                song = item,
+                onGoToArtist = onClickSubtitle,
+                onGoToAlbum = onGoToAlbum,
             )
         }
     )
@@ -339,28 +343,33 @@ fun EpisodeGridItem(
 @Composable
 fun SectionListItem(
     item: YTItem,
-    onNavigate: (Route) -> Unit = {},
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
     modifier: Modifier = Modifier,
     dividerBelow: Boolean = false,
-    playerViewModel: PlayerViewModel
+    playerViewModel: PlayerViewModel,
+    source: ItemContentSource = ItemContentSource.YOUTUBE,
+    onRemoveCollection: ((YTItem) -> Unit)? = null,
 ) {
-    val onClick = { it: YTItem -> onYTItemClick(it, onNavigate, playerViewModel) }
+    val nav = onNavigate ?: {}
+    val onClick = { it: YTItem -> onYTItemClick(it, nav, playerViewModel) }
 
     YoutubeListItem(
         item = item,
         onClick = onClick,
-        onPlay = { playYTItem(it, onNavigate, playerViewModel, onClick) },
+        onPlay = { playYTItem(it, nav, playerViewModel, onClick) },
         onShuffle = { shuffleYTItem(it, playerViewModel, onClick) },
+        onNavigate = onNavigate,
+        onRemoveCollection = onRemoveCollection,
         modifier = modifier,
         dividerBelow = dividerBelow,
-        source = ItemContentSource.YOUTUBE,
+        source = source,
     )
 }
 
 @Composable
 fun SectionGridItem(
     item: YTItem,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -372,7 +381,8 @@ fun SectionGridItem(
         is SongItem -> SongGridItem(
             item = item,
             onClick = onClick,
-            onClickSubtitle = { onNavigate(Route.Artist(it)) },
+            onClickSubtitle = { onNavigate(ScreenConfig.Artist(it)) },
+            onGoToAlbum = { onNavigate(ScreenConfig.collection(it)) },
             modifier = modifier,
         )
         is AlbumItem -> AlbumGridItem(item = item, onClick = onClick, modifier = modifier, onPlay = onPlay, onShuffle = onShuffle)
@@ -382,7 +392,7 @@ fun SectionGridItem(
         is EpisodeItem -> EpisodeGridItem(
             item = item,
             onClick = onClick,
-            onClickSubtitle = { onNavigate(Route.Artist(it)) },
+            onClickSubtitle = { onNavigate(ScreenConfig.Artist(it)) },
             modifier = modifier,
         )
     }

@@ -19,11 +19,3 @@ data class QueueStatus(
     val items: List<MediaMetadata>,
     val hasNextPage: Boolean,
 )
-
-data class QueueState(
-    val queue: Queue,
-    val items: List<MediaMetadata>,
-    val order: List<Int>,
-    val currentIndex: Int,
-    val isShuffled: Boolean,
-)

@@ -278,7 +278,6 @@ fun SyncedLyricsView(
             }
         }
     }
-    val latestActiveIndex by rememberUpdatedState(activeIndex)
 
     // Estado para saber si el usuario hizo scroll manual y se alejó del renglón activo
     var userScrolledAway by remember { mutableStateOf(false) }

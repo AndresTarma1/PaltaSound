@@ -176,11 +176,6 @@ class AppViewModel : ViewModel() {
         if (progress.totalBytes > 0) (progress.bytesDownloaded.toDouble() / progress.totalBytes).toFloat()
         else -1f
 
-    /** Reintentar una descarga fallida desde la entrada "buscar" o el prompt. */
-    fun retryDownload() {
-        (_status.value as? UpdateStatus.Failed)?.let { checkForUpdates(manual = false) }
-    }
-
     /** Inicia el instalador descargado y, en caso de éxito, llama a [onQuit] para que la app pueda cerrarse. */
     fun installUpdate(onQuit: () -> Unit) {
         val ready = _status.value as? UpdateStatus.Ready ?: return
@@ -198,11 +193,6 @@ class AppViewModel : ViewModel() {
     /** Ocultar el prompt pero mantener el instalador descargado + [UpdateStatus.Ready] para después. */
     fun postponeInstall() {
         _showInstallPrompt.value = false
-    }
-
-    /** Reiniciar la retroalimentación transitoria de Configuración (actualizado/fallido) a inactivo. */
-    fun clearCheckFeedback() {
-        _checkState.value = UpdateCheckState.Idle
     }
 
     /** Re-lee cuántos reportes de crash hay pendientes por enviar (IO en segundo plano). */

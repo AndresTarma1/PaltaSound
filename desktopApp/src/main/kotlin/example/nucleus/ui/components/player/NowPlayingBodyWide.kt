@@ -4,19 +4,25 @@ package example.nucleus.ui.components.player
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import com.metrolist.innertube.models.MediaInfo
 import example.nucleus.generated.resources.*
 import example.nucleus.models.MediaMetadata
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
+import example.nucleus.ui.themes.expressiveLayoutTween
+import example.nucleus.utils.LocalAnimationsEnabled
 import example.nucleus.viewmodels.PlayerUiState
 import org.jetbrains.jewel.foundation.modifier.onHover
 
@@ -27,10 +33,8 @@ internal fun NowPlayingWideBody(
     lyrics: String?,
     mediaInfo: MediaInfo?,
     selectedTab: NowPlayingTab,
-    onNavigate: ((Route) -> Unit)?,
+    onNavigate: ((ScreenConfig) -> Unit)?,
     onCollapse: () -> Unit,
-    coverScale: Animatable<Float, *>,
-    coverAlpha: Animatable<Float, *>,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     autoHide: NowPlayingAutoHide,
@@ -38,6 +42,25 @@ internal fun NowPlayingWideBody(
     val hasPanel = selectedTab.hasPanel
     // Solo se llega aqui en ancho, asi que el panel siempre va en paralelo.
     val split = hasPanel
+    // Transición de layout con una sola fracción: la columna izquierda se
+    // desliza (peso animado) y el panel aparece con fade. Los pesos siempre
+    // suman 1f para no descuadrar la fila ni dar saltos al desmontar.
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val splitSpec: FiniteAnimationSpec<Float> = if (animationsEnabled) {
+        expressiveLayoutTween()
+    } else {
+        snap()
+    }
+    val splitFrac by animateFloatAsState(
+        targetValue = if (split) 1f else 0f,
+        animationSpec = splitSpec,
+        label = "nowPlayingSplit",
+    )
+    val leftWeight = lerp(1f, 0.45f, splitFrac)
+    // weight(0f) lanza IllegalArgumentException: en el primer frame al abrir el
+    // panel splitFrac todavía es 0. Un épsilon mantiene el peso válido sin
+    // alterar el layout perceptiblemente.
+    val panelWeight = lerp(0f, 0.55f, splitFrac).coerceAtLeast(0.001f)
 
     // Diseño de escritorio tipo Apple Music / Spotify:
     // izquierda = carátula + metadatos + progreso + transporte; derecha = panel de
@@ -51,7 +74,7 @@ internal fun NowPlayingWideBody(
     ) {
     Row(
         modifier = Modifier
-            .weight(if (split) 0.45f else 1f)
+            .weight(leftWeight)
             .fillMaxHeight(),
         verticalAlignment = Alignment.Bottom,
     ) {
@@ -92,11 +115,11 @@ internal fun NowPlayingWideBody(
                     CoverArt(
                         url = song.thumbnailUrl,
                         title = song.title,
-                        videoId = song.id,
                         modifier = Modifier
+                            // Shared ANTES del tamaño (guía oficial), para que los
+                            // bounds del morph sean los reales del elemento.
+                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope, debugTag = "np-wide")
                             .size(coverDimension)
-                            .heroCoverElement(song.id, sharedTransitionScope, animatedVisibilityScope)
-                            .coverEnter(coverScale, coverAlpha)
                             .autoHideCoverGrow(autoHide, coverRestScale),
                     )
 
@@ -151,26 +174,33 @@ internal fun NowPlayingWideBody(
 
     // Columna derecha: solo con panel abierto. Sin panel la columna izquierda ya
     // ocupa el ancho completo, asi que la portada queda centrada en la ventana.
-    if (split) {
-        TransparentPanel(
+    // Aparece con fade mientras la izquierda se desliza; el peso animado evita
+    // saltos al montar/desmontar.
+    if (split || splitFrac > 0.001f) {
+        Box(
             modifier = Modifier
-                .weight(0.55f)
-                .fillMaxHeight(),
+                .weight(panelWeight)
+                .fillMaxHeight()
+                .graphicsLayer { alpha = splitFrac },
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 8.dp, top = 8.dp, bottom = 12.dp),
+            TransparentPanel(
+                modifier = Modifier.fillMaxSize(),
             ) {
-                NowPlayingTabContent(
-                    tab = selectedTab,
-                    song = song,
-                    state = state,
-                    lyrics = lyrics,
-                    lyricsTextStyle = MaterialTheme.typography.headlineMedium,
-                    onNavigate = onNavigate,
-                    mediaInfo = mediaInfo,
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 8.dp, top = 8.dp, bottom = 12.dp),
+                ) {
+                    NowPlayingTabContent(
+                        tab = selectedTab,
+                        song = song,
+                        state = state,
+                        lyrics = lyrics,
+                        lyricsTextStyle = MaterialTheme.typography.headlineMedium,
+                        onNavigate = onNavigate,
+                        mediaInfo = mediaInfo,
+                    )
+                }
             }
         }
     }

@@ -49,8 +49,17 @@ import example.nucleus.generated.resources.mp_volume
 import example.nucleus.generated.resources.tray_pause
 import example.nucleus.generated.resources.tray_play
 import example.nucleus.player.PlaybackState
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.glass.GlassStyle
+import example.nucleus.ui.components.glass.rememberLiquidGlassStyle
+import dev.chrisbanes.haze.glass.hazeGlass
+import dev.chrisbanes.haze.glass.hazeGlassContainer
 import example.nucleus.ui.components.PlayerSeekBar
 import example.nucleus.ui.components.TimeText
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
+import example.nucleus.ui.components.glass.LocalRailHaze
 import example.nucleus.ui.helpers.onHover
 import example.nucleus.ui.helpers.pointerScrollToInt
 import example.nucleus.ui.themes.AppShapes
@@ -122,6 +131,8 @@ fun PlayerIconToggle(
 fun PlayerTransportRow(
     modifier: Modifier = Modifier,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     val state by playerViewModel.uiState.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
@@ -129,52 +140,103 @@ fun PlayerTransportRow(
     val isLoading = state.playbackState == PlaybackState.LOADING ||
         state.playbackState == PlaybackState.BUFFERING
 
+    val useGlass = liquidGlass && hazeState != null
     Row(
-        modifier = modifier,
+        modifier = modifier.then(
+            if (useGlass) Modifier.hazeGlassContainer() else Modifier,
+        ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
     ) {
-        PlayerIconToggle(
-            selected = state.isShuffled,
-            onClick = { playerViewModel.toggleShuffle() },
-            imageVector = Icons.Rounded.Shuffle,
-            contentDescription = stringResource(Res.string.mp_shuffle),
-            size = 36.dp,
-            iconSize = 20.dp,
-        )
-
-        IconButton(
-            onClick = { playerViewModel.previous() },
-            modifier = Modifier
-                .size(44.dp)
-                .pointerHoverIcon(PointerIcon.Hand),
-        ) {
-            Icon(
-                Icons.Rounded.SkipPrevious,
-                contentDescription = stringResource(Res.string.mp_previous),
-                tint = colorScheme.onSurface,
-                modifier = Modifier.size(28.dp),
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.toggleShuffle() },
+                imageVector = Icons.Rounded.Shuffle,
+                contentDescription = stringResource(Res.string.mp_shuffle),
+                hazeState = hazeState,
+                selected = state.isShuffled,
+                size = 36.dp,
+                iconSize = 20.dp,
+            )
+        } else {
+            PlayerIconToggle(
+                selected = state.isShuffled,
+                onClick = { playerViewModel.toggleShuffle() },
+                imageVector = Icons.Rounded.Shuffle,
+                contentDescription = stringResource(Res.string.mp_shuffle),
+                size = 36.dp,
+                iconSize = 20.dp,
             )
         }
 
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.previous() },
+                imageVector = Icons.Rounded.SkipPrevious,
+                contentDescription = stringResource(Res.string.mp_previous),
+                hazeState = hazeState,
+                size = 44.dp,
+                iconSize = 28.dp,
+            )
+        } else {
+            IconButton(
+                onClick = { playerViewModel.previous() },
+                modifier = Modifier
+                    .size(44.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+            ) {
+                Icon(
+                    Icons.Rounded.SkipPrevious,
+                    contentDescription = stringResource(Res.string.mp_previous),
+                    tint = colorScheme.onSurface,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+        }
+
         // Play pill con acento Expressive principal
-        FilledIconButton(
-            onClick = { playerViewModel.togglePlayPause() },
-            modifier = Modifier
-                .size(width = 56.dp, height = 48.dp)
-                .pointerHoverIcon(PointerIcon.Hand),
-            shape = AppShapes.extraLarge,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = colorScheme.primary,
-                contentColor = colorScheme.onPrimary,
-            ),
-        ) {
-            if (isLoading) {
+        if (isLoading) {
+            FilledIconButton(
+                onClick = { playerViewModel.togglePlayPause() },
+                modifier = Modifier
+                    .size(width = 56.dp, height = 48.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+                shape = AppShapes.extraLarge,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = colorScheme.primary,
+                    contentColor = colorScheme.onPrimary,
+                ),
+            ) {
                 LoadingIndicator(
                     modifier = Modifier.size(28.dp),
                     color = colorScheme.onPrimary,
                 )
-            } else {
+            }
+        } else if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.togglePlayPause() },
+                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (isPlaying) {
+                    stringResource(Res.string.tray_pause)
+                } else {
+                    stringResource(Res.string.tray_play)
+                },
+                hazeState = hazeState!!,
+                size = 52.dp,
+                iconSize = 28.dp,
+            )
+        } else {
+            FilledIconButton(
+                onClick = { playerViewModel.togglePlayPause() },
+                modifier = Modifier
+                    .size(width = 56.dp, height = 48.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+                shape = AppShapes.extraLarge,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = colorScheme.primary,
+                    contentColor = colorScheme.onPrimary,
+                ),
+            ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = if (isPlaying) {
@@ -187,33 +249,60 @@ fun PlayerTransportRow(
             }
         }
 
-        IconButton(
-            onClick = { playerViewModel.next() },
-            modifier = Modifier
-                .size(44.dp)
-                .pointerHoverIcon(PointerIcon.Hand),
-        ) {
-            Icon(
-                Icons.Rounded.SkipNext,
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.next() },
+                imageVector = Icons.Rounded.SkipNext,
                 contentDescription = stringResource(Res.string.mp_next),
-                tint = colorScheme.onSurface,
-                modifier = Modifier.size(28.dp),
+                hazeState = hazeState,
+                size = 44.dp,
+                iconSize = 28.dp,
             )
+        } else {
+            IconButton(
+                onClick = { playerViewModel.next() },
+                modifier = Modifier
+                    .size(44.dp)
+                    .pointerHoverIcon(PointerIcon.Hand),
+            ) {
+                Icon(
+                    Icons.Rounded.SkipNext,
+                    contentDescription = stringResource(Res.string.mp_next),
+                    tint = colorScheme.onSurface,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
 
         val repeatOn = state.repeatMode != RepeatMode.OFF
-        PlayerIconToggle(
-            selected = repeatOn,
-            onClick = { playerViewModel.toggleRepeat() },
-            imageVector = if (state.repeatMode == RepeatMode.ONE) {
-                Icons.Rounded.RepeatOne
-            } else {
-                Icons.Rounded.Repeat
-            },
-            contentDescription = stringResource(Res.string.mp_repeat),
-            size = 36.dp,
-            iconSize = 20.dp,
-        )
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.toggleRepeat() },
+                imageVector = if (state.repeatMode == RepeatMode.ONE) {
+                    Icons.Rounded.RepeatOne
+                } else {
+                    Icons.Rounded.Repeat
+                },
+                contentDescription = stringResource(Res.string.mp_repeat),
+                hazeState = hazeState,
+                selected = repeatOn,
+                size = 36.dp,
+                iconSize = 20.dp,
+            )
+        } else {
+            PlayerIconToggle(
+                selected = repeatOn,
+                onClick = { playerViewModel.toggleRepeat() },
+                imageVector = if (state.repeatMode == RepeatMode.ONE) {
+                    Icons.Rounded.RepeatOne
+                } else {
+                    Icons.Rounded.Repeat
+                },
+                contentDescription = stringResource(Res.string.mp_repeat),
+                size = 36.dp,
+                iconSize = 20.dp,
+            )
+        }
     }
 }
 
@@ -291,12 +380,16 @@ fun PlayerVolumeControl(
     trackHeight: Dp = 132.dp,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     PlayerVolumeTooltip(
         modifier = modifier,
         trackHeight = trackHeight,
         playerViewModel = playerViewModel,
         onBusyChange = onBusyChange,
+        liquidGlass = liquidGlass,
+        hazeState = hazeState,
     )
 }
 
@@ -345,12 +438,20 @@ fun PlayerVolumeTooltip(
     trackHeight: Dp = 132.dp,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     val volume by playerViewModel.volume.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
     val volumePercent = volume.coerceIn(0, 100)
     val fraction = volumePercent / 100f
     val isMuted = volumePercent == 0
+    val useGlass = liquidGlass && hazeState != null
+    val volumeIcon = when {
+        isMuted -> Icons.AutoMirrored.Rounded.VolumeOff
+        volumePercent < 40 -> Icons.AutoMirrored.Rounded.VolumeDown
+        else -> Icons.AutoMirrored.Rounded.VolumeUp
+    }
 
     var isButtonHovered by remember { mutableStateOf(false) }
     var isCardHovered by remember { mutableStateOf(false) }
@@ -405,44 +506,62 @@ fun PlayerVolumeTooltip(
                     onHoverChange = { isCardHovered = it },
                     onDragStateChange = { isDragging = it },
                     onVolumeChange = { playerViewModel.setVolume(it) },
+                    liquidGlass = liquidGlass,
+                    hazeState = hazeState,
                 )
             }
         },
     ) {
-        FilledTonalIconButton(
-            onClick = { playerViewModel.toggleMute() },
-            modifier = Modifier
-                .size(40.dp)
-                .onHover { isButtonHovered = it }
-                .pointerScrollToInt(
-                    value = volumePercent,
-                    range = 0..100,
-                    onValueChange = { playerViewModel.setVolume(it) },
-                )
-                .pointerHoverIcon(PointerIcon.Hand),
-            shape = AppShapes.medium,
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = if (isButtonHovered || isVisible) {
-                    colorScheme.secondaryContainer
-                } else {
-                    colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
-                },
-                contentColor = when {
-                    isMuted -> colorScheme.error
-                    isButtonHovered || isVisible -> colorScheme.onSecondaryContainer
-                    else -> colorScheme.onSurfaceVariant
-                },
-            ),
-        ) {
-            Icon(
-                imageVector = when {
-                    isMuted -> Icons.AutoMirrored.Rounded.VolumeOff
-                    volumePercent < 40 -> Icons.AutoMirrored.Rounded.VolumeDown
-                    else -> Icons.AutoMirrored.Rounded.VolumeUp
-                },
+        if (useGlass) {
+            GlassIconButton(
+                onClick = { playerViewModel.toggleMute() },
+                imageVector = volumeIcon,
                 contentDescription = stringResource(Res.string.mp_volume),
-                modifier = Modifier.size(20.dp),
+                hazeState = hazeState!!,
+                modifier = Modifier
+                    .size(40.dp)
+                    .onHover { isButtonHovered = it }
+                    .pointerScrollToInt(
+                        value = volumePercent,
+                        range = 0..100,
+                        onValueChange = { playerViewModel.setVolume(it) },
+                    )
+                    .pointerHoverIcon(PointerIcon.Hand),
+                size = 40.dp,
+                iconSize = 20.dp,
             )
+        } else {
+            FilledTonalIconButton(
+                onClick = { playerViewModel.toggleMute() },
+                modifier = Modifier
+                    .size(40.dp)
+                    .onHover { isButtonHovered = it }
+                    .pointerScrollToInt(
+                        value = volumePercent,
+                        range = 0..100,
+                        onValueChange = { playerViewModel.setVolume(it) },
+                    )
+                    .pointerHoverIcon(PointerIcon.Hand),
+                shape = AppShapes.medium,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (isButtonHovered || isVisible) {
+                        colorScheme.secondaryContainer
+                    } else {
+                        colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+                    },
+                    contentColor = when {
+                        isMuted -> colorScheme.error
+                        isButtonHovered || isVisible -> colorScheme.onSecondaryContainer
+                        else -> colorScheme.onSurfaceVariant
+                    },
+                ),
+            ) {
+                Icon(
+                    imageVector = volumeIcon,
+                    contentDescription = stringResource(Res.string.mp_volume),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }
@@ -468,14 +587,35 @@ private fun VolumeTrackCard(
     onHoverChange: (Boolean) -> Unit,
     onDragStateChange: (Boolean) -> Unit,
     onVolumeChange: (Int) -> Unit,
+    liquidGlass: Boolean = false,
+    hazeState: HazeState? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val useGlass = liquidGlass && hazeState != null
+    val cardShape = AppShapes.large
+    val glassStyle = if (useGlass) {
+        rememberLiquidGlassStyle(
+            shape = cardShape,
+            containerColor = colorScheme.surfaceContainer,
+        )
+    } else null
 
     Surface(
-        modifier = Modifier.onHover(onHoverChange),
-        shape = AppShapes.large,
-        color = colorScheme.surfaceContainerHigh,
-        tonalElevation = 6.dp,
+        modifier = Modifier
+            .onHover(onHoverChange)
+            .then(
+                if (useGlass) {
+                    Modifier.hazeGlass(
+                        input = HazeInput.Sources(hazeState),
+                        style = glassStyle!!,
+                    )
+                } else {
+                    Modifier
+                },
+            ),
+        shape = cardShape,
+        color = if (useGlass) Color.Transparent else colorScheme.surfaceContainerHigh,
+        tonalElevation = if (useGlass) 0.dp else 6.dp,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
@@ -579,12 +719,16 @@ fun PlayerVolumeVertical(
     trackHeight: Dp = 120.dp,
     playerViewModel: PlayerViewModel = LocalPlayerViewModel.current,
     onBusyChange: ((Boolean) -> Unit)? = null,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     PlayerVolumeTooltip(
         modifier = modifier,
         trackHeight = trackHeight,
         playerViewModel = playerViewModel,
         onBusyChange = onBusyChange,
+        liquidGlass = liquidGlass,
+        hazeState = hazeState,
     )
 }
 
@@ -596,15 +740,29 @@ fun LikeToggle(
     liked: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    liquidGlass: Boolean = LocalLiquidGlass.current,
+    hazeState: HazeState? = LocalRailHaze.current ?: LocalContentHaze.current,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    PlayerIconToggle(
-        selected = liked,
-        onClick = onToggle,
-        imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-        contentDescription = stringResource(Res.string.mp_like),
-        modifier = modifier,
-        selectedContent = colorScheme.error,
-        unselectedContent = colorScheme.onSurfaceVariant,
-    )
+    if (liquidGlass && hazeState != null) {
+        GlassIconButton(
+            onClick = onToggle,
+            imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = stringResource(Res.string.mp_like),
+            hazeState = hazeState,
+            modifier = modifier,
+            selected = liked,
+            selectedTint = colorScheme.error,
+        )
+    } else {
+        PlayerIconToggle(
+            selected = liked,
+            onClick = onToggle,
+            imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = stringResource(Res.string.mp_like),
+            modifier = modifier,
+            selectedContent = colorScheme.error,
+            unselectedContent = colorScheme.onSurfaceVariant,
+        )
+    }
 }

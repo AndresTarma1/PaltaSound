@@ -10,6 +10,7 @@ import example.nucleus.data.repository.LayoutMode
 import example.nucleus.data.repository.NavigationRailStyle
 import example.nucleus.data.repository.ThemeMode
 import example.nucleus.data.repository.ThemePalette
+import example.nucleus.data.repository.ThemePaletteStyle
 import example.nucleus.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +40,12 @@ class AppearanceSettingsViewModel(
     val themePalette: StateFlow<ThemePalette> = preferencesRepository.themePalette
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemePalette.DEFAULT)
 
+    val themePaletteStyle: StateFlow<ThemePaletteStyle> = preferencesRepository.themePaletteStyle
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemePaletteStyle.CONTENT)
+
+    val customSeedColor: StateFlow<Int> = preferencesRepository.themeCustomSeed
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     val dynamicColorFromArtwork: StateFlow<Boolean> = preferencesRepository.dynamicColorFromArtwork
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
@@ -53,6 +60,21 @@ class AppearanceSettingsViewModel(
 
     val animationsEnabled: StateFlow<Boolean> = preferencesRepository.animationsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val liquidGlassEnabled: StateFlow<Boolean> = preferencesRepository.liquidGlassEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val liquidGlassBlur: StateFlow<Float> = preferencesRepository.liquidGlassBlur
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 16f)
+
+    val liquidGlassBaseAlpha: StateFlow<Float> = preferencesRepository.liquidGlassBaseAlpha
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.9f)
+
+    val liquidGlassSpecular: StateFlow<Float> = preferencesRepository.liquidGlassSpecular
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.55f)
+
+    val liquidGlassRefraction: StateFlow<Float> = preferencesRepository.liquidGlassRefraction
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.8f)
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { preferencesRepository.setThemeMode(mode) }
@@ -85,6 +107,18 @@ fun setIslandStyle(style: IslandStyle) {
         viewModelScope.launch { preferencesRepository.setThemePalette(palette) }
     }
 
+    fun setThemePaletteStyle(style: ThemePaletteStyle) {
+        viewModelScope.launch { preferencesRepository.setThemePaletteStyle(style) }
+    }
+
+    fun setCustomSeedColor(argb: Int) {
+        viewModelScope.launch { preferencesRepository.setThemeCustomSeed(argb) }
+    }
+
+    fun clearCustomSeedColor() {
+        viewModelScope.launch { preferencesRepository.setThemeCustomSeed(0) }
+    }
+
     fun setDynamicColorFromArtwork(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setDynamicColorFromArtwork(enabled) }
     }
@@ -103,5 +137,25 @@ fun setIslandStyle(style: IslandStyle) {
 
     fun setAnimationsEnabled(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setAnimationsEnabled(enabled) }
+    }
+
+    fun setLiquidGlassEnabled(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassEnabled(enabled) }
+    }
+
+    fun setLiquidGlassBlur(blurDp: Float) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassBlur(blurDp) }
+    }
+
+    fun setLiquidGlassBaseAlpha(alpha: Float) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassBaseAlpha(alpha) }
+    }
+
+    fun setLiquidGlassSpecular(intensity: Float) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassSpecular(intensity) }
+    }
+
+    fun setLiquidGlassRefraction(strength: Float) {
+        viewModelScope.launch { preferencesRepository.setLiquidGlassRefraction(strength) }
     }
 }

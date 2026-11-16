@@ -71,6 +71,7 @@ kotlin {
             implementation(libs.quickjs)
         }
         jvmMain.dependencies {
+            api(project(":youtube"))
             api(libs.sqldelight.driver.jvm)
             // Proveedores de letras (LRC sincronizado) — módulos solo JVM
             implementation(project(":lrclib"))

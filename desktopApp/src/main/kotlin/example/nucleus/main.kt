@@ -22,6 +22,7 @@ import example.nucleus.bootstrap.AppStartup
 import example.nucleus.bootstrap.JvmConfigLauncher
 import example.nucleus.bootstrap.PlatformCrashHandler
 import example.nucleus.data.account.AccountManager
+import example.nucleus.data.repository.BackgroundStyle
 import example.nucleus.data.repository.UserPreferencesRepository
 import example.nucleus.di.appModule
 import example.nucleus.di.dataStoreModule
@@ -65,12 +66,10 @@ fun main(args: Array<String>) {
         dev.nucleusframework.autolaunch.AutoLaunch.wasStartedAtLogin(args)
     }.getOrDefault(false)
 
-    // Configuración inicial
     DecomposeSettings.update { DecomposeSettings(mainThreadCheckEnabled = false) }
     AppEnvironment.initialize()
     PlatformCrashHandler.register()
 
-    // Inicializar Koin
     val koinApp = PlatformCrashHandler.runSafely("Error al iniciar Koin") {
         startKoin { modules(appModule, dataStoreModule) }
     }
@@ -88,17 +87,14 @@ fun main(args: Array<String>) {
         )
     }
 
-    // Inicializar AccountManager
     PlatformCrashHandler.runSafely("Error iniciando AccountManager") {
         val dataStore = koin.get<DataStore<Preferences>>()
         AccountManager.init(dataStore)
     }
 
-    // Configurar app
     koin.get<JvmConfigLauncher>().applySync()
     koin.get<OfflineModeController>()
 
-    // Obtener ViewModels
     val playerViewModel = PlatformCrashHandler.runSafely("Error creando PlayerViewModel") {
         koin.get<PlayerViewModel>()
     }
@@ -120,13 +116,22 @@ fun main(args: Array<String>) {
         AppStartup.startDeferred(playerViewModel)
     }
 
-    // Restaurar estado de ventana
     val saved = runBlocking {
         Triple(
             userPreferencesRepository.windowWidth.first(),
             userPreferencesRepository.windowHeight.first(),
             userPreferencesRepository.windowMaximized.first(),
         )
+    }
+
+    // Modo de cristal con el que arranca ESTE proceso. Haze Glass compila su
+    // shader en el primer frame (7-11 s en algunos equipos), así que si la app
+    // empieza en material no se activa en caliente: queda pendiente hasta
+    // reiniciar. Si ya arranca en cristal, los shaders están compilados y el
+    // interruptor puede alternar sin coste.
+    val startedWithLiquidGlass = runBlocking {
+        userPreferencesRepository.liquidGlassEnabled.first() &&
+            userPreferencesRepository.appBackgroundStyle.first() == BackgroundStyle.SOLID_COLOR
     }
 
     // ─────────── Fase 2: composicion. Solo remember y UI. ───────────
@@ -155,6 +160,7 @@ fun main(args: Array<String>) {
             playerViewModel = playerViewModel,
             downloadViewModel = downloadViewModel,
             userPreferences = userPreferencesRepository,
+            startedWithLiquidGlass = startedWithLiquidGlass,
             windowState = windowState,
             onExit = { lifecycleManager.cleanUpAndExit() },
             startHidden = startedAtLogin,

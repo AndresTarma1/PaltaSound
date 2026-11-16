@@ -31,6 +31,14 @@ enum class ThemeMode {
     SYSTEM, DARK, LIGHT
 }
 
+/**
+ * Modo principal de la aplicación: música (YouTube Music) o vídeo (YouTube).
+ * Cada uno tiene su propia barra de navegación y su pantalla inicial.
+ */
+enum class AppMode {
+    MUSIC, YOUTUBE
+}
+
 /** Qué tan oscuras son las superficies del tema oscuro. DIM = gris oscuro teñido, BLACK = negro puro (AMOLED). */
 enum class DarkLevel {
     DIM, BLACK
@@ -46,6 +54,11 @@ enum class MiniPlayerStyle {
     BAR, FLOATING, DOCKED
 }
 
+/** Diseño interno del mini reproductor (independiente de su posición). EXPRESSIVE = completo actual. COMPACT = fila fina. VINYL = disco giratorio. */
+enum class MiniPlayerDesign {
+    EXPRESSIVE, COMPACT, VINYL
+}
+
 /** Fondo de la tarjeta del mini reproductor flotante. SOLID = color sólido del chrome. COVER = carátula desenfocada con gradiente de sus colores. TRANSLUCENT = semitransparente. */
 enum class MiniPlayerBackgroundStyle {
     SOLID, COVER, TRANSLUCENT
@@ -53,7 +66,7 @@ enum class MiniPlayerBackgroundStyle {
 
 /** Estilos del navigationRail **/
 enum class NavigationRailStyle{
-    DEFAULT, WIDE
+    DEFAULT, WIDE, FAB
 }
 
 /**
@@ -195,6 +208,14 @@ enum class ThemePalette(val primary: Long, val secondary: Long) {
     YTMUSIC(0xFFFF0033, 0xFFB00020)
 }
 
+enum class ThemePaletteStyle {
+    TONAL_SPOT, VIBRANT, EXPRESSIVE, RAINBOW, FRUIT_SALAD, MONOCHROME, NEUTRAL, CONTENT
+}
+
+enum class LibraryViewMode {
+    GRID, LIST
+}
+
 enum class BackgroundStyle {
     GRADIENT, BLURRED_COVER, SOLID_COLOR
 }
@@ -212,6 +233,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
     private object PreferencesKeys {
         val AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val APP_MODE = stringPreferencesKey("app_mode")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val HIGH_RES_COVER = booleanPreferencesKey("high_res_cover")
         val CROSSFADE = booleanPreferencesKey("crossfade")
@@ -226,6 +248,9 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val QUEUE_LOCKED = booleanPreferencesKey("queue_locked")
         val EQUALIZER_BANDS = stringPreferencesKey("equalizer_bands")
         val THEME_PALETTE = stringPreferencesKey("theme_palette")
+        val THEME_PALETTE_STYLE = stringPreferencesKey("theme_palette_style")
+        val THEME_CUSTOM_SEED = intPreferencesKey("theme_custom_seed")
+        val LIBRARY_VIEW_MODE = stringPreferencesKey("library_view_mode")
         val LOCALE = stringPreferencesKey("locale")
         val YOUTUBE_REGION = stringPreferencesKey("youtube_region")
         val DARK_LEVEL = stringPreferencesKey("dark_level")
@@ -253,6 +278,7 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val VOLUMEN = intPreferencesKey("volumen")
         val NAVIGATION_RAIL_STYLE = stringPreferencesKey("navigation_rail_style")
         val MINI_PLAYER_STYLE = stringPreferencesKey("mini_player_style")
+        val MINI_PLAYER_DESIGN = stringPreferencesKey("mini_player_design")
         val MINI_PLAYER_BG_STYLE = stringPreferencesKey("mini_player_bg_style")
         val NOW_PLAYING_BACKGROUND = stringPreferencesKey("now_playing_background")
         val NOW_PLAYING_DESIGN = stringPreferencesKey("now_playing_design")
@@ -274,6 +300,11 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val LOG_TO_FILE = booleanPreferencesKey("log_to_file")
         val LOG_VERBOSE = booleanPreferencesKey("log_verbose")
         val SABR_ENABLED = booleanPreferencesKey("sabr_enabled")
+        val LIQUID_GLASS_ENABLED = booleanPreferencesKey("liquid_glass_enabled")
+        val LIQUID_GLASS_BLUR = floatPreferencesKey("liquid_glass_blur")
+        val LIQUID_GLASS_BASE_ALPHA = floatPreferencesKey("liquid_glass_base_alpha")
+        val LIQUID_GLASS_SPECULAR = floatPreferencesKey("liquid_glass_specular")
+        val LIQUID_GLASS_REFRACTION = floatPreferencesKey("liquid_glass_refraction")
     }
 
 
@@ -608,6 +639,15 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[PreferencesKeys.MINI_PLAYER_STYLE] = style.name }
     }
 
+    val miniPlayerDesign: Flow<MiniPlayerDesign> = dataStore.data.map { pref ->
+        try { MiniPlayerDesign.valueOf(pref[PreferencesKeys.MINI_PLAYER_DESIGN] ?: MiniPlayerDesign.EXPRESSIVE.name) }
+        catch (_: Exception) { MiniPlayerDesign.EXPRESSIVE }
+    }
+
+    suspend fun setMiniPlayerDesign(design: MiniPlayerDesign) {
+        dataStore.edit { it[PreferencesKeys.MINI_PLAYER_DESIGN] = design.name }
+    }
+
     val miniPlayerBackgroundStyle: Flow<MiniPlayerBackgroundStyle> = dataStore.data.map { pref ->
         try { MiniPlayerBackgroundStyle.valueOf(pref[PreferencesKeys.MINI_PLAYER_BG_STYLE] ?: MiniPlayerBackgroundStyle.TRANSLUCENT.name) }
         catch (_: Exception) { MiniPlayerBackgroundStyle.TRANSLUCENT }
@@ -650,12 +690,61 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[PreferencesKeys.SABR_ENABLED] = enabled }
     }
 
+    /** Efecto Liquid Glass (Haze Glass, BETA) en mini reproductor, barra y botones. Default off. */
+    val liquidGlassEnabled: Flow<Boolean> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_ENABLED] ?: false }
+
+    suspend fun setLiquidGlassEnabled(enabled: Boolean) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_ENABLED] = enabled }
+    }
+
+    /**
+     * Ajustes del material Liquid Glass. El cristal solo se aplica con fondo
+     * [BackgroundStyle.SOLID_COLOR] (ver gate en App/Navigation): con superficies
+     * transparentes la fuente del cristal queda con huecos y el blur no rinde.
+     */
+    val liquidGlassBlur: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_BLUR] ?: 16f }
+
+    suspend fun setLiquidGlassBlur(blurDp: Float) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_BLUR] = blurDp.coerceIn(0f, 32f) }
+    }
+
+    val liquidGlassBaseAlpha: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_BASE_ALPHA] ?: 0.9f }
+
+    suspend fun setLiquidGlassBaseAlpha(alpha: Float) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_BASE_ALPHA] = alpha.coerceIn(0.3f, 0.98f) }
+    }
+
+    val liquidGlassSpecular: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_SPECULAR] ?: 0.55f }
+
+    suspend fun setLiquidGlassSpecular(intensity: Float) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_SPECULAR] = intensity.coerceIn(0f, 1f) }
+    }
+
+    val liquidGlassRefraction: Flow<Float> = dataStore.data.map { it[PreferencesKeys.LIQUID_GLASS_REFRACTION] ?: 0.8f }
+
+    suspend fun setLiquidGlassRefraction(strength: Float) {
+        dataStore.edit { it[PreferencesKeys.LIQUID_GLASS_REFRACTION] = strength.coerceIn(0f, 1f) }
+    }
+
     val themeMode: Flow<ThemeMode> = dataStore.data.map { preferences ->
         try {
             ThemeMode.valueOf(preferences[PreferencesKeys.THEME_MODE] ?: ThemeMode.DARK.name)
         } catch (e: Exception) {
             ThemeMode.DARK
         }
+    }
+
+    /** Música o YouTube principal; se conserva entre reinicios. */
+    val appMode: Flow<AppMode> = dataStore.data.map { preferences ->
+        try {
+            AppMode.valueOf(preferences[PreferencesKeys.APP_MODE] ?: AppMode.MUSIC.name)
+        } catch (_: Exception) {
+            AppMode.MUSIC
+        }
+    }
+
+    suspend fun setAppMode(mode: AppMode) {
+        dataStore.edit { it[PreferencesKeys.APP_MODE] = mode.name }
     }
 
     val dynamicColorFromArtwork: Flow<Boolean> = dataStore.data.map { it[PreferencesKeys.DYNAMIC_COLOR] ?: false }
@@ -798,6 +887,33 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setThemePalette(palette: ThemePalette) {
         dataStore.edit { it[PreferencesKeys.THEME_PALETTE] = palette.name }
+    }
+
+    val themePaletteStyle: Flow<ThemePaletteStyle> = dataStore.data.map { pref ->
+        val name = pref[PreferencesKeys.THEME_PALETTE_STYLE] ?: ThemePaletteStyle.CONTENT.name
+        try { ThemePaletteStyle.valueOf(name) } catch (_: Exception) { ThemePaletteStyle.CONTENT }
+    }
+
+    suspend fun setThemePaletteStyle(style: ThemePaletteStyle) {
+        dataStore.edit { it[PreferencesKeys.THEME_PALETTE_STYLE] = style.name }
+    }
+
+    /** Seed ARGB libre del ColorPicker. 0 = sin personalizar (vale la paleta). */
+    val themeCustomSeed: Flow<Int> = dataStore.data.map { pref ->
+        pref[PreferencesKeys.THEME_CUSTOM_SEED] ?: 0
+    }
+
+    val libraryViewMode: Flow<LibraryViewMode> = dataStore.data.map { pref ->
+        val name = pref[PreferencesKeys.LIBRARY_VIEW_MODE] ?: LibraryViewMode.GRID.name
+        try { LibraryViewMode.valueOf(name) } catch (_: Exception) { LibraryViewMode.GRID }
+    }
+
+    suspend fun setLibraryViewMode(mode: LibraryViewMode) {
+        dataStore.edit { it[PreferencesKeys.LIBRARY_VIEW_MODE] = mode.name }
+    }
+
+    suspend fun setThemeCustomSeed(argb: Int) {
+        dataStore.edit { it[PreferencesKeys.THEME_CUSTOM_SEED] = argb }
     }
 
     val locale: Flow<AppLocale> = dataStore.data.map { pref ->

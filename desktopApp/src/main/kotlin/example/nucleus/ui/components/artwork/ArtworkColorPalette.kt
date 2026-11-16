@@ -4,7 +4,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.kmpalette.color
-import com.kmpalette.loader.rememberNetworkLoader
+import com.kmpalette.loader.NetworkLoader
 import com.kmpalette.rememberPaletteState
 import io.ktor.http.Url
 import kotlinx.coroutines.CancellationException
@@ -21,7 +21,9 @@ data class ArtworkColors(
     val vibrant: Color,
     val muted: Color,
     val darkMuted: Color,
-    val isLight: Boolean
+    val isLight: Boolean,
+    /** False while the palette is still being extracted (or after a failure). */
+    val resolved: Boolean = true,
 ) {
     companion object {
         val Default = ArtworkColors(
@@ -29,7 +31,8 @@ data class ArtworkColors(
             vibrant = Color(0xFF6C63FF),
             muted = Color(0xFF2D2D44),
             darkMuted = Color(0xFF121225),
-            isLight = false
+            isLight = false,
+            resolved = false,
         )
     }
 }
@@ -37,7 +40,7 @@ data class ArtworkColors(
 val LocalArtworkColors = staticCompositionLocalOf { ArtworkColors.Default }
 
 // Opciones de caché optimizadas para lectura directa
-private class ArtworkPaletteCache(private val maxSize: Int = 30) {
+private class ArtworkPaletteCache(private val maxSize: Int = 64) {
     private val map = LinkedHashMap<String, ArtworkColors>(maxSize, 0.75f, true)
 
     // Usamos funciones con Intrínsecos de sincronización simples o accesos directos
@@ -55,8 +58,8 @@ private class ArtworkPaletteCache(private val maxSize: Int = 30) {
 private val artworkPaletteCache = ArtworkPaletteCache()
 
 @Composable
-fun rememberArtworkColors(url: String?): ArtworkColors {
-    val loader = rememberNetworkLoader()
+fun rememberArtworkColors(url: String?, enabled: Boolean = true): ArtworkColors {
+    val loader = remember { NetworkLoader.Default }
     val paletteState = rememberPaletteState(loader = loader)
 
     // 1. SOLUCIÓN AL PARPADEO: Inicializamos el estado directamente buscando en la caché.
@@ -68,14 +71,18 @@ fun rememberArtworkColors(url: String?): ArtworkColors {
         )
     }
 
-    LaunchedEffect(url) {
+    LaunchedEffect(url, enabled) {
         if (url.isNullOrBlank()) {
             colors = ArtworkColors.Default
             return@LaunchedEffect
         }
 
-        // Si la caché ya lo tenía (ya lo inicializamos arriba), no hacemos nada más
-        if (artworkPaletteCache.get(url) != null) return@LaunchedEffect
+        // La caché puede haberse llenado después de componer esta tarjeta.
+        artworkPaletteCache.get(url)?.let {
+            colors = it
+            return@LaunchedEffect
+        }
+        if (!enabled) return@LaunchedEffect
 
         try {
             delay(120.milliseconds)
@@ -95,7 +102,8 @@ fun rememberArtworkColors(url: String?): ArtworkColors {
                 vibrant = vibrant ?: finalDominant,
                 muted = muted ?: finalDominant,
                 darkMuted = darkMuted ?: finalDominant,
-                isLight = finalDominant.luminance() > 0.5f
+                isLight = finalDominant.luminance() > 0.5f,
+                resolved = true,
             )
 
             artworkPaletteCache.put(url, resolved)

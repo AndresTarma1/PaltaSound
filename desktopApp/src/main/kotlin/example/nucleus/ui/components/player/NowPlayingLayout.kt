@@ -20,8 +20,10 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.innertube.models.MediaInfo
 import example.nucleus.generated.resources.*
 import example.nucleus.models.MediaMetadata
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.EqualizerDialog
+import example.nucleus.ui.components.glass.LocalContentHaze
+import example.nucleus.ui.components.glass.LocalLiquidGlass
 import example.nucleus.ui.themes.LocalMiniPlayerInset
 import example.nucleus.ui.themes.LocalTitleBarOverlayInset
 import example.nucleus.utils.LocalUserPreferences
@@ -38,7 +40,7 @@ fun NowPlayingLayout(
     state: PlayerUiState,
     song: MediaMetadata,
     onCollapse: () -> Unit,
-    onNavigate: ((Route) -> Unit)? = null,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
     selectedTab: NowPlayingTab = NowPlayingTab.QUEUE,
     onTabSelected: (NowPlayingTab) -> Unit = {},
     lyrics: String? = null,
@@ -51,12 +53,19 @@ fun NowPlayingLayout(
     var showEqualizer by remember { mutableStateOf(false) }
     val preferencesRepo = LocalUserPreferences.current
     val equalizerBands by preferencesRepo.equalizerBands.collectAsState(initial = List(5) { 0f })
-    val bottomInset = LocalMiniPlayerInset.current
+    // Congelados al entrar: durante la salida (volver al mini player) estos
+    // insets cambian en el mismo frame — el título deja de estar superpuesto y
+    // vuelve el mini player — y reacomodaban la pantalla que sale mientras el
+    // shared element leía sus bounds, haciendo que la portada se fuese "abajo"
+    // antes de aterrizar. Congelados, la fuente del morph queda quieta.
+    val initialBottomInset = LocalMiniPlayerInset.current
+    val initialTopInset = LocalTitleBarOverlayInset.current
+    val bottomInset = remember { initialBottomInset }
     // La barra de titulo va superpuesta en Now Playing (App.kt), asi que el contenido
     // arranca 36dp mas abajo. El padding va en la columna de contenido, NO en el
     // BoxWithConstraints: el fondo ambiental vive ahi dentro y tiene que seguir
     // pintando hasta el borde superior.
-    val topInset = LocalTitleBarOverlayInset.current
+    val topInset = remember { initialTopInset }
     val queueCount = state.queue.size
 
     // Auto-hide del cromo (barra, progreso, transporte, volumen, colapso)
@@ -181,22 +190,40 @@ fun NowPlayingLayout(
                 // Colapsar (volver) — solo en el layout ancho; en compacto va al final de la
                 // fila de transporte. El mini player está oculto en Now Playing.
                 if (!isCompact) {
-                    IconButton(
-                        onClick = onCollapse,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp, bottom = 8.dp)
-                            .size(40.dp)
-                            .autoHideChrome(autoHide, sink = 16.dp)
-                            .onHover { autoHide.chromeHover = it }
-                            .pointerHoverIcon(PointerIcon.Hand),
-                    ) {
-                        Icon(
+                    val collapseGlass = LocalLiquidGlass.current
+                    val collapseHaze = LocalContentHaze.current
+                    if (collapseGlass && collapseHaze != null) {
+                        GlassIconButton(
+                            onClick = onCollapse,
                             imageVector = Icons.Rounded.ExpandMore,
                             contentDescription = stringResource(Res.string.mp_collapse),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(26.dp),
+                            hazeState = collapseHaze,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 12.dp, bottom = 8.dp)
+                                .autoHideChrome(autoHide, sink = 16.dp)
+                                .onHover { autoHide.chromeHover = it },
+                            size = 40.dp,
+                            iconSize = 26.dp,
                         )
+                    } else {
+                        IconButton(
+                            onClick = onCollapse,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 12.dp, bottom = 8.dp)
+                                .size(40.dp)
+                                .autoHideChrome(autoHide, sink = 16.dp)
+                                .onHover { autoHide.chromeHover = it }
+                                .pointerHoverIcon(PointerIcon.Hand),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ExpandMore,
+                                contentDescription = stringResource(Res.string.mp_collapse),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(26.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -212,9 +239,6 @@ fun NowPlayingLayout(
     }
 }
 
-/**
- * Contenedor transparente para alojar el contenido de la pestaña activa derivando del AppBackground.
- */
 @Composable
 internal fun TransparentPanel(
     modifier: Modifier = Modifier,
@@ -245,15 +269,13 @@ private fun SpaciousNowPlayingBody(
     lyrics: String?,
     mediaInfo: MediaInfo?,
     selectedTab: NowPlayingTab,
-    onNavigate: ((Route) -> Unit)?,
+    onNavigate: ((ScreenConfig) -> Unit)?,
     onCollapse: () -> Unit,
     compact: Boolean,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     autoHide: NowPlayingAutoHide,
 ) {
-    val (coverScale, coverAlpha) = rememberCoverEnter()
-
     if (compact) {
         NowPlayingCompactBody(
             state = state,
@@ -263,8 +285,6 @@ private fun SpaciousNowPlayingBody(
             selectedTab = selectedTab,
             onNavigate = onNavigate,
             onCollapse = onCollapse,
-            coverScale = coverScale,
-            coverAlpha = coverAlpha,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
             autoHide = autoHide,
@@ -278,8 +298,6 @@ private fun SpaciousNowPlayingBody(
             selectedTab = selectedTab,
             onNavigate = onNavigate,
             onCollapse = onCollapse,
-            coverScale = coverScale,
-            coverAlpha = coverAlpha,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
             autoHide = autoHide,

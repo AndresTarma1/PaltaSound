@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.ChipRowSkeleton
 import example.nucleus.ui.components.ExpressiveEmptyState
 import example.nucleus.ui.components.HorizontalGridLikeRow
@@ -48,6 +48,7 @@ import com.metrolist.innertube.pages.HomePage
 import example.nucleus.generated.resources.Res
 import example.nucleus.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
+import example.nucleus.ui.components.glass.GlassFilterChip
 import example.nucleus.ui.screens.shared.SectionGridItem
 import example.nucleus.ui.screens.shared.SectionListItem
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -55,7 +56,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 @Composable
 fun HomeScreenRoute(
     viewModel: HomeViewModel,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
 ) {
     val playerViewModel = LocalPlayerViewModel.current
     val uiState by viewModel.uiState.collectAsState()
@@ -75,7 +76,7 @@ fun HomeScreen(
     uiState: HomeState,
     recentSongs: List<SongItem> = emptyList(),
     onEvent: (HomeUiEvent) -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
 ) {
     Box(
@@ -131,7 +132,7 @@ fun HomeScreenContent(
     isLoadingMore: Boolean,
     onChipClick: (String?) -> Unit,
     onScrollNearEnd: () -> Unit,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
 ) {
     val listState = rememberLazyListState()
@@ -178,6 +179,7 @@ fun HomeScreenContent(
                     QuickPicksSection(
                         songs = recentSongs,
                         playerViewModel = playerViewModel,
+                        onNavigate = onNavigate,
                     )
                 }
             }
@@ -245,7 +247,7 @@ private fun ChipFilterRow(
             items(chips.size) { index ->
                 val chip = chips[index]
                 val isSelected = chip.endpoint?.params == selectedParams
-                FilterChip(
+                GlassFilterChip(
                     selected = isSelected,
                     onClick = { onChipClick(chip.endpoint?.params) },
                     shape = AppShapes.extraLarge,
@@ -279,7 +281,7 @@ private fun ChipFilterRow(
 @Composable
 private fun HomeSectionRow(
     section: HomePage.Section,
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     playerViewModel: PlayerViewModel,
 ) {
     Column(modifier = Modifier.padding(vertical = 12.dp)) {
@@ -348,6 +350,7 @@ private fun HomeSectionRow(
 private fun QuickPicksSection(
     songs: List<SongItem>,
     playerViewModel: PlayerViewModel,
+    onNavigate: ((ScreenConfig) -> Unit)? = null,
 ) {
     val rowCount = 2
     val itemHeight = 64.dp
@@ -373,6 +376,7 @@ private fun QuickPicksSection(
 
             SectionListItem(
                 item = song,
+                onNavigate = onNavigate,
                 playerViewModel = playerViewModel,
                 modifier = Modifier.fillMaxWidth().height(itemHeight)
             )

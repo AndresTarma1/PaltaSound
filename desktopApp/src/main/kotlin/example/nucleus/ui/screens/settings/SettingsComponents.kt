@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -15,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -25,6 +27,8 @@ import com.alorma.compose.settings.ui.expressive.SettingsMenuLink
 import example.nucleus.data.repository.SeekBarStyle
 import example.nucleus.data.repository.ThemePalette
 import example.nucleus.ui.components.PlayerSeekBar
+import example.nucleus.ui.components.glass.GlassDropdownMenu
+import example.nucleus.ui.components.glass.GlassDialogSurface
 import example.nucleus.ui.screens.shared.displayName
 import example.nucleus.ui.themes.AppShapes
 import example.nucleus.ui.themes.systemFontFamily
@@ -49,8 +53,8 @@ fun rememberSettingsListItemColors(): ListItemColors {
     val selectedAccent = scheme.secondary
 
     return ListItemDefaults.segmentedColors(
-        // Estado base
-        containerColor = scheme.surfaceContainerLow,
+        // Estado base: tarjetas separadas como en la referencia (M3 Settings).
+        containerColor = scheme.surfaceContainerHigh,
         contentColor = scheme.onSurface,
         leadingContentColor = scheme.onSurfaceVariant,
         trailingContentColor = scheme.onSurfaceVariant,
@@ -83,6 +87,11 @@ fun rememberSettingsListItemColors(): ListItemColors {
     )
 }
 
+/**
+ * Fila de opción única (guía M3 Settings → "Multiple choices"): muestra el
+ * valor actual como estado en el subtítulo y abre un diálogo con radio
+ * buttons, uno por opción. Sustituye a los menús desplegables.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun <T> DropdownSelector(
@@ -96,9 +105,14 @@ internal fun <T> DropdownSelector(
     isSelected: (T) -> Boolean,
     onSelect: (T) -> Unit,
     paletteItem: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val colors = LocalSettingsColors.current
-    Box {
+    Box(
+        modifier = Modifier.then(
+            if (enabled) Modifier else Modifier.alpha(0.55f),
+        ),
+    ) {
         SettingsMenuLink(
             icon = { Icon(icon, null) },
             title = { Text(label) },
@@ -106,10 +120,13 @@ internal fun <T> DropdownSelector(
             shapes = segmentedShape,
             colors = colors,
             action = {
-                IconButton(onClick = { onExpandedChange(!expanded) }) {
+                IconButton(
+                    onClick = { onExpandedChange(!expanded) },
+                    enabled = enabled,
+                ) {
                     Icon(Icons.Rounded.ChevronRight, null)
-                    DropdownMenu(
-                        expanded = expanded,
+                    GlassDropdownMenu(
+                        expanded = expanded && enabled,
                         onDismissRequest = { onExpandedChange(false) },
                         offset = DpOffset(x = 16.dp, y = 0.dp),
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -144,8 +161,89 @@ internal fun <T> DropdownSelector(
                     }
                 }
             },
-            onClick = { onExpandedChange(!expanded) }
+            onClick = { if (enabled) onExpandedChange(!expanded) }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun <T> SingleChoiceRow(
+    label: String,
+    icon: ImageVector,
+    currentValue: String,
+    segmentedShape: ListItemShapes = ListItemDefaults.shapes(),
+    options: List<Pair<T, String>>,
+    isSelected: (T) -> Boolean,
+    onSelect: (T) -> Unit,
+    /** Punto de color junto a la opción (p. ej. paletas). Null = sin punto. */
+    swatchFor: ((T) -> Color?)? = null,
+    enabled: Boolean = true,
+) {
+    val colors = LocalSettingsColors.current
+    var showDialog by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier.then(
+            if (enabled) Modifier else Modifier.alpha(0.55f),
+        ),
+    ) {
+        SettingsMenuLink(
+            icon = { Icon(icon, null) },
+            title = { Text(label) },
+            subtitle = { Text(currentValue) },
+            shapes = segmentedShape,
+            colors = colors,
+            action = {
+                IconButton(
+                    onClick = { if (enabled) showDialog = true },
+                    enabled = enabled,
+                ) {
+                    Icon(Icons.Rounded.ChevronRight, null)
+                }
+            },
+            onClick = { if (enabled) showDialog = true }
+        )
+    }
+    if (showDialog && enabled) {
+        ResponsiveSettingsDialog(
+            onDismiss = { showDialog = false },
+            icon = icon,
+            title = label,
+        ) {
+            options.forEach { (value, displayName) ->
+                val selected = isSelected(value)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(AppShapes.large)
+                        .clickable {
+                            onSelect(value)
+                            showDialog = false
+                        }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    RadioButton(selected = selected, onClick = null)
+                    swatchFor?.invoke(value)?.let { swatch ->
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(swatch)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        )
+                    }
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -173,7 +271,7 @@ internal fun SystemFontSelector(
             action = {
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(Icons.Rounded.ChevronRight, null)
-                    DropdownMenu(
+                    GlassDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
                         offset = DpOffset(x = 16.dp, y = 0.dp),
@@ -377,12 +475,12 @@ internal fun ResponsiveSettingsDialog(
             val dialogWidth = (maxWidth * 0.9f).coerceAtMost(480.dp)
             val maxDialogHeight = maxHeight * 0.85f
 
-            Surface(
+            GlassDialogSurface(
                 modifier = Modifier
                     .width(dialogWidth)
                     .heightIn(max = maxDialogHeight),
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp,
             ) {
                 Column(modifier = Modifier.height(IntrinsicSize.Min)) {

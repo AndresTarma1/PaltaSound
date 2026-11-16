@@ -16,6 +16,7 @@ import example.nucleus.data.repository.savedPlaylistToPlaylistItem
 import example.nucleus.data.repository.savedPodcastToPodcastItem
 import example.nucleus.data.repository.savedSongToSongItem
 import example.nucleus.db.MusicDatabase
+import example.nucleus.platform.AppPaths
 import example.nucleus.platform.CsvFilePicker
 import example.nucleus.utils.CsvPlaylistParser
 import example.nucleus.utils.CsvSongRow
@@ -49,13 +50,14 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.uuid.ExperimentalUuidApi
+import java.io.File
 
 enum class LibraryTab {
-    LIBRARY, ALBUMS, ARTISTS, PLAYLISTS, PODCASTS
+    LIBRARY, SONGS, ALBUMS, ARTISTS, PLAYLISTS, PODCASTS
 }
 
 enum class LibrarySortOrder {
-    NAME_ASC, NAME_DESC, DATE_ADDED
+    NAME_ASC, NAME_DESC, DATE_ADDED, DATE_ADDED_DESC
 }
 
 enum class YtmLibraryFilter(val filter: YouTube.LibraryFilter) {
@@ -86,6 +88,7 @@ class LibraryViewModel(
     private val songRepository: SongRepository,
     private val playlistRepository: PlaylistRepository,
     private val podcastRepository: PodcastRepository,
+    private val userPreferences: UserPreferencesRepository,
     private val loginState: StateFlow<Boolean>? = null
 ) : ViewModel() {
 
@@ -103,6 +106,13 @@ class LibraryViewModel(
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
     fun setSortOrder(order: LibrarySortOrder) { _sortOrder.value = order }
+
+    val libraryViewMode: StateFlow<example.nucleus.data.repository.LibraryViewMode> =
+        userPreferences.libraryViewMode.stateIn(viewModelScope, SharingStarted.Lazily, example.nucleus.data.repository.LibraryViewMode.GRID)
+
+    fun setLibraryViewMode(mode: example.nucleus.data.repository.LibraryViewMode) {
+        viewModelScope.launch { userPreferences.setLibraryViewMode(mode) }
+    }
     fun clearSearch() { _searchQuery.value = "" }
     fun setYtmFilter(filter: YtmLibraryFilter?) {
         _selectedYtmFilter.value = filter
@@ -142,8 +152,10 @@ class LibraryViewModel(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val sortedFilteredArtists = combine(savedArtists, ytmState, searchQuery, sortOrder) { local, ytm, query, order ->
+        // Los perfiles de usuario (isProfile) no son artistas abribles: sin
+        // página ni avatar, así que se excluyen de la colección.
         mergedFilteredSorted(
-            local, (ytm as? YtmLibraryState.Success)?.artists.orEmpty(),
+            local.filterNot { it.isProfile }, (ytm as? YtmLibraryState.Success)?.artists.orEmpty().filterNot { it.isProfile },
             query, order, { it.id }, { it.title },
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -161,6 +173,16 @@ class LibraryViewModel(
     val savedPodcasts = podcastRepository.getSavedPodcasts()
         .map { it.map(::savedPodcastToPodcastItem) }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private val savedSongs = songRepository.getSavedSongs().map { it.map(::savedSongToSongItem) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val sortedFilteredSongs = combine(savedSongs, ytmState, searchQuery, sortOrder) { local, ytm, query, order ->
+        mergedFilteredSorted(
+            local, (ytm as? YtmLibraryState.Success)?.likedSongs.orEmpty(),
+            query, order, { it.id }, { it.title },
+        )
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val sortedFilteredPodcasts = combine(savedPodcasts, ytmState, searchQuery, sortOrder) { local, ytm, query, order ->
         mergedFilteredSorted(
@@ -183,6 +205,7 @@ class LibraryViewModel(
             LibrarySortOrder.NAME_ASC -> filtered.sortedBy(titleOf)
             LibrarySortOrder.NAME_DESC -> filtered.sortedByDescending(titleOf)
             LibrarySortOrder.DATE_ADDED -> filtered
+            LibrarySortOrder.DATE_ADDED_DESC -> filtered.asReversed()
         }
     }
 
@@ -627,8 +650,13 @@ class LibraryPlaylistsViewModel(
                         appendLine("\"$t\",\"$a\",\"$al\"")
                     }
                 }
-                // Por ahora retornamos el CSV; la UI decide donde guardarlo (por ahora solo notifica)
-                withContext(Dispatchers.Main) { onDone(true, csv) }
+                val dir = File(AppPaths.exportsDir).apply { mkdirs() }
+                val safeName = item.title
+                    .replace(Regex("[^A-Za-z0-9 _-]"), "_")
+                    .ifBlank { "playlist" }
+                val file = File(dir, "playlist_$safeName.csv")
+                file.writeText(csv)
+                withContext(Dispatchers.Main) { onDone(true, file.absolutePath) }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { onDone(false, e.message ?: "Error") }
             }

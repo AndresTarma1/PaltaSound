@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
-import example.nucleus.navigation.Route
+import example.nucleus.navigation.ScreenConfig
 import example.nucleus.ui.components.AlbumScreenSkeleton
 import example.nucleus.viewmodels.AlbumState
 import example.nucleus.viewmodels.AlbumManagerViewModel
@@ -43,7 +43,7 @@ data class AlbumScreenState(
 data class AlbumScreenActions(
     val onBack: () -> Unit,
     val onLoadMore: () -> Unit,
-    val onNavigate: (Route) -> Unit,
+    val onNavigate: (ScreenConfig) -> Unit,
     val onToggleSave: () -> Unit,
     val onPlayAll: () -> Unit,
     val onShuffle: () -> Unit,
@@ -51,7 +51,7 @@ data class AlbumScreenActions(
 
 @Composable
 fun AlbumScreenRoute(
-    onNavigate: (Route) -> Unit,
+    onNavigate: (ScreenConfig) -> Unit,
     onBack: () -> Unit,
     viewModel: AlbumManagerViewModel
 ) {

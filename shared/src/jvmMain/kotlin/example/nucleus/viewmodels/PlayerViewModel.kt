@@ -10,6 +10,7 @@ import example.nucleus.db.DatabaseDao
 import example.nucleus.db.entities.ArtistEntity
 import example.nucleus.download.DownloadService
 import example.nucleus.lyrics.BetterLyrics
+import example.nucleus.lyrics.Unison
 import example.nucleus.lyrics.LyricLine
 import example.nucleus.lyrics.SyncedLyrics
 import com.metrolist.lrclib.LrcLib
@@ -52,12 +53,6 @@ class PlayerViewModel(
     val seekBarStyle = userPreferences.seekBarStyle
     val playbackSpeed = userPreferences.playbackSpeed
 
-    // Mientras pienso en un buen diseño xd
-//    val background: Flow<BackgroundStyle?> = userPreferences.fullScreenPlayer
-//        .combine(userPreferences.nowPlayingBackground) { isFullScreen, style ->
-//            if (isFullScreen) style else null
-//        }
-
     fun setPlaybackSpeed(speed: Float) {
         viewModelScope.launch { userPreferences.setPlaybackSpeed(speed) }
     }
@@ -84,11 +79,6 @@ class PlayerViewModel(
      */
     private val _seekEvents = MutableSharedFlow<Long>(extraBufferCapacity = 8)
     val seekEvents: SharedFlow<Long> = _seekEvents.asSharedFlow()
-
-    // Stubs para compatibilidad con NowPlayingOverlay (prefetch deshabilitado temporalmente)
-    val currentSongLyricsOffsetMs: StateFlow<Int> = MutableStateFlow(0)
-    fun nudgeCurrentSongLyricsOffset(deltaMs: Int) {}
-    fun resetCurrentSongLyricsOffset() {}
 
     /** Mensajes transitorios para el usuario (por ejemplo, si una canción no se pudo reproducir). La UI los muestra como snackbars. */
     private val _playbackMessages = MutableSharedFlow<String>(extraBufferCapacity = 4)
@@ -675,6 +665,11 @@ class PlayerViewModel(
             return
         }
         playerService.togglePlayPause()
+    }
+
+    /** Pausa la música sin alterar la cola (usado al abrir un vídeo de YouTube). */
+    fun pause() {
+        if (playerService.hasLoadedMedia()) playerService.pause()
     }
 
     fun seekTo(millis: Long) {
@@ -1593,7 +1588,7 @@ class PlayerViewModel(
             }
 
             try {
-                withTimeout(20_000L) {
+                withTimeout(20_000L.milliseconds) {
                     val result = lookupLyricsRemote(song) ?: return@withTimeout
                     if (!stillCurrent()) return@withTimeout
 
@@ -1670,11 +1665,13 @@ class PlayerViewModel(
         val album = song.album?.title
 
         // Intentar proveedores sincronizados en orden de fiabilidad. El primer LRC utilizable gana.
-        //   1) LrcLib  — gratuito, confiable, sincronizado por líneas
-        //   2) KuGou   — sincronizado por líneas
-        //   3) BetterLyrics — sincronizado por palabras; su API publica ya solo sirve consultas
-        //      que esten en su cache (el resto exige una key privada), asi que suele caer
-        //   4) YouTube lyrics endpoint
+        //   1) BetterLyrics — sincronizado por palabras (Apple Music); su API publica ya solo
+        //      sirve consultas que esten en su cache (el resto exige una key privada)
+        //   2) BetterLyrics Portato — karaoke de QQ Music por el mismo host, sin key
+        //   3) LrcLib  — gratuito, confiable, sincronizado por líneas
+        //   4) KuGou   — sincronizado por líneas
+        //   5) Unison  — base comunitaria de Better Lyrics; por videoId exacto y con sync rico
+        //   6) YouTube lyrics endpoint
         suspend fun <T> attempt(block: suspend () -> T): T? = try {
             block()
         } catch (e: CancellationException) {
@@ -1683,12 +1680,16 @@ class PlayerViewModel(
             null
         }
 
+        attempt { BetterLyrics.getLyrics(song.title, artist, song.duration, album) }
+            ?.let { return RemoteLyrics(it, "BetterLyrics") }
+        attempt { BetterLyrics.getPortatoLyrics(song.title, artist, song.duration, album) }
+            ?.let { return RemoteLyrics(it, "BetterLyrics Portato") }
         attempt { LrcLib.getLyrics(song.title, artist, song.duration, album).getOrNull() }
             ?.let { return RemoteLyrics(it, "LrcLib") }
         attempt { KuGou.getLyrics(song.title, artist, song.duration, album).getOrNull() }
             ?.let { return RemoteLyrics(it, "KuGou") }
-        attempt { BetterLyrics.getLyrics(song.title, artist, song.duration, album) }
-            ?.let { return RemoteLyrics(it, "BetterLyrics") }
+        attempt { Unison.getLyrics(song.id) }
+            ?.let { return RemoteLyrics(it, "Unison") }
 
         val nextResult = attempt { YouTube.next(WatchEndpoint(videoId = song.id)).getOrNull() }
             ?: return null
@@ -1709,7 +1710,7 @@ class PlayerViewModel(
         lyricsPrefetchJob?.cancel()
         lyricsPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                withTimeout(20_000L) {
+                withTimeout(20_000L.milliseconds) {
                     val result = lookupLyricsRemote(next) ?: run {
                         rememberLyrics(next.id, "", "None", notFound = true)
                         return@withTimeout
