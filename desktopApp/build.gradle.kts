@@ -118,6 +118,15 @@ configurations.all {
     exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
 }
 
+// BouncyCastle (vía PipePipeExtractor) firma sus jars: al fusionarlos en el
+// uber-jar las firmas quedan inválidas y native-image muere con
+// "Invalid signature file digest for Manifest main attributes".
+// Se excluyen (práctica estándar: nadie debe distribuir .SF/.DSA/.RSA
+// fusionados; el proveedor JCE funciona igual sin ellas desde Java 9).
+tasks.withType<org.gradle.jvm.tasks.Jar>().configureEach {
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
+}
+
 
 nucleus.application {
     mainClass = "example.nucleus.MainKt"
